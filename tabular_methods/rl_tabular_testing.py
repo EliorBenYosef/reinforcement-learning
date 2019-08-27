@@ -29,15 +29,13 @@ class AlgorithmsTesting:
     def test_mc_policy_evaluation(episodes):
         frozen_lake_env = Envs_DSS.FrozenLake()
         frozen_lake_monte_carlo_model = TabularMethods.MonteCarloModel(
-            frozen_lake_env, episodes=episodes,
-            eps_dec=2 / episodes, eps_dec_type=Utils.EPS_DEC_LINEAR
+            frozen_lake_env, episodes=episodes, eps_dec=2/episodes
         )
         frozen_lake_monte_carlo_model.perform_MC_policy_evaluation(print_info=True)
 
         mountain_car_env_single_state_space = Envs_DSS.MountainCar(0)
         mountain_car_monte_carlo_model = TabularMethods.MonteCarloModel(
-            mountain_car_env_single_state_space, episodes=episodes,
-            eps_dec=2 / episodes, eps_dec_type=Utils.EPS_DEC_LINEAR
+            mountain_car_env_single_state_space, episodes=episodes, eps_dec=2/episodes
         )
         mountain_car_monte_carlo_model.perform_MC_policy_evaluation(print_info=True)
 
@@ -95,27 +93,17 @@ class AlgorithmsTesting:
         method_name = 'SARSA'
 
         taxi_env = Envs_DSS.Taxi()
-        alpha = 0.4  # check
-        taxi_sarsa_model = TabularMethods.GeneralModel(
-            taxi_env, alpha=alpha, episodes=episodes,
-            eps_dec=2 / episodes, eps_dec_type=Utils.EPS_DEC_LINEAR
-        )
+        taxi_sarsa_model = TabularMethods.GeneralModel(taxi_env, alpha=0.4, episodes=episodes, eps_dec=2/episodes)
         taxi_total_rewards_sarsa_model = taxi_sarsa_model.perform_sarsa()
         # Utils.plot_running_average(method_name + ' - ' + taxi_env.name, taxi_total_rewards_sarsa_model)
 
         cart_pole_env = Envs_DSS.CartPole()
-        cart_pole_sarsa_model = TabularMethods.GeneralModel(
-            cart_pole_env, episodes=episodes,
-            eps_dec=2 / episodes, eps_dec_type=Utils.EPS_DEC_LINEAR
-        )
+        cart_pole_sarsa_model = TabularMethods.GeneralModel(cart_pole_env, episodes=episodes, eps_dec=2/episodes)
         cart_pole_total_rewards_sarsa_model = cart_pole_sarsa_model.perform_sarsa()
         # Utils.plot_running_average(method_name + ' - ' + cart_pole_env.name, cart_pole_total_rewards_sarsa_model)
 
         acrobot_env = Envs_DSS.Acrobot()
-        acrobot_sarsa_model = TabularMethods.GeneralModel(
-            acrobot_env, episodes=episodes,
-            eps_dec=2 / episodes, eps_dec_type=Utils.EPS_DEC_LINEAR
-        )
+        acrobot_sarsa_model = TabularMethods.GeneralModel(acrobot_env, episodes=episodes, eps_dec=2/episodes)
         acrobot_total_rewards_sarsa_model = acrobot_sarsa_model.perform_sarsa()
         # Utils.plot_running_average(method_name + ' - ' + acrobot_env.name, acrobot_total_rewards_sarsa_model)
 
@@ -129,10 +117,8 @@ class AlgorithmsTesting:
         method_name = 'Expected SARSA'
 
         taxi_env = Envs_DSS.Taxi()
-        alpha = 0.4  # check
         taxi_expected_sarsa_model = TabularMethods.GeneralModel(
-            taxi_env, alpha=alpha, episodes=episodes,
-            eps_dec=2 / episodes, eps_dec_type=Utils.EPS_DEC_LINEAR
+            taxi_env, alpha=0.4, episodes=episodes, eps_dec=2 / episodes
         )
         taxi_total_rewards_expected_sarsa_model = taxi_expected_sarsa_model.perform_expected_sarsa()
         Utils.plot_running_average(method_name + ' - ' + taxi_env.name, taxi_total_rewards_expected_sarsa_model)
@@ -142,8 +128,7 @@ class AlgorithmsTesting:
         method_name = 'Q-learning'
 
         taxi_env = Envs_DSS.Taxi()
-        alpha = 0.4  # check
-        taxi_q_learning_model = TabularMethods.GeneralModel(taxi_env, alpha=alpha, episodes=episodes)
+        taxi_q_learning_model = TabularMethods.GeneralModel(taxi_env, alpha=0.4, episodes=episodes)
         taxi_total_rewards_q_learning_model = taxi_q_learning_model.perform_q_learning()
         # Utils.plot_running_average(method_name + ' - ' + taxi_env.name, taxi_total_rewards_q_learning_model)
 
@@ -188,10 +173,7 @@ class EnvironmentsTesting:
         # Utils.plot_running_average('Frozen Lake', total_rewards_mc_without_es)          # less preferred
         Utils.plot_accumulated_rewards('Frozen Lake', accumulated_rewards_mc_without_es)  # better
 
-        monte_carlo_model_02 = TabularMethods.MonteCarloModel(
-            frozen_lake_env, episodes=episodes,
-            eps_dec=2/episodes, eps_dec_type=Utils.EPS_DEC_LINEAR
-        )
+        monte_carlo_model_02 = TabularMethods.MonteCarloModel(frozen_lake_env, episodes=episodes, eps_dec=2/episodes)
         monte_carlo_model_02.perform_MC_policy_evaluation(print_info=True)
 
     @staticmethod
@@ -200,12 +182,10 @@ class EnvironmentsTesting:
 
         alpha = 0.4
 
-        sarsa_model = TabularMethods.GeneralModel(taxi_env, alpha=alpha, episodes=episodes,
-                                                  eps_dec=2/episodes, eps_dec_type=Utils.EPS_DEC_LINEAR)
+        sarsa_model = TabularMethods.GeneralModel(taxi_env, alpha=alpha, episodes=episodes, eps_dec=2/episodes)
         total_rewards_sarsa_model = sarsa_model.perform_sarsa()
 
-        expected_sarsa_model = TabularMethods.GeneralModel(taxi_env, alpha=alpha, episodes=episodes,
-                                                           eps_dec=2/episodes, eps_dec_type=Utils.EPS_DEC_LINEAR)
+        expected_sarsa_model = TabularMethods.GeneralModel(taxi_env, alpha=alpha, episodes=episodes, eps_dec=2/episodes)
         total_rewards_expected_sarsa_model = expected_sarsa_model.perform_expected_sarsa()
 
         q_learning_model = TabularMethods.GeneralModel(taxi_env, alpha=alpha, episodes=episodes)
@@ -250,10 +230,7 @@ class EnvironmentsTesting:
         td_zero_model = TabularMethods.TdZeroModel(cart_pole_env_single_state_space, episodes=episodes)
         total_rewards_td_zero_model = td_zero_model.perform()
 
-        sarsa_model = TabularMethods.GeneralModel(
-            cart_pole_env, episodes=episodes,
-            eps_dec=2/episodes, eps_dec_type=Utils.EPS_DEC_LINEAR
-        )
+        sarsa_model = TabularMethods.GeneralModel(cart_pole_env, episodes=episodes, eps_dec=2/episodes)
         total_rewards_sarsa_model = sarsa_model.perform_sarsa()
 
         q_learning_model = TabularMethods.GeneralModel(cart_pole_env, episodes=episodes)
@@ -271,10 +248,7 @@ class EnvironmentsTesting:
     def test_acrobot(episodes):
         acrobot_env = Envs_DSS.Acrobot()
 
-        sarsa_model = TabularMethods.GeneralModel(
-            acrobot_env, episodes=episodes,
-            eps_dec=2/episodes, eps_dec_type=Utils.EPS_DEC_LINEAR
-        )
+        sarsa_model = TabularMethods.GeneralModel(acrobot_env, episodes=episodes, eps_dec=2/episodes)
         total_rewards_sarsa_model = sarsa_model.perform_sarsa()
         Utils.plot_running_average('Acrobot', total_rewards_sarsa_model)
 
@@ -284,7 +258,7 @@ class EnvironmentsTesting:
         mountain_car_env_single_state_space = Envs_DSS.MountainCar(0)
 
         monte_carlo_model = TabularMethods.MonteCarloModel(mountain_car_env_single_state_space, episodes=episodes,
-                                                           eps_dec=2/episodes, eps_dec_type=Utils.EPS_DEC_LINEAR)
+                                                           eps_dec=2/episodes)
         monte_carlo_model.perform_MC_policy_evaluation()
 
         td_zero_model = TabularMethods.TdZeroModel(mountain_car_env_single_state_space, episodes=episodes)
