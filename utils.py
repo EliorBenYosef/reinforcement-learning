@@ -49,8 +49,8 @@ class Utils:
             plt.show()
 
     @staticmethod
-    def plot_running_average_comparison(env_name, rewards_list, labels=None, window=100, show=False, file_name=None):
-        plt.title(env_name + ' - Running Average (%d)' % window)
+    def plot_running_average_comparison(main_title, rewards_list, labels=None, window=100, show=False, file_name=None):
+        plt.title(main_title + ' - Running Average (%d)' % window)
         plt.ylabel('Total Rewards')
         plt.xlabel('Episode')
         colors = ['r--', 'g--', 'b--', 'c--', 'm--', 'y--', 'k--']
