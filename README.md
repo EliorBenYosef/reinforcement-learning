@@ -25,12 +25,16 @@ This is a **modular** implementation, meaning: you can plug-and-play **almost an
 
 ### Implemented Environments
 *(environments with **Discrete\Discretized State Space**)*
-* FrozenLake
-* Taxi
-* Blackjack
-* CartPole
-* Acrobot
-* MountainCar
+
+* Toy Text
+  * FrozenLake
+  * Taxi
+  * Blackjack
+  
+* Classic Control
+  * CartPole
+  * Acrobot
+  * MountainCar
 
 ## 2. Deep Reinforcement Learning
 
