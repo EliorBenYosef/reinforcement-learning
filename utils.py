@@ -26,8 +26,8 @@ class Utils:
         return x, running_avg
 
     @staticmethod
-    def plot_running_average(env_name, rewards, window=100, show=False, file_name=None):
-        plt.title(env_name + ' - Running Average (%d)' % window)
+    def plot_running_average(main_title, rewards, window=100, show=False, file_name=None):
+        plt.title(main_title + ' - Running Average (%d)' % window)
         plt.ylabel('Total Rewards')
         plt.xlabel('Episode')
         plt.plot(*Utils.get_running_avg(rewards, window))
@@ -37,8 +37,8 @@ class Utils:
             plt.show()
 
     @staticmethod
-    def plot_accumulated_rewards(env_name, rewards, show=False, file_name=None):
-        plt.title(env_name + ' - Accumulated Rewards')
+    def plot_accumulated_rewards(main_title, rewards, show=False, file_name=None):
+        plt.title(main_title + ' - Accumulated Rewards')
         plt.ylabel('Accumulated Rewards')
         plt.xlabel('Episode')
         x = [i + 1 for i in range(len(rewards))]
@@ -64,8 +64,8 @@ class Utils:
             plt.show()
 
     @staticmethod
-    def plot_accumulated_rewards_comparison(env_name, rewards_list, labels=None, show=False, file_name=None):
-        plt.title(env_name + ' - Accumulated Rewards')
+    def plot_accumulated_rewards_comparison(main_title, rewards_list, labels=None, show=False, file_name=None):
+        plt.title(main_title + ' - Accumulated Rewards')
         plt.ylabel('Accumulated Rewards')
         plt.xlabel('Episode')
         colors = ['r--', 'g--', 'b--', 'c--', 'm--', 'y--', 'k--']
@@ -150,8 +150,8 @@ class Utils:
         ax.tick_params(axis='y', colors="C0")
 
     @staticmethod
-    def plot_eps_history_and_running_avg(env_name, total_rewards, eps_history, window=100, show=False, file_name=None):
-        plt.title(env_name)
+    def plot_eps_history_and_running_avg(main_title, total_rewards, eps_history, window=100, show=False, file_name=None):
+        plt.title(main_title)
         fig = plt.figure()
 
         ax01 = fig.add_subplot(111, label="Running Average", frame_on=False)
