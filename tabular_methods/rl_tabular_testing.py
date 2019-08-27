@@ -272,9 +272,9 @@ class EnvironmentsTesting:
         Utils.plot_running_average_comparison('Mountain Car', total_rewards_list, labels)
 
 
-def test_by_algorithm():
-    AlgorithmsTesting.test_td_zero(1000)
-    # RLTabularTesting.test_MC_policy_evaluation(1000)
+def algorithms_test():
+    AlgorithmsTesting.test_td_zero(100)
+    AlgorithmsTesting.test_mc_policy_evaluation(1000)
     AlgorithmsTesting.test_mc_non_exploring_starts_control(1000)
     AlgorithmsTesting.test_off_policy_mc_control(1000)
     AlgorithmsTesting.test_sarsa(1000)
@@ -283,7 +283,7 @@ def test_by_algorithm():
     AlgorithmsTesting.test_double_q_learning(1000)
 
 
-def test_by_environment():
+def environments_test():
     EnvironmentsTesting.test_frozen_lake(1000)  # 100000
     EnvironmentsTesting.test_taxi(1000)         # 2000, 10000
     EnvironmentsTesting.test_blackjack(1000)    # 100000
@@ -293,5 +293,5 @@ def test_by_environment():
 
 
 if __name__ == '__main__':
-    test_by_algorithm()
-    # test_by_environment()
+    algorithms_test()
+    # environments_test()

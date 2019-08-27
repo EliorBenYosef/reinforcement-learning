@@ -261,6 +261,12 @@ class TabularMethods:
                     self.update_states_returns(s, G)
 
         def perform_MC_policy_evaluation(self, print_info=False, visualize=False, record=False):
+            if record:
+                self.env = wrappers.Monitor(
+                    self.env, 'recordings/TD0/', force=True,
+                    video_callable=lambda episode_id: episode_id == 0 or episode_id == (self.episodes - 1)
+                )
+
             V = TabularMethods.init_v(self.states)
 
             print('\n', 'Game Started', '\n')
@@ -273,11 +279,6 @@ class TabularMethods:
                 done = False
                 ep_steps = 0
                 ep_rewards = 0
-
-                if record:
-                    env_name = ''
-                    self.env = wrappers.Monitor(self.env, 'tmp/' + env_name, force=True,
-                                                video_callable=lambda episode_id: True)
 
                 memory = []
                 observation = self.env.reset()
@@ -335,6 +336,12 @@ class TabularMethods:
             # Monte Carlo control without exploring starts
             #   we use epsilon greedy with a decaying epsilon
 
+            if record:
+                self.env = wrappers.Monitor(
+                    self.env, 'recordings/TD0/', force=True,
+                    video_callable=lambda episode_id: episode_id == 0 or episode_id == (self.episodes - 1)
+                )
+
             Q, states_actions_visited_counter = {}, {}
             for s in self.states:
                 for a in range(self.action_space_size):
@@ -349,11 +356,6 @@ class TabularMethods:
                 done = False
                 ep_steps = 0
                 ep_rewards = 0
-
-                if record:
-                    env_name = ''
-                    self.env = wrappers.Monitor(self.env, 'tmp/' + env_name, force=True,
-                                                video_callable=lambda episode_id: True)
 
                 memory = []
                 observation = self.env.reset()
@@ -424,6 +426,12 @@ class TabularMethods:
         def perform_off_policy_MC_control(self, print_info=False, visualize=False, record=False):
             # off-policy methods are the alternative to non-exploring-starts
 
+            if record:
+                self.env = wrappers.Monitor(
+                    self.env, 'recordings/TD0/', force=True,
+                    video_callable=lambda episode_id: episode_id == 0 or episode_id == (self.episodes - 1)
+                )
+
             target_policy, Q, C = {}, {}, {}
             for s in self.states:
                 target_policy[s] = self.env.action_space.sample()
@@ -446,11 +454,6 @@ class TabularMethods:
                     behavior_policy[s] = [target_policy[s]] \
                         if rand > self.EPS \
                         else [a for a in range(self.action_space_size)]
-
-                if record:
-                    env_name = ''
-                    self.env = wrappers.Monitor(self.env, 'tmp/' + env_name, force=True,
-                                                video_callable=lambda episode_id: True)
 
                 memory = []
                 observation = self.env.reset()
@@ -547,6 +550,12 @@ class TabularMethods:
             self.totalRewards = np.zeros(episodes)
 
         def perform(self, print_info=False, visualize=False, record=False):
+            if record:
+                self.env = wrappers.Monitor(
+                    self.env, 'recordings/TD0/', force=True,
+                    video_callable=lambda episode_id: episode_id == 0 or episode_id == (self.episodes - 1)
+                )
+
             V = TabularMethods.init_v(self.states)
 
             print('\n', 'Game Started', '\n')
@@ -555,11 +564,6 @@ class TabularMethods:
                 done = False
                 ep_steps = 0
                 ep_rewards = 0
-
-                if record:
-                    env_name = ''
-                    self.env = wrappers.Monitor(self.env, 'tmp/' + env_name, force=True,
-                                                video_callable=lambda episode_id: True)
 
                 observation = self.env.reset()
 
@@ -639,6 +643,12 @@ class TabularMethods:
             self.totalRewards = np.zeros(episodes)
 
         def perform_sarsa(self, print_info=False, visualize=False, record=False, pickle=False):
+            if record:
+                self.env = wrappers.Monitor(
+                    self.env, 'recordings/TD0/', force=True,
+                    video_callable=lambda episode_id: episode_id == 0 or episode_id == (self.episodes - 1)
+                )
+
             Q = TabularMethods.init_q(self.states, self.action_space_size, self.custom_env_object.file_name, pickle)
 
             print('\n', 'Game Started', '\n')
@@ -647,11 +657,6 @@ class TabularMethods:
                 done = False
                 ep_steps = 0
                 ep_rewards = 0
-
-                if record:
-                    env_name = ''
-                    self.env = wrappers.Monitor(self.env, 'tmp/' + env_name, force=True,
-                                                video_callable=lambda episode_id: True)
 
                 observation = self.env.reset()
 
@@ -694,6 +699,12 @@ class TabularMethods:
             return self.totalRewards
 
         def perform_expected_sarsa(self, print_info=False, visualize=False, record=False, pickle=False):
+            if record:
+                self.env = wrappers.Monitor(
+                    self.env, 'recordings/TD0/', force=True,
+                    video_callable=lambda episode_id: episode_id == 0 or episode_id == (self.episodes - 1)
+                )
+
             Q = TabularMethods.init_q(self.states, self.action_space_size, self.custom_env_object.file_name, pickle)
 
             print('\n', 'Game Started', '\n')
@@ -702,11 +713,6 @@ class TabularMethods:
                 done = False
                 ep_steps = 0
                 ep_rewards = 0
-
-                if record:
-                    env_name = ''
-                    self.env = wrappers.Monitor(self.env, 'tmp/' + env_name, force=True,
-                                                video_callable=lambda episode_id: True)
 
                 observation = self.env.reset()
 
@@ -750,6 +756,12 @@ class TabularMethods:
             return self.totalRewards
 
         def perform_q_learning(self, print_info=False, visualize=False, record=False, pickle=False):
+            if record:
+                self.env = wrappers.Monitor(
+                    self.env, 'recordings/TD0/', force=True,
+                    video_callable=lambda episode_id: episode_id == 0 or episode_id == (self.episodes - 1)
+                )
+
             Q = TabularMethods.init_q(self.states, self.action_space_size, self.custom_env_object.file_name, pickle)
 
             print('\n', 'Game Started', '\n')
@@ -758,11 +770,6 @@ class TabularMethods:
                 done = False
                 ep_steps = 0
                 ep_rewards = 0
-
-                if record:
-                    env_name = ''
-                    self.env = wrappers.Monitor(self.env, 'tmp/' + env_name, force=True,
-                                                video_callable=lambda episode_id: True)
 
                 observation = self.env.reset()
 
@@ -807,6 +814,12 @@ class TabularMethods:
             return self.totalRewards
 
         def perform_double_q_learning(self, print_info=False, visualize=False, record=False):
+            if record:
+                self.env = wrappers.Monitor(
+                    self.env, 'recordings/TD0/', force=True,
+                    video_callable=lambda episode_id: episode_id == 0 or episode_id == (self.episodes - 1)
+                )
+
             Q1, Q2 = TabularMethods.init_q1_q2(self.states, self.action_space_size)
 
             print('\n', 'Game Started', '\n')
@@ -815,11 +828,6 @@ class TabularMethods:
                 done = False
                 ep_steps = 0
                 ep_rewards = 0
-
-                if record:
-                    env_name = ''
-                    self.env = wrappers.Monitor(self.env, 'tmp/' + env_name, force=True,
-                                                video_callable=lambda episode_id: True)
 
                 observation = self.env.reset()
 
