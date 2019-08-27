@@ -205,7 +205,7 @@ class TabularMethods:
     class MonteCarloModel:
 
         def __init__(self, custom_env_object, alpha=0.1, gamma=None, episodes=50000,
-                     eps_max=1.0, eps_min=0.0, eps_dec=0.001, eps_dec_type=Utils.EPS_DEC_LINEAR):
+                     eps_max=1.0, eps_min=None, eps_dec=0.001, eps_dec_type=Utils.EPS_DEC_LINEAR):
 
             self.custom_env_object = custom_env_object
             self.env = custom_env_object.env
@@ -216,14 +216,19 @@ class TabularMethods:
 
             if gamma:
                 self.GAMMA = gamma
-            elif custom_env_object.GAMMA:
+            elif custom_env_object.GAMMA is not None:
                 self.GAMMA = custom_env_object.GAMMA
             else:
                 self.GAMMA = 0.9
 
             self.EPS = eps_max
             self.eps_max = eps_max
-            self.eps_min = eps_min
+            if eps_min:
+                self.eps_min = eps_min
+            elif custom_env_object.EPS_MIN is not None:
+                self.eps_min = custom_env_object.EPS_MIN
+            else:
+                self.eps_min = 0.0
             self.eps_dec = eps_dec
             self.eps_dec_type = eps_dec_type
 
@@ -532,7 +537,7 @@ class TabularMethods:
 
             if gamma:
                 self.GAMMA = gamma
-            elif custom_env_object.GAMMA:
+            elif custom_env_object.GAMMA is not None:
                 self.GAMMA = custom_env_object.GAMMA
             else:
                 self.GAMMA = 0.9
@@ -602,7 +607,7 @@ class TabularMethods:
     class GeneralModel:
 
         def __init__(self, custom_env_object, alpha=0.1, gamma=None, episodes=50000,
-                     eps_max=1.0, eps_min=0.0, eps_dec=0.001, eps_dec_type=Utils.EPS_DEC_LINEAR):
+                     eps_max=1.0, eps_min=None, eps_dec=0.001, eps_dec_type=Utils.EPS_DEC_LINEAR):
 
             self.custom_env_object = custom_env_object
             self.env = custom_env_object.env
@@ -613,14 +618,19 @@ class TabularMethods:
 
             if gamma:
                 self.GAMMA = gamma
-            elif custom_env_object.GAMMA:
+            elif custom_env_object.GAMMA is not None:
                 self.GAMMA = custom_env_object.GAMMA
             else:
                 self.GAMMA = 0.9
 
             self.EPS = eps_max
             self.eps_max = eps_max
-            self.eps_min = eps_min
+            if eps_min:
+                self.eps_min = eps_min
+            elif custom_env_object.EPS_MIN is not None:
+                self.eps_min = custom_env_object.EPS_MIN
+            else:
+                self.eps_min = 0.0
             self.eps_dec = eps_dec
             self.eps_dec_type = eps_dec_type
 

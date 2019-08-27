@@ -17,16 +17,22 @@ class Envs_DSS:
         # the agent can walk on the frozen surface (F), but falls in the hole (H) to its doom.
         # there's a chance for the agent to slip and not go in the chosen direction of the action.
 
-        # track accumulated reward (better)
+        # track accumulated rewards here (better)
+
+        # Actions:
+        # env.action_space.n = 4
+        #   0 = left
+        #   1 = down
+        #   2 = right
+        #   3 = up
 
         def __init__(self):
-            self.env = gym.make('FrozenLake-v0')  # env.action_space.n = 4
+            self.name = 'Frozen Lake'
             self.file_name = 'frozen-lake-v0'
+            self.env = gym.make('FrozenLake-v0')
 
-            # 0 = left, 1 = down, 2 = right, 3 = up
-
-            # Set discount rate (gamma)
             self.GAMMA = 0.9  # 0.99 ?
+            self.EPS_MIN = 0.1
 
             # State space analysis
             self.rows = 4
@@ -69,14 +75,19 @@ class Envs_DSS:
         # There are 5 possible passenger locations (R, G, Y, B, and Taxi), and 4 possible destinations.
         # The pipe characters '|' indicate obstacles: the taxi cannot drive through them.
 
+        # Actions:
+        #   0 = left
+        #   1 = down
+        #   2 = right
+        #   3 = up
+
         def __init__(self):
-            self.env = gym.make('Taxi-v2')  # env.action_space.n = 4
+            self.name = 'Taxi'
             self.file_name = 'taxi-v2'
+            self.env = gym.make('Taxi-v2')  # env.action_space.n = 4
 
-            # 0 = left, 1 = down, 2 = right, 3 = up
-
-            # Set discount rate (gamma)
-            self.GAMMA = 0.999  # 0.999 ?
+            self.GAMMA = 0.999
+            self.EPS_MIN = 0.0
 
             # State space analysis
             self.taxi_rows = 5
@@ -109,15 +120,17 @@ class Envs_DSS:
 
         # track accumulated reward (better)
 
+        # Actions:
+        #   0 = stick (stop receiving cards)
+        #   1 = hit (receive another card)
+
         def __init__(self):
-            self.env = gym.make('Blackjack-v0')  # env.action_space.n = 2
+            self.name = 'Blackjack'
             self.file_name = 'blackjack-v0'
+            self.env = gym.make('Blackjack-v0')  # env.action_space.n = 2
 
-            # 0 = stick (stop receiving cards), 1 = hit (receive another card)
-
-            # Set discount rate (gamma)
-            #   in blackjack the rewards are certain
             self.GAMMA = 1.0
+            self.EPS_MIN = 0.0
 
             # State space analysis
             self.agentCardsSumSpace = [i for i in range(4, 22)]  # agent's cards sum - sum of the player's cards
@@ -141,15 +154,17 @@ class Envs_DSS:
 
     class CartPole:
 
-        def __init__(self, single_state_space=-1):
-            self.env = gym.make('CartPole-v0')  # env.action_space.n = 2
-            self.file_name = 'cart-pole-v0'
+        # AKA "Inverted Pendulum".
 
-            # Set discount rate (gamma)
-            #   Shouldn't be discounted, because in CartPole future rewards are certain:
-            #   the state transition functions are deterministic, the state transition probabilities are 1.
-            #   you know where the pole and cart are gonna move.
+        # env.action_space.n = 2
+
+        def __init__(self, single_state_space=-1):
+            self.name = 'Cart Pole'
+            self.file_name = 'cart-pole-v0'
+            self.env = gym.make('CartPole-v0')
+
             self.GAMMA = 1.0
+            self.EPS_MIN = 0.0
 
             # State space analysis
             # observation = (cart x position, cart velocity, pole theta angle, pole velocity)
@@ -208,12 +223,15 @@ class Envs_DSS:
 
     class Acrobot:
 
-        def __init__(self):
-            self.env = gym.make('Acrobot-v1')  # env.action_space.n = 3
-            self.file_name = 'acrobot-v1'
+        # env.action_space.n = 3
 
-            # Set discount rate (gamma)
+        def __init__(self):
+            self.name = 'Acrobot'
+            self.file_name = 'acrobot-v1'
+            self.env = gym.make('Acrobot-v1')
+
             self.GAMMA = 0.99
+            self.EPS_MIN = 0.0
 
             # State space analysis
             # observation = (cos_theta1, sin_theta1, cos_theta2, sin_theta2, theta1_dot, theta2_dot)
@@ -245,12 +263,25 @@ class Envs_DSS:
 
     class MountainCar:
 
-        def __init__(self, single_state_space=-1):
-            self.env = gym.make('MountainCar-v0')  # env.action_space.n = 3
-            self.file_name = 'mountain-car-v0'
+        # -1 for each time step, until the goal position of 0.5 is reached.
+        # As with MountainCarContinuous v0, there is no penalty for climbing the left hill,
+        #   which upon reached acts as a wall.
 
-            # Set discount rate (gamma)
-            self.GAMMA = 0.99  # 1.0 ?
+        # Starting State - Random position from -0.6 to -0.4 with no velocity.
+        # Episode Termination - The episode ends when you reach 0.5 position, or if 200 iterations are reached.
+
+        # Actions:
+        # env.action_space.n = 3
+        # drive left, do nothing, or drive right
+
+        def __init__(self, single_state_space=-1):
+            self.name = 'Mountain Car'
+            self.file_name = 'mountain-car-v0'
+            self.env = gym.make('MountainCar-v0')
+
+            self.GAMMA = 1.0    # 0.99 (Q-learning) \ 1.0 (MC Policy Evaluation, TD-0)
+            self.EPS_MIN = 0.0  # 0.01 (Q-learning) \ 0.0 (MC Policy Evaluation, TD-0)
+                                # eps_max = 0.01 (Q-learning)
 
             # State space analysis
             # observation = (pos, vel)
@@ -288,4 +319,3 @@ class Envs_DSS:
                 return car_vel
             else:
                 return car_pos, car_vel
-
