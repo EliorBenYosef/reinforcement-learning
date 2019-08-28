@@ -289,6 +289,7 @@ def policy_evaluation_algorithms_test():
 def learning_algorithms_test():
     AlgorithmsTesting.test_mc_non_exploring_starts_control(1000, print_q_table_and_policy=True)
     AlgorithmsTesting.test_off_policy_mc_control(1000, print_q_table_and_policy=True)
+
     AlgorithmsTesting.test_sarsa(1000)
     AlgorithmsTesting.test_expected_sarsa(1000)
     AlgorithmsTesting.test_q_learning(1000)

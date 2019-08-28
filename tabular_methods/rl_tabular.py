@@ -643,7 +643,7 @@ class TabularMethods:
             self.totalRewards = np.zeros(episodes)
             self.accumulatedRewards = np.zeros(episodes)
 
-        def perform_sarsa(self, print_info=False, visualize=False, record=False, pickle=False):
+        def perform_sarsa(self, visualize=False, record=False, pickle=False):
             if record:
                 self.env = wrappers.Monitor(
                     self.env, 'recordings/SARSA/', force=True,
@@ -699,7 +699,7 @@ class TabularMethods:
 
             return self.totalRewards
 
-        def perform_expected_sarsa(self, print_info=False, visualize=False, record=False, pickle=False):
+        def perform_expected_sarsa(self, visualize=False, record=False, pickle=False):
             if record:
                 self.env = wrappers.Monitor(
                     self.env, 'recordings/E-SARSA/', force=True,
@@ -756,7 +756,7 @@ class TabularMethods:
 
             return self.totalRewards
 
-        def perform_q_learning(self, print_info=False, visualize=False, record=False, pickle=False):
+        def perform_q_learning(self, visualize=False, record=False, pickle=False):
             if record:
                 self.env = wrappers.Monitor(
                     self.env, 'recordings/Q-L/', force=True,
@@ -814,7 +814,7 @@ class TabularMethods:
 
             return self.totalRewards
 
-        def perform_double_q_learning(self, print_info=False, visualize=False, record=False):
+        def perform_double_q_learning(self, visualize=False, record=False):
             if record:
                 self.env = wrappers.Monitor(
                     self.env, 'recordings/D-Q-L/', force=True,
