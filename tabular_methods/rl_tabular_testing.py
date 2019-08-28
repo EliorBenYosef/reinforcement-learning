@@ -279,7 +279,7 @@ def learning_algorithms_test():
 
 
 def environments_test():
-    EnvironmentsTesting.test_frozen_lake(1000)  # 100000
+    EnvironmentsTesting.test_frozen_lake(100000)
     EnvironmentsTesting.test_taxi(1000)         # 2000, 10000
     EnvironmentsTesting.test_blackjack(100000)
     EnvironmentsTesting.test_cart_pole(1000)    # 50000
