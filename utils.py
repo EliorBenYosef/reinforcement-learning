@@ -1,5 +1,8 @@
 import os
 
+from IPython.display import clear_output
+import time
+
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
@@ -323,3 +326,107 @@ class Utils:
             print(param, T.equal(original_critic_dict[param], current_critic_dict[param]))
 
         input()
+
+    ##############################################
+
+    @staticmethod
+    def get_max_action_from_q_table(Q, s, action_space_size):
+        values = np.array([Q[s, a] for a in range(action_space_size)])
+        # values == Q[s, :]                                             # if Q is a numpy.ndarray
+        a_max = np.random.choice(np.where(values == values.max())[0])
+        return a_max
+
+    @staticmethod
+    def get_policy_from_q_table(states, Q, action_space_size):
+        policy = {}
+        for s in states:
+            policy[s] = Utils.get_max_action_from_q_table(Q, s, action_space_size)
+
+        return policy
+
+    @staticmethod
+    def test_q(env, custom_env_object, Q, action_space_size, episodes=1000, return_accumulated_rewards=False):
+        total_rewards = np.zeros(episodes)
+        total_accumulated_rewards = np.zeros(episodes)
+        accumulated_rewards = 0
+        for i in range(episodes):
+            done = False
+            ep_steps = 0
+            ep_rewards = 0
+            observation = env.reset()
+            s = custom_env_object.get_state(observation)
+            while not done:
+                a = Utils.get_max_action_from_q_table(Q, s, action_space_size)
+                observation_, reward, done, info = env.step(a)
+                ep_steps += 1
+                ep_rewards += reward
+                accumulated_rewards += reward
+                s_ = custom_env_object.get_state(observation_)
+                observation, s = observation_, s_
+            total_rewards[i] = ep_rewards
+            total_accumulated_rewards[i] = accumulated_rewards
+        return total_accumulated_rewards if return_accumulated_rewards else total_rewards
+
+    @staticmethod
+    def test_policy(env, custom_env_object, policy, episodes=1000, return_accumulated_rewards=False):
+        total_rewards = np.zeros(episodes)
+        total_accumulated_rewards = np.zeros(episodes)
+        accumulated_rewards = 0
+        for i in range(episodes):
+            done = False
+            ep_steps = 0
+            ep_rewards = 0
+            observation = env.reset()
+            s = custom_env_object.get_state(observation)
+            while not done:
+                a = policy[s]
+                observation_, reward, done, info = env.step(a)
+                ep_steps += 1
+                ep_rewards += reward
+                accumulated_rewards += reward
+                s_ = custom_env_object.get_state(observation_)
+                observation, s = observation_, s_
+            total_rewards[i] = ep_rewards
+            total_accumulated_rewards[i] = accumulated_rewards
+        return total_accumulated_rewards if return_accumulated_rewards else total_rewards
+
+    @staticmethod
+    def watch_trained_agent_play(env, custom_env_object, Q, action_space_size, episodes=3, is_toy_text=False):
+        # playing the best action from each state according to the Q-table
+
+        for i in range(episodes):
+            done = False
+            ep_steps = 0
+            ep_rewards = 0
+            observation = env.reset()
+            s = custom_env_object.get_state(observation)
+
+            if is_toy_text:
+                print('\n*****EPISODE ', i + 1, '*****\n')
+                time.sleep(1)
+                clear_output(wait=True)
+            env.render()
+            if is_toy_text:
+                time.sleep(0.3)
+
+            while not done:
+                a = Utils.get_max_action_from_q_table(Q, s, action_space_size)
+                observation_, reward, done, info = env.step(a)
+                ep_steps += 1
+                ep_rewards += reward
+                s_ = custom_env_object.get_state(observation_)
+                observation, s = observation_, s_
+
+                if is_toy_text:
+                    clear_output(wait=True)
+                env.render()
+                if is_toy_text:
+                    time.sleep(0.3)
+
+            print('Episode reward:', ep_rewards)
+            if is_toy_text:
+                time.sleep(3)
+                clear_output(wait=True)
+
+        env.close()
+

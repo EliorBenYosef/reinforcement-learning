@@ -1,9 +1,6 @@
 from gym import wrappers
-from IPython.display import clear_output
-import matplotlib.pyplot as plt
 import numpy as np
 import pickle
-import time
 
 from utils import Utils
 from tabular_methods.envs_dss import Envs_DSS
@@ -60,36 +57,15 @@ class TabularMethods:
         return Q1, Q2
 
     @staticmethod
-    def max_action_q(Q, s, action_space_size):
-        values = np.array([Q[s, a] for a in range(action_space_size)])
-        # values == Q[s, :]                                             # if Q is a numpy.ndarray
-
-        # a_max = np.argmax(values)                                     # returns the first index with the max value
-        a_max = np.random.choice(np.where(values == values.max())[0])   # returns any index with the max value
-
-        return a_max
-
-    @staticmethod
     def max_action_q1_q2(Q1, Q2, s, action_space_size):
         values = np.array([Q1[s, a] + Q2[s, a] for a in range(action_space_size)])
-
-        # a_max = np.argmax(values)                                     # returns the first index with the max value
-        a_max = np.random.choice(np.where(values == values.max())[0])   # returns any index with the max value
-
+        a_max = np.random.choice(np.where(values == values.max())[0])
         return a_max
-
-    @staticmethod
-    def get_policy(states, Q, action_space_size):
-        policy = {}
-        for s in states:
-            policy[s] = TabularMethods.max_action_q(Q, s, action_space_size)
-
-        return policy
 
     @staticmethod
     def eps_greedy_q(Q, s, action_space_size, EPS, env):
         rand = np.random.random()
-        a = TabularMethods.max_action_q(Q, s, action_space_size) \
+        a = Utils.get_max_action_from_q_table(Q, s, action_space_size) \
             if rand >= EPS \
             else env.action_space.sample()
         return a
@@ -101,66 +77,6 @@ class TabularMethods:
             if rand >= EPS \
             else env.action_space.sample()
         return a
-
-    @staticmethod
-    def test_q(env, custom_env_object, Q, action_space_size, episodes=1000):
-        total_rewards = np.zeros(episodes)
-        for i in range(episodes):
-            done = False
-            ep_steps = 0
-            ep_rewards = 0
-            observation = env.reset()
-            s = custom_env_object.get_state(observation)
-            while not done:
-                a = TabularMethods.max_action_q(Q, s, action_space_size)
-                observation_, reward, done, info = env.step(a)
-                ep_steps += 1
-                ep_rewards += reward
-                s_ = custom_env_object.get_state(observation_)
-                observation, s = observation_, s_
-            total_rewards[i] = ep_rewards
-        plt.plot(total_rewards)
-        plt.show()
-
-    @staticmethod
-    def watch_trained_agent_play(env, custom_env_object, Q, action_space_size, episodes=3, is_toy_text=False):
-        # playing the best action from each state according to the Q-table
-
-        for i in range(episodes):
-            done = False
-            ep_steps = 0
-            ep_rewards = 0
-            observation = env.reset()
-            s = custom_env_object.get_state(observation)
-
-            if is_toy_text:
-                print('\n*****EPISODE ', i + 1, '*****\n')
-                time.sleep(1)
-                clear_output(wait=True)
-            env.render()
-            if is_toy_text:
-                time.sleep(0.3)
-
-            while not done:
-                a = TabularMethods.max_action_q(Q, s, action_space_size)
-                observation_, reward, done, info = env.step(a)
-                ep_steps += 1
-                ep_rewards += reward
-                s_ = custom_env_object.get_state(observation_)
-                observation, s = observation_, s_
-
-                if is_toy_text:
-                    clear_output(wait=True)
-                env.render()
-                if is_toy_text:
-                    time.sleep(0.3)
-
-            print('Episode reward:', ep_rewards)
-            if is_toy_text:
-                time.sleep(3)
-                clear_output(wait=True)
-
-        env.close()
 
     @staticmethod
     def calculate_episode_states_actions_returns(memory, GAMMA):
@@ -226,7 +142,7 @@ class TabularMethods:
             self.episodes = episodes
             self.totalSteps = np.zeros(episodes)
             self.totalRewards = np.zeros(episodes)
-            self.accumulatedRewards = np.zeros(episodes)
+            self.totalAccumulatedRewards = np.zeros(episodes)
 
             self.states_returns = {}
 
@@ -303,7 +219,7 @@ class TabularMethods:
 
                 self.totalSteps[i] = ep_steps
                 self.totalRewards[i] = ep_rewards
-                self.accumulatedRewards[i] = accumulated_rewards
+                self.totalAccumulatedRewards[i] = accumulated_rewards
 
                 if visualize and i == self.episodes - 1:
                     self.env.close()
@@ -323,7 +239,7 @@ class TabularMethods:
 
             print('\n', 'Game Ended', '\n')
 
-            return V, self.totalRewards, self.accumulatedRewards
+            return V, self.totalRewards, self.totalAccumulatedRewards
 
         def perform_MC_non_exploring_starts_control(self, print_info=False, visualize=False, record=False):
             # Monte Carlo control without exploring starts
@@ -368,9 +284,6 @@ class TabularMethods:
 
                     s_ = self.custom_env_object.get_state(observation_)
 
-                    if isinstance(self.custom_env_object, Envs_DSS.FrozenLake):
-                        a = Envs_DSS.FrozenLake.get_action(s, s_)
-
                     memory.append((s, a, reward))
 
                     observation, s = observation_, s_
@@ -385,7 +298,7 @@ class TabularMethods:
 
                 self.totalSteps[i] = ep_steps
                 self.totalRewards[i] = ep_rewards
-                self.accumulatedRewards[i] = accumulated_rewards
+                self.totalAccumulatedRewards[i] = accumulated_rewards
 
                 if visualize and i == self.episodes - 1:
                     self.env.close()
@@ -397,24 +310,24 @@ class TabularMethods:
                 ep_states_actions_visited = []
                 for s, a, G in ep_states_actions_returns:
                     if (s, a) not in ep_states_actions_visited:  # first visit
-                        if not isinstance(self.custom_env_object, Envs_DSS.FrozenLake) or a != -1:
-                            ep_states_actions_visited.append((s, a))
-                            states_actions_visited_counter[s, a] += 1
+                        ep_states_actions_visited.append((s, a))
+                        states_actions_visited_counter[s, a] += 1
 
-                            # Incremental Implementation (of the update rule for the agent's estimate of the discounted future rewards)
-                            #   this is a shortcut that saves you from calculating the average of a function every single time
-                            #   (computationally expensive and doesn't really get you anything in terms of accuracy)
-                            # new estimate = old estimate + [sample - old estimate] / N
-                            Q[s, a] += (G - Q[s, a]) / states_actions_visited_counter[s, a]
+                        # Incremental Implementation (of the update rule for the agent's estimate of the discounted future rewards)
+                        #   this is a shortcut that saves you from calculating the average of a function every single time
+                        #   (computationally expensive and doesn't really get you anything in terms of accuracy)
+                        # new estimate = old estimate + [sample - old estimate] / N
+                        Q[s, a] += (G - Q[s, a]) / states_actions_visited_counter[s, a]
+
+            policy = Utils.get_policy_from_q_table(self.states, Q, self.action_space_size)
 
             if print_info:
                 Utils.print_q(Q)
-                policy = TabularMethods.get_policy(self.states, Q, self.action_space_size)
                 Utils.print_policy(Q, policy)
 
             print('\n', 'Game Ended', '\n')
 
-            return self.totalRewards, self.accumulatedRewards
+            return policy, self.totalRewards, self.totalAccumulatedRewards
 
         def perform_off_policy_MC_control(self, print_info=False, visualize=False, record=False):
             # off-policy methods are the alternative to non-exploring-starts
@@ -481,7 +394,7 @@ class TabularMethods:
 
                 self.totalSteps[i] = ep_steps
                 self.totalRewards[i] = ep_rewards
-                self.accumulatedRewards[i] = accumulated_rewards
+                self.totalAccumulatedRewards[i] = accumulated_rewards
 
                 if visualize and i == self.episodes - 1:
                     self.env.close()
@@ -496,7 +409,7 @@ class TabularMethods:
                     C[s, a] += W
                     Q[s, a] += (W / C[s, a]) * (G - Q[s, a])
 
-                    target_policy[s] = TabularMethods.max_action_q(Q, s, self.action_space_size)
+                    target_policy[s] = Utils.get_max_action_from_q_table(Q, s, self.action_space_size)
 
                     # taking a sub-optimal action breaks the learning loop
                     #   it only learns from greedy actions - this is a shortcoming of the class of algorithms
@@ -518,7 +431,7 @@ class TabularMethods:
 
             print('\n', 'Game Ended', '\n')
 
-            return self.totalRewards, self.accumulatedRewards
+            return target_policy, self.totalRewards, self.totalAccumulatedRewards
 
     class TdZeroModel:
 
@@ -541,7 +454,7 @@ class TabularMethods:
             self.episodes = episodes
             self.totalSteps = np.zeros(episodes)
             self.totalRewards = np.zeros(episodes)
-            self.accumulatedRewards = np.zeros(episodes)
+            self.totalAccumulatedRewards = np.zeros(episodes)
 
         def perform_td0_policy_evaluation(self, policy, print_info=False, visualize=False, record=False):
             if record:
@@ -596,7 +509,7 @@ class TabularMethods:
 
                 self.totalSteps[i] = ep_steps
                 self.totalRewards[i] = ep_rewards
-                self.accumulatedRewards[i] = accumulated_rewards
+                self.totalAccumulatedRewards[i] = accumulated_rewards
 
                 if visualize and i == self.episodes - 1:
                     self.env.close()
@@ -606,7 +519,7 @@ class TabularMethods:
 
             print('\n', 'Game Ended', '\n')
 
-            return V, self.totalRewards, self.accumulatedRewards
+            return V, self.totalRewards, self.totalAccumulatedRewards
 
     class GeneralModel:
 
@@ -641,7 +554,7 @@ class TabularMethods:
             self.episodes = episodes
             self.totalSteps = np.zeros(episodes)
             self.totalRewards = np.zeros(episodes)
-            self.accumulatedRewards = np.zeros(episodes)
+            self.totalAccumulatedRewards = np.zeros(episodes)
 
         def perform_sarsa(self, visualize=False, record=False, pickle=False):
             if record:
@@ -787,7 +700,7 @@ class TabularMethods:
                     ep_rewards += reward
 
                     s_ = self.custom_env_object.get_state(observation_)
-                    a_ = TabularMethods.max_action_q(Q, s_, self.action_space_size)
+                    a_ = Utils.get_max_action_from_q_table(Q, s_, self.action_space_size)
                     Q[s, a] += self.ALPHA * (reward + self.GAMMA * Q[s_, a_] - Q[s, a])
                     # Q[s, a] += self.ALPHA * (reward + self.GAMMA * np.max(Q[s_, :]) - Q[s, a])  # if Q is a numpy.ndarray
 

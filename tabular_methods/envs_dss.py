@@ -1,5 +1,6 @@
-import numpy as np
 import gym
+import numpy as np
+import matplotlib.pyplot as plt
 
 
 # https://github.com/openai/gym/wiki/Table-of-environments
@@ -16,15 +17,12 @@ class Envs_DSS:
         # there's a single starting point (S), and a single goal (G) where the frisbee is located.
         # the agent can walk on the frozen surface (F), but falls in the hole (H) to its doom.
         # there's a chance for the agent to slip and not go in the chosen direction of the action.
+        # The episode ends when you reach the goal or fall in a hole.
 
-        # track accumulated rewards here (better)
+        # Rewards:
+        # You receive a reward of 1 if you reach the goal, and zero otherwise.
 
-        # Actions:
-        # env.action_space.n = 4
-        #   0 = left
-        #   1 = down
-        #   2 = right
-        #   3 = up
+        # Actions (4): left (0), down (1), right (2), up (3)
 
         def __init__(self):
             self.name = 'Frozen Lake'
@@ -69,22 +67,56 @@ class Envs_DSS:
 
             return a
 
+        def test_policy(self, policy, episodes=1000):
+            total_accumulated_rewards = np.zeros(episodes)
+            accumulated_rewards = 0
+
+            success = 0
+
+            for i in range(episodes):
+                done = False
+                ep_rewards = 0
+                observation = self.env.reset()
+                s = self.get_state(observation)
+                while not done:
+                    a = policy[s]
+                    observation_, reward, done, info = self.env.step(a)
+                    s_ = self.get_state(observation_)
+                    ep_rewards += reward
+                    accumulated_rewards += reward
+                    s, observation = s_, observation_
+                total_accumulated_rewards[i] = accumulated_rewards
+
+                if ep_rewards == 1:
+                    success += 1
+
+            print('success rate: %d%%' % (success * 100 / episodes))
+
+            plt.plot(total_accumulated_rewards)
+            plt.show()
+
     class Taxi:
 
         # The taxi drives on a 5x5 matrix.
-        # There are 5 possible passenger locations (R, G, Y, B, and Taxi), and 4 possible destinations.
-        # The pipe characters '|' indicate obstacles: the taxi cannot drive through them.
+        # your job is to pick up the passenger at one location and drop him off in another.
 
-        # Actions:
-        #   0 = left
-        #   1 = down
-        #   2 = right
-        #   3 = up
+        # There are:
+        #   4 possible pick-up\drop-off destinations (R, G, B, Y).
+        #   5 possible passenger locations (4 destinations +  Taxi).
+        # The pipe characters '|' indicate obstacles (the taxi cannot drive through them).
+
+        # Rewards:
+        # +20 points for a successful drop-off.
+        # -1 point for every time-step it takes.
+        # -10 points for illegal pick-up and drop-off actions.
+        # -1 points for driving against a wall.
+
+        # Actions (6): north (0), south (1), east (2), west (3), pick up (4), drop off (5)
 
         def __init__(self):
             self.name = 'Taxi'
             self.file_name = 'taxi-v2'
-            self.env = gym.make('Taxi-v2')  # env.action_space.n = 4
+            self.env = gym.make('Taxi-v2')
 
             self.GAMMA = 0.999
             self.EPS_MIN = 0.0
@@ -116,18 +148,15 @@ class Envs_DSS:
 
         # At the start, the player receives two cards (so the total min is 2 + 2 = 4)
         # Object: Have your card sum be greater than the dealers without exceeding 21.
+
         # Reward: –1 for losing, 0 for a draw, and >=1 for winning (1.5 for natural = getting 21 on the first deal)
 
-        # track accumulated reward (better)
-
-        # Actions:
-        #   0 = stick (stop receiving cards)
-        #   1 = hit (receive another card)
+        # Actions (2): stick = stop receiving cards (0), hit \ receive another card (1)
 
         def __init__(self):
             self.name = 'Blackjack'
             self.file_name = 'blackjack-v0'
-            self.env = gym.make('Blackjack-v0')  # env.action_space.n = 2
+            self.env = gym.make('Blackjack-v0')
 
             self.GAMMA = 1.0
             self.EPS_MIN = 0.0
@@ -148,6 +177,40 @@ class Envs_DSS:
             # observation == agentCardsSum, dealerShowingCard, agentUsableAce
             return observation
 
+        def test_policy(self, policy, episodes=1000):
+            accumulated_rewards_total = np.zeros(episodes)
+            accumulated_rewards = 0
+
+            wins = 0
+            losses = 0
+            draws = 0
+
+            for i in range(episodes):
+                done = False
+                ep_rewards = 0
+                s = self.env.reset()
+                while not done:
+                    a = policy[s]
+                    s_, reward, done, info = self.env.step(a)
+                    ep_rewards += reward
+                    accumulated_rewards += reward
+                    s = s_
+                accumulated_rewards_total[i] = accumulated_rewards
+
+                if ep_rewards >= 1:
+                    wins += 1
+                elif ep_rewards == 0:
+                    draws += 1
+                elif ep_rewards == -1:
+                    losses += 1
+
+            print('win rate', wins / episodes,
+                  'loss rate', losses / episodes,
+                  'draw rate', draws / episodes)
+
+            plt.plot(accumulated_rewards_total)
+            plt.show()
+
     # Custom Grid World
 
     # Classic Control
@@ -156,10 +219,7 @@ class Envs_DSS:
 
         # AKA "Inverted Pendulum".
 
-        # Actions:
-        # env.action_space.n = 2
-        #   0 = go left
-        #   1 = go right
+        # Actions (2): go left (0), go right (1)
 
         CART_X = 0
         CART_X_VEL = 1
@@ -231,7 +291,7 @@ class Envs_DSS:
 
     class Acrobot:
 
-        # env.action_space.n = 3
+        # Actions (3):
 
         def __init__(self):
             self.name = 'Acrobot'
@@ -271,18 +331,15 @@ class Envs_DSS:
 
     class MountainCar:
 
-        # -1 for each time step, until the goal position of 0.5 is reached.
-        # As with MountainCarContinuous v0, there is no penalty for climbing the left hill,
-        #   which upon reached acts as a wall.
-
         # Starting State - Random position from -0.6 to -0.4 with no velocity.
         # Episode Termination - The episode ends when you reach 0.5 position, or if 200 iterations are reached.
 
-        # Actions:
-        # env.action_space.n = 3
-        #   0 = drive backward (left)
-        #   1 = do nothing
-        #   2 = drive forward (right)
+        # Rewards:
+        # -1 for each time step.
+        # As with MountainCarContinuous v0, there is no penalty for climbing the left hill,
+        #   which upon reached acts as a wall.
+
+        # Actions (3): drive backward = left (0), do nothing (1), drive forward = right (2)
 
         CAR_POS = 0
         CAR_VEL = 1
