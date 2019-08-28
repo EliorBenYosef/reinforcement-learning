@@ -282,17 +282,18 @@ class EnvironmentsTesting:
         Utils.plot_running_average_comparison('Mountain Car', total_rewards_list, labels)
 
 
-def algorithms_test():
+def policy_evaluation_algorithms_test():
+    AlgorithmsTesting.test_td0_policy_evaluation(10, print_v_table=True)
+    AlgorithmsTesting.test_mc_policy_evaluation(10, print_v_table=True)
+
+
+def learning_algorithms_test():
     AlgorithmsTesting.test_mc_non_exploring_starts_control(1000)
     AlgorithmsTesting.test_off_policy_mc_control(1000)
     AlgorithmsTesting.test_sarsa(1000)
     AlgorithmsTesting.test_expected_sarsa(1000)
     AlgorithmsTesting.test_q_learning(1000)
     AlgorithmsTesting.test_double_q_learning(1000)
-
-    # policy_evaluation methods:
-    AlgorithmsTesting.test_td0_policy_evaluation(10, print_v_table=True)
-    AlgorithmsTesting.test_mc_policy_evaluation(10, print_v_table=True)
 
 
 def environments_test():
@@ -305,5 +306,6 @@ def environments_test():
 
 
 if __name__ == '__main__':
-    algorithms_test()
+    # policy_evaluation_algorithms_test()
+    learning_algorithms_test()
     # environments_test()
