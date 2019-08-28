@@ -15,7 +15,7 @@ This is a **modular** implementation, meaning: you can plug-and-play **almost an
   * MC non-exploring-starts control
   * off-policy MC control
 
-* **TD-0**
+* **TD-0** policy evaluation
 
 * (under the `GeneralModel` class)
   * **SARSA**
