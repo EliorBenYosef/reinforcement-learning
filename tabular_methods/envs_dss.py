@@ -156,9 +156,17 @@ class Envs_DSS:
 
         # AKA "Inverted Pendulum".
 
+        # Actions:
         # env.action_space.n = 2
+        #   0 = go left
+        #   1 = go right
 
-        def __init__(self, single_state_space=-1):
+        CART_X = 0
+        CART_X_VEL = 1
+        POLE_THETA = 2
+        POLE_THETA_VEL = 3
+
+        def __init__(self, single_state_space=-1, pole_theta_bin_num=10):
             self.name = 'Cart Pole'
             self.file_name = 'cart-pole-v0'
             self.env = gym.make('CartPole-v0')
@@ -174,26 +182,26 @@ class Envs_DSS:
             # 2	    Pole Angle	            ~ -41.8°	~ 41.8°
             # 3	    Pole Velocity At Tip	-Inf	    Inf
 
-            # Discretize state space (10 bins each)                         # an example of bad modeling (won't converge):
-            self.cartXSpace = np.linspace(-2.4, 2.4, 10)                    # (-4.8, 4.8, 10)
-            self.cartXVelSpace = np.linspace(-4, 4, 10)                     # (-5, 5, 10)
-            self.poleThetaSpace = np.linspace(-0.20943951, 0.20943951, 10)  # (-.418, .418, 10)
-            self.poleThetaVelSpace = np.linspace(-4, 4, 10)                 # (-5, 5, 10)
+            # Discretize state space (10 bins each)                     # an example of bad modeling (won't converge):
+            self.cartXSpace = np.linspace(-2.4, 2.4, 10)                                    # (-4.8, 4.8, 10)
+            self.cartXVelSpace = np.linspace(-4, 4, 10)                                     # (-5, 5, 10)
+            self.poleThetaSpace = np.linspace(-0.20943951, 0.20943951, pole_theta_bin_num)  # (-.418, .418, 10)
+            self.poleThetaVelSpace = np.linspace(-4, 4, 10)                                 # (-5, 5, 10)
 
             self.single_state_space = single_state_space
 
             # Construct state space
             self.states = []
-            if single_state_space == 0:
+            if single_state_space == Envs_DSS.CartPole.CART_X:
                 for i in range(len(self.cartXSpace) + 1):
                     self.states.append(i)
-            elif single_state_space == 1:
+            elif single_state_space == Envs_DSS.CartPole.CART_X_VEL:
                 for j in range(len(self.cartXVelSpace) + 1):
                     self.states.append(j)
-            elif single_state_space == 2:
+            elif single_state_space == Envs_DSS.CartPole.POLE_THETA:
                 for k in range(len(self.poleThetaSpace) + 1):
                     self.states.append(k)
-            elif single_state_space == 3:
+            elif single_state_space == Envs_DSS.CartPole.POLE_THETA_VEL:
                 for l in range(len(self.poleThetaVelSpace) + 1):
                     self.states.append(l)
             else:
@@ -210,13 +218,13 @@ class Envs_DSS:
             pole_theta = int(np.digitize(pole_theta, self.poleThetaSpace))
             pole_theta_dot = int(np.digitize(pole_theta_dot, self.poleThetaVelSpace))
 
-            if self.single_state_space == 0:
+            if self.single_state_space == Envs_DSS.CartPole.CART_X:
                 return cart_x
-            elif self.single_state_space == 1:
+            elif self.single_state_space == Envs_DSS.CartPole.CART_X_VEL:
                 return cart_x_dot
-            elif self.single_state_space == 2:
+            elif self.single_state_space == Envs_DSS.CartPole.POLE_THETA:
                 return pole_theta
-            elif self.single_state_space == 3:
+            elif self.single_state_space == Envs_DSS.CartPole.POLE_THETA_VEL:
                 return pole_theta_dot
             else:
                 return cart_x, cart_x_dot, pole_theta, pole_theta_dot
@@ -272,9 +280,14 @@ class Envs_DSS:
 
         # Actions:
         # env.action_space.n = 3
-        # drive left, do nothing, or drive right
+        #   0 = drive backward (left)
+        #   1 = do nothing
+        #   2 = drive forward (right)
 
-        def __init__(self, single_state_space=-1):
+        CAR_POS = 0
+        CAR_VEL = 1
+
+        def __init__(self, single_state_space=-1, car_vel_bin_num=50):
             self.name = 'Mountain Car'
             self.file_name = 'mountain-car-v0'
             self.env = gym.make('MountainCar-v0')
@@ -289,18 +302,18 @@ class Envs_DSS:
             # 0	    position	    -1.2	0.6
             # 1	    velocity	    -0.07	0.07
 
-            # Discretize state space
-            self.carPosSpace = np.linspace(-1.2, 0.6, 9)  # posBins, (-1.2, 0.5, 8)
-            self.carVelSpace = np.linspace(-0.07, 0.07, 50)  # velBins, (-0.07, 0.07, 8)
+            # Discretize state space (into bins)
+            self.carPosSpace = np.linspace(-1.2, 0.6, 9)  # (-1.2, 0.5, 8)
+            self.carVelSpace = np.linspace(-0.07, 0.07, car_vel_bin_num)
 
             self.single_state_space = single_state_space
 
             # Construct state space
             self.states = []
-            if single_state_space == 0:
+            if single_state_space == Envs_DSS.MountainCar.CAR_POS:
                 for pos in range(len(self.carPosSpace) + 1):
                     self.states.append(pos)
-            elif single_state_space == 1:
+            elif single_state_space == Envs_DSS.MountainCar.CAR_VEL:
                 for vel in range(len(self.carVelSpace) + 1):
                     self.states.append(vel)
             else:
@@ -313,9 +326,9 @@ class Envs_DSS:
             car_pos = int(np.digitize(pos, self.carPosSpace))  # pos_bin
             car_vel = int(np.digitize(vel, self.carVelSpace))  # vel_bin
 
-            if self.single_state_space == 0:
+            if self.single_state_space == Envs_DSS.MountainCar.CAR_POS:
                 return car_pos
-            elif self.single_state_space == 1:
+            elif self.single_state_space == Envs_DSS.MountainCar.CAR_VEL:
                 return car_vel
             else:
                 return car_pos, car_vel

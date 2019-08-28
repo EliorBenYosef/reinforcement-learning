@@ -103,15 +103,6 @@ class TabularMethods:
         return a
 
     @staticmethod
-    def get_action_via_policy(s, custom_env_object):
-        a = custom_env_object.env.action_space.sample()
-        if isinstance(custom_env_object, Envs_DSS.CartPole):
-            a = 0 if s < 5 else 1      # left (0), right (1)
-        if isinstance(custom_env_object, Envs_DSS.MountainCar):
-            a = 0 if s < 25 else 2      # backward (0), none (1), forward (2)
-        return a
-
-    @staticmethod
     def test_q(env, custom_env_object, Q, action_space_size, episodes=1000):
         total_rewards = np.zeros(episodes)
         for i in range(episodes):
@@ -260,20 +251,20 @@ class TabularMethods:
                 else:  # every visit
                     self.update_states_returns(s, G)
 
-        def perform_MC_policy_evaluation(self, print_info=False, visualize=False, record=False):
+        def perform_MC_policy_evaluation(self, policy, print_info=False, visualize=False, record=False):
             if record:
                 self.env = wrappers.Monitor(
-                    self.env, 'recordings/TD0/', force=True,
+                    self.env, 'recordings/MC-PE/', force=True,
                     video_callable=lambda episode_id: episode_id == 0 or episode_id == (self.episodes - 1)
                 )
 
             V = TabularMethods.init_v(self.states)
 
-            print('\n', 'Game Started', '\n')
-
             dt = 1.0
 
             accumulated_rewards = 0
+
+            print('\n', 'Game Started', '\n')
 
             for i in range(self.episodes):
                 done = False
@@ -289,7 +280,9 @@ class TabularMethods:
                     self.env.render()
 
                 while not done:
-                    a = TabularMethods.get_action_via_policy(s, self.custom_env_object)
+                    a = policy(s)
+
+                    # print(observation, s, a)  # for debugging purposes
 
                     observation_, reward, done, info = self.env.step(a)
                     ep_steps += 1
@@ -330,7 +323,7 @@ class TabularMethods:
 
             print('\n', 'Game Ended', '\n')
 
-            return V
+            return V, self.totalRewards, self.accumulatedRewards
 
         def perform_MC_non_exploring_starts_control(self, print_info=False, visualize=False, record=False):
             # Monte Carlo control without exploring starts
@@ -338,7 +331,7 @@ class TabularMethods:
 
             if record:
                 self.env = wrappers.Monitor(
-                    self.env, 'recordings/TD0/', force=True,
+                    self.env, 'recordings/MC-NES/', force=True,
                     video_callable=lambda episode_id: episode_id == 0 or episode_id == (self.episodes - 1)
                 )
 
@@ -348,9 +341,9 @@ class TabularMethods:
                     Q[s, a] = 0
                     states_actions_visited_counter[s, a] = 0
 
-            print('\n', 'Game Started', '\n')
-
             accumulated_rewards = 0
+
+            print('\n', 'Game Started', '\n')
 
             for i in range(self.episodes):
                 done = False
@@ -428,7 +421,7 @@ class TabularMethods:
 
             if record:
                 self.env = wrappers.Monitor(
-                    self.env, 'recordings/TD0/', force=True,
+                    self.env, 'recordings/OP-MC/', force=True,
                     video_callable=lambda episode_id: episode_id == 0 or episode_id == (self.episodes - 1)
                 )
 
@@ -439,9 +432,9 @@ class TabularMethods:
                     Q[s, a] = 0
                     C[s, a] = 0
 
-            print('\n', 'Game Started', '\n')
-
             accumulated_rewards = 0
+
+            print('\n', 'Game Started', '\n')
 
             for i in range(self.episodes):
                 done = False
@@ -548,15 +541,18 @@ class TabularMethods:
             self.episodes = episodes
             self.totalSteps = np.zeros(episodes)
             self.totalRewards = np.zeros(episodes)
+            self.accumulatedRewards = np.zeros(episodes)
 
-        def perform(self, print_info=False, visualize=False, record=False):
+        def perform_td0_policy_evaluation(self, policy, print_info=False, visualize=False, record=False):
             if record:
                 self.env = wrappers.Monitor(
-                    self.env, 'recordings/TD0/', force=True,
+                    self.env, 'recordings/TD0-PE/', force=True,
                     video_callable=lambda episode_id: episode_id == 0 or episode_id == (self.episodes - 1)
                 )
 
             V = TabularMethods.init_v(self.states)
+
+            accumulated_rewards = 0
 
             print('\n', 'Game Started', '\n')
 
@@ -573,16 +569,19 @@ class TabularMethods:
                     self.env.render()
 
                 while not done:
-                    a = TabularMethods.get_action_via_policy(s, self.custom_env_object)
+                    a = policy(s)
+
+                    # print(observation, s, a)  # for debugging purposes
 
                     observation_, reward, done, info = self.env.step(a)
                     ep_steps += 1
                     ep_rewards += reward
+                    accumulated_rewards += reward
 
                     s_ = self.custom_env_object.get_state(observation_)
                     V[s] += self.ALPHA * (reward + self.GAMMA * V[s_] - V[s])
 
-                    # option: instead of the V[s] line:
+                    # option: instead of the (V[s] += ...) line:
                     # value = weights.dot(s)
                     # value_ = weights.dot(s_)
                     # weights += self.ALPHA / dt * (reward + self.GAMMA * value_ - value) * s
@@ -597,6 +596,7 @@ class TabularMethods:
 
                 self.totalSteps[i] = ep_steps
                 self.totalRewards[i] = ep_rewards
+                self.accumulatedRewards[i] = accumulated_rewards
 
                 if visualize and i == self.episodes - 1:
                     self.env.close()
@@ -606,7 +606,7 @@ class TabularMethods:
 
             print('\n', 'Game Ended', '\n')
 
-            return self.totalRewards
+            return V, self.totalRewards, self.accumulatedRewards
 
     class GeneralModel:
 
@@ -641,11 +641,12 @@ class TabularMethods:
             self.episodes = episodes
             self.totalSteps = np.zeros(episodes)
             self.totalRewards = np.zeros(episodes)
+            self.accumulatedRewards = np.zeros(episodes)
 
         def perform_sarsa(self, print_info=False, visualize=False, record=False, pickle=False):
             if record:
                 self.env = wrappers.Monitor(
-                    self.env, 'recordings/TD0/', force=True,
+                    self.env, 'recordings/SARSA/', force=True,
                     video_callable=lambda episode_id: episode_id == 0 or episode_id == (self.episodes - 1)
                 )
 
@@ -701,7 +702,7 @@ class TabularMethods:
         def perform_expected_sarsa(self, print_info=False, visualize=False, record=False, pickle=False):
             if record:
                 self.env = wrappers.Monitor(
-                    self.env, 'recordings/TD0/', force=True,
+                    self.env, 'recordings/E-SARSA/', force=True,
                     video_callable=lambda episode_id: episode_id == 0 or episode_id == (self.episodes - 1)
                 )
 
@@ -758,7 +759,7 @@ class TabularMethods:
         def perform_q_learning(self, print_info=False, visualize=False, record=False, pickle=False):
             if record:
                 self.env = wrappers.Monitor(
-                    self.env, 'recordings/TD0/', force=True,
+                    self.env, 'recordings/Q-L/', force=True,
                     video_callable=lambda episode_id: episode_id == 0 or episode_id == (self.episodes - 1)
                 )
 
@@ -816,7 +817,7 @@ class TabularMethods:
         def perform_double_q_learning(self, print_info=False, visualize=False, record=False):
             if record:
                 self.env = wrappers.Monitor(
-                    self.env, 'recordings/TD0/', force=True,
+                    self.env, 'recordings/D-Q-L/', force=True,
                     video_callable=lambda episode_id: episode_id == 0 or episode_id == (self.episodes - 1)
                 )
 

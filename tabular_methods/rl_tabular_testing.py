@@ -6,38 +6,45 @@ from tabular_methods.rl_tabular import TabularMethods
 class AlgorithmsTesting:
 
     @staticmethod
-    def test_td_zero(episodes):
-        method_name = 'TD(0)'
+    def test_td0_policy_evaluation(episodes):
+        method_name = 'TD(0) Policy Evaluation'
 
-        mountain_car_env_single_state_space = Envs_DSS.MountainCar(0)
+        car_vel_bin_num = 34  # ~100% success rate (32 rarely loses)
+        mountain_car_env_single_state_space = Envs_DSS.MountainCar(Envs_DSS.MountainCar.CAR_VEL,
+                                                                   car_vel_bin_num=car_vel_bin_num)
         mountain_car_td_zero_model = TabularMethods.TdZeroModel(mountain_car_env_single_state_space, episodes=episodes)
-        mountain_car_total_rewards_td_zero_model = mountain_car_td_zero_model.perform()
-        # Utils.plot_running_average(method_name + ' - ' + mountain_car_env_single_state_space.name,
-        #                            mountain_car_total_rewards_td_zero_model)
+        # possible actions: backward (0), none (1), forward (2)
+        mountain_car_policy = lambda velocity_state: 0 if velocity_state < (car_vel_bin_num//2) else 2
+        mountain_car_td_zero_model.perform_td0_policy_evaluation(mountain_car_policy)
 
-        cart_pole_env_single_state_space = Envs_DSS.CartPole(2)
+        pole_theta_bin_num = 10
+        cart_pole_env_single_state_space = Envs_DSS.CartPole(Envs_DSS.CartPole.POLE_THETA,
+                                                             pole_theta_bin_num=pole_theta_bin_num)
         cart_pole_td_zero_model = TabularMethods.TdZeroModel(cart_pole_env_single_state_space, episodes=episodes)
-        cart_pole_total_rewards_td_zero_model = cart_pole_td_zero_model.perform()
-        # Utils.plot_running_average(method_name + ' - ' + cart_pole_env_single_state_space.name,
-        #                            cart_pole_total_rewards_td_zero_model)
-
-        total_rewards_list = [mountain_car_total_rewards_td_zero_model, cart_pole_total_rewards_td_zero_model]
-        labels = [mountain_car_env_single_state_space.name, cart_pole_env_single_state_space.name]
-        Utils.plot_running_average_comparison(method_name, total_rewards_list, labels)
+        # possible actions: left (0), right (1)
+        cart_pole_policy = lambda theta_state: 0 if theta_state < (pole_theta_bin_num//2) else 1
+        cart_pole_td_zero_model.perform_td0_policy_evaluation(cart_pole_policy)
 
     @staticmethod
     def test_mc_policy_evaluation(episodes):
+        method_name = 'MC Policy Evaluation'
+
         frozen_lake_env = Envs_DSS.FrozenLake()
         frozen_lake_monte_carlo_model = TabularMethods.MonteCarloModel(
             frozen_lake_env, episodes=episodes, eps_dec=2/episodes
         )
-        frozen_lake_monte_carlo_model.perform_MC_policy_evaluation(print_info=True)
+        frozen_lake_policy = lambda s: frozen_lake_env.env.action_space.sample()  # random policy
+        frozen_lake_monte_carlo_model.perform_MC_policy_evaluation(frozen_lake_policy)
 
-        mountain_car_env_single_state_space = Envs_DSS.MountainCar(0)
+        car_vel_bin_num = 34  # ~100% success rate (32 rarely loses)
+        mountain_car_env_single_state_space = Envs_DSS.MountainCar(Envs_DSS.MountainCar.CAR_VEL,
+                                                                   car_vel_bin_num=car_vel_bin_num)
         mountain_car_monte_carlo_model = TabularMethods.MonteCarloModel(
             mountain_car_env_single_state_space, episodes=episodes, eps_dec=2/episodes
         )
-        mountain_car_monte_carlo_model.perform_MC_policy_evaluation(print_info=True)
+        # possible actions: backward (0), none (1), forward (2)
+        mountain_car_policy = lambda velocity_state: 0 if velocity_state < (car_vel_bin_num//2) else 2
+        mountain_car_monte_carlo_model.perform_MC_policy_evaluation(mountain_car_policy)
 
     @staticmethod
     def test_mc_non_exploring_starts_control(episodes):
@@ -173,9 +180,6 @@ class EnvironmentsTesting:
         # Utils.plot_running_average('Frozen Lake', total_rewards_mc_without_es)          # less preferred
         Utils.plot_accumulated_rewards('Frozen Lake', accumulated_rewards_mc_without_es)  # better
 
-        monte_carlo_model_02 = TabularMethods.MonteCarloModel(frozen_lake_env, episodes=episodes, eps_dec=2/episodes)
-        monte_carlo_model_02.perform_MC_policy_evaluation(print_info=True)
-
     @staticmethod
     def test_taxi(episodes):
         taxi_env = Envs_DSS.Taxi()
@@ -225,10 +229,6 @@ class EnvironmentsTesting:
     @staticmethod
     def test_cart_pole(episodes):
         cart_pole_env = Envs_DSS.CartPole()
-        cart_pole_env_single_state_space = Envs_DSS.CartPole(2)
-
-        td_zero_model = TabularMethods.TdZeroModel(cart_pole_env_single_state_space, episodes=episodes)
-        total_rewards_td_zero_model = td_zero_model.perform()
 
         sarsa_model = TabularMethods.GeneralModel(cart_pole_env, episodes=episodes, eps_dec=2/episodes)
         total_rewards_sarsa_model = sarsa_model.perform_sarsa()
@@ -239,9 +239,9 @@ class EnvironmentsTesting:
         double_q_learning_model = TabularMethods.GeneralModel(cart_pole_env, episodes=episodes)
         total_rewards_double_q_learning_model = double_q_learning_model.perform_double_q_learning()
 
-        total_rewards_list = [total_rewards_td_zero_model, total_rewards_sarsa_model,
+        total_rewards_list = [total_rewards_sarsa_model,
                               total_rewards_q_learning_model, total_rewards_double_q_learning_model]
-        labels = ['TD(0)', 'SARSA', 'Q-learning', 'Double Q-learning']
+        labels = ['SARSA', 'Q-learning', 'Double Q-learning']
         Utils.plot_running_average_comparison('Cart Pole', total_rewards_list, labels)
 
     @staticmethod
@@ -255,32 +255,26 @@ class EnvironmentsTesting:
     @staticmethod
     def test_mountain_car(episodes):
         mountain_car_env = Envs_DSS.MountainCar()
-        mountain_car_env_single_state_space = Envs_DSS.MountainCar(0)
-
-        monte_carlo_model = TabularMethods.MonteCarloModel(mountain_car_env_single_state_space, episodes=episodes,
-                                                           eps_dec=2/episodes)
-        monte_carlo_model.perform_MC_policy_evaluation()
-
-        td_zero_model = TabularMethods.TdZeroModel(mountain_car_env_single_state_space, episodes=episodes)
-        total_rewards_td_zero_model = td_zero_model.perform()
 
         q_learning_model = TabularMethods.GeneralModel(mountain_car_env, episodes=episodes)
         total_rewards_q_learning_model = q_learning_model.perform_q_learning()
 
-        total_rewards_list = [total_rewards_td_zero_model, total_rewards_q_learning_model]
-        labels = ['TD(0)', 'Q-learning']
+        total_rewards_list = [total_rewards_q_learning_model]
+        labels = ['Q-learning']
         Utils.plot_running_average_comparison('Mountain Car', total_rewards_list, labels)
 
 
 def algorithms_test():
-    AlgorithmsTesting.test_td_zero(100)
-    AlgorithmsTesting.test_mc_policy_evaluation(1000)
     AlgorithmsTesting.test_mc_non_exploring_starts_control(1000)
     AlgorithmsTesting.test_off_policy_mc_control(1000)
     AlgorithmsTesting.test_sarsa(1000)
     AlgorithmsTesting.test_expected_sarsa(1000)
     AlgorithmsTesting.test_q_learning(1000)
     AlgorithmsTesting.test_double_q_learning(1000)
+
+    # policy_evaluation methods:
+    AlgorithmsTesting.test_td0_policy_evaluation(10)
+    AlgorithmsTesting.test_mc_policy_evaluation(10)
 
 
 def environments_test():
