@@ -63,9 +63,8 @@ class AlgorithmsTesting:
         frozen_lake_policy = lambda s: frozen_lake_env.env.action_space.sample()  # random policy
         frozen_lake_mc_model.perform_MC_policy_evaluation(frozen_lake_policy, print_info=print_v_table)
 
-
     @staticmethod
-    def test_mc_non_exploring_starts_control(episodes):
+    def test_mc_non_exploring_starts_control(episodes, print_q_table_and_policy):
         method_name = 'MC non-exploring starts'
 
         frozen_lake_env = Envs_DSS.FrozenLake()
@@ -73,7 +72,7 @@ class AlgorithmsTesting:
             frozen_lake_env, episodes=episodes, eps_max=frozen_lake_env.EPS_MIN
         )
         frozen_lake_total_rewards_mc_without_es, frozen_lake_accumulated_rewards_mc_without_es = \
-            frozen_lake_mc_model.perform_MC_non_exploring_starts_control(print_info=True)
+            frozen_lake_mc_model.perform_MC_non_exploring_starts_control(print_info=print_q_table_and_policy)
         # Utils.plot_running_average(method_name + ' - ' + frozen_lake_env.name,
         #                            frozen_lake_total_rewards_mc_without_es)
         Utils.plot_accumulated_rewards(method_name + ' - ' + frozen_lake_env.name,
@@ -84,7 +83,7 @@ class AlgorithmsTesting:
             blackjack_env, episodes=episodes, eps_max=0.05, eps_dec=1e-7
         )
         blackjack_total_rewards_mc_without_es, blackjack_accumulated_rewards_mc_without_es = \
-            blackjack_mc_model.perform_MC_non_exploring_starts_control(print_info=True)
+            blackjack_mc_model.perform_MC_non_exploring_starts_control(print_info=print_q_table_and_policy)
         # Utils.plot_running_average(method_name + ' - ' + blackjack_env.name,
         #                            blackjack_total_rewards_mc_without_es)
         Utils.plot_accumulated_rewards(method_name + ' - ' + blackjack_env.name,
@@ -99,7 +98,7 @@ class AlgorithmsTesting:
         Utils.plot_accumulated_rewards_comparison(method_name, accumulated_rewards_list, labels)
 
     @staticmethod
-    def test_off_policy_mc_control(episodes):
+    def test_off_policy_mc_control(episodes, print_q_table_and_policy):
         method_name = 'Off-policy MC Control'
 
         blackjack_env = Envs_DSS.Blackjack()
@@ -107,7 +106,7 @@ class AlgorithmsTesting:
             blackjack_env, episodes=episodes, eps_max=0.05, eps_dec=1e-7
         )
         blackjack_total_rewards_off_policy_mc, blackjack_accumulated_rewards_off_policy_mc = \
-            blackjack_mc_model.perform_off_policy_MC_control(print_info=True)
+            blackjack_mc_model.perform_off_policy_MC_control(print_info=print_q_table_and_policy)
         # Utils.plot_running_average(method_name + ' - ' + blackjack_env.name,
         #                            blackjack_total_rewards_off_policy_mc)
         Utils.plot_accumulated_rewards(method_name + ' - ' + blackjack_env.name,
@@ -288,8 +287,8 @@ def policy_evaluation_algorithms_test():
 
 
 def learning_algorithms_test():
-    AlgorithmsTesting.test_mc_non_exploring_starts_control(1000)
-    AlgorithmsTesting.test_off_policy_mc_control(1000)
+    AlgorithmsTesting.test_mc_non_exploring_starts_control(1000, print_q_table_and_policy=True)
+    AlgorithmsTesting.test_off_policy_mc_control(1000, print_q_table_and_policy=True)
     AlgorithmsTesting.test_sarsa(1000)
     AlgorithmsTesting.test_expected_sarsa(1000)
     AlgorithmsTesting.test_q_learning(1000)
