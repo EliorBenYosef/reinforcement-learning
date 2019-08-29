@@ -560,7 +560,7 @@ class TabularMethods:
             if record:
                 self.env = wrappers.Monitor(
                     self.env, 'recordings/SARSA/', force=True,
-                    video_callable=lambda episode_id: episode_id == 0 or episode_id == (self.episodes - 1)
+                    video_callable=lambda episode_id: episode_id == 0 or (i + 1) % (self.episodes // 10) == 0
                 )
 
             Q = TabularMethods.init_q(self.states, self.action_space_size, self.custom_env_object.file_name, pickle)
