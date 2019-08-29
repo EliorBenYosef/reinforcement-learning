@@ -198,14 +198,17 @@ class Utils:
     # EPS_DEC_QUADRATIC = 4
 
     @staticmethod
-    def decrement_eps(eps_current, eps_min, eps_dec, eps_dec_type, eps_max=None, t=None):
+    def decrement_eps(eps_current, eps_min, eps_dec, eps_dec_type, eps_max=None, episodes=None, t=None):
         if eps_dec_type == Utils.EPS_DEC_EXPONENTIAL:
             eps_temp = eps_current * eps_dec
         elif eps_dec_type == Utils.EPS_DEC_EXPONENTIAL_TIME_RELATED and eps_max is not None and t is not None:
             return eps_min + (eps_max - eps_min) * np.exp(-eps_dec * t)  # t == i
         else:  # eps_dec_type == Utils.EPS_DEC_LINEAR:
-            # note that when: eps_dec=2/episodes --> will arrive to 0 after half the episodes
-            eps_temp = eps_current - eps_dec
+            if episodes is not None:
+                # will arrive to eps_min after half the episodes:
+                eps_temp = eps_current - ((eps_max - eps_min) * 2 / episodes)
+            else:
+                eps_temp = eps_current - eps_dec
 
         return max(eps_temp, eps_min)
 
@@ -345,7 +348,10 @@ class Utils:
         return policy
 
     @staticmethod
-    def test_q(env, custom_env_object, Q, action_space_size, episodes=1000, return_accumulated_rewards=False):
+    def test_q_table(custom_env_object, Q, episodes=1000, return_accumulated_rewards=False):
+        env = custom_env_object.env
+        action_space_size = env.action_space.n
+
         total_rewards = np.zeros(episodes)
         total_accumulated_rewards = np.zeros(episodes)
         accumulated_rewards = 0
@@ -368,7 +374,9 @@ class Utils:
         return total_accumulated_rewards if return_accumulated_rewards else total_rewards
 
     @staticmethod
-    def test_policy(env, custom_env_object, policy, episodes=1000, return_accumulated_rewards=False):
+    def test_policy(custom_env_object, policy, episodes=1000, return_accumulated_rewards=False):
+        env = custom_env_object.env
+
         total_rewards = np.zeros(episodes)
         total_accumulated_rewards = np.zeros(episodes)
         accumulated_rewards = 0
@@ -391,8 +399,10 @@ class Utils:
         return total_accumulated_rewards if return_accumulated_rewards else total_rewards
 
     @staticmethod
-    def watch_trained_agent_play(env, custom_env_object, Q, action_space_size, episodes=3, is_toy_text=False):
+    def watch_trained_agent_play(custom_env_object, Q, action_space_size, episodes=3, is_toy_text=False):
         # playing the best action from each state according to the Q-table
+
+        env = custom_env_object.env
 
         for i in range(episodes):
             done = False

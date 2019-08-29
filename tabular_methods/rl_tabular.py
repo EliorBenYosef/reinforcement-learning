@@ -597,7 +597,8 @@ class TabularMethods:
                 if (i + 1) % (self.episodes // 10) == 0:
                     print('episode %d - eps: %.2f, rewards: %d, steps: %d' % (i + 1, self.EPS, ep_rewards, ep_steps))
 
-                self.EPS = Utils.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
+                self.EPS = Utils.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type,
+                                               eps_max=self.eps_max, episodes=self.episodes)
 
                 self.totalSteps[i] = ep_steps
                 self.totalRewards[i] = ep_rewards
@@ -610,7 +611,7 @@ class TabularMethods:
             if pickle:
                 TabularMethods.pickle_out(Q, self.custom_env_object.file_name)
 
-            return self.totalRewards
+            return Q, self.totalRewards
 
         def perform_expected_sarsa(self, visualize=False, record=False, pickle=False):
             if record:
@@ -667,7 +668,7 @@ class TabularMethods:
             if pickle:
                 TabularMethods.pickle_out(Q, self.custom_env_object.file_name)
 
-            return self.totalRewards
+            return Q, self.totalRewards
 
         def perform_q_learning(self, visualize=False, record=False, pickle=False):
             if record:
@@ -725,7 +726,7 @@ class TabularMethods:
             if pickle:
                 TabularMethods.pickle_out(Q, self.custom_env_object.file_name)
 
-            return self.totalRewards
+            return Q, self.totalRewards
 
         def perform_double_q_learning(self, visualize=False, record=False):
             if record:

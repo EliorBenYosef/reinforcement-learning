@@ -48,25 +48,6 @@ class Envs_DSS:
 
             return r, c
 
-        @staticmethod
-        def get_action(s, s_):
-            a = -1
-            rs, cs = s
-            rs_, cs_ = s_
-
-            if cs != cs_:
-                if cs_ < cs:
-                    a = 0  # left
-                elif cs_ > cs:
-                    a = 2  # right
-            elif rs != rs_:
-                if rs_ < rs:
-                    a = 3  # up
-                elif rs_ > rs:
-                    a = 1  # down
-
-            return a
-
         def test_policy(self, policy, episodes=1000):
             total_accumulated_rewards = np.zeros(episodes)
             accumulated_rewards = 0
@@ -290,6 +271,14 @@ class Envs_DSS:
                 return cart_x, cart_x_dot, pole_theta, pole_theta_dot
 
     class Acrobot:
+
+        # The acrobot system includes two joints and two links, where the joint between the two links is actuated.
+        # Initially, the links are hanging downwards.
+        # the goal is to swing the end of the lower link up to a given height.
+
+        # Acrobot-v1 is an unsolved environment, which means it does not have a specified reward threshold
+        #   at which it's considered solved.
+        # above -100 is prettty good. best score is: -42.37 ± 4.83
 
         # Actions (3):
 
