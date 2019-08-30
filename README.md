@@ -32,9 +32,9 @@ This is a **modular** implementation, meaning: you can plug-and-play **almost an
   * Blackjack
   
 * Classic Control
+  * MountainCar
   * CartPole
   * Acrobot
-  * MountainCar
 
 ## 2. Deep Reinforcement Learning
 

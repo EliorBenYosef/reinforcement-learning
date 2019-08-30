@@ -79,7 +79,8 @@ class Envs_DSS:
     class Taxi:
 
         # The taxi drives on a 5x5 matrix.
-        # your job is to pick up the passenger at one location and drop him off in another.
+
+        # Goal: pick up the passenger at one location and drop him off in another.
 
         # There are:
         #   4 possible pick-up\drop-off destinations (R, G, B, Y).
@@ -87,10 +88,16 @@ class Envs_DSS:
         # The pipe characters '|' indicate obstacles (the taxi cannot drive through them).
 
         # Rewards:
-        # +20 points for a successful drop-off.
-        # -1 point for every time-step it takes.
-        # -10 points for illegal pick-up and drop-off actions.
-        # -1 points for driving against a wall.
+        #   +20 for a successful drop-off.
+        #   -1 for every time-step it takes.
+        #   -10 for illegal pick-up and drop-off actions.
+        #   -1 for driving against a wall.
+
+        # Solved:
+        #   This is an unsolved environment (doesn't have a specified reward threshold at which it's considered solved).
+        #   100 Episodes Best Average Reward:
+        #       top of the leader boars - 9.716
+        #       bottom of the leader boars - 9.23
 
         # Actions (6): north (0), south (1), east (2), west (3), pick up (4), drop off (5)
 
@@ -196,9 +203,92 @@ class Envs_DSS:
 
     # Classic Control
 
+    class MountainCar:
+
+        # A car is on a one-dimensional track, positioned between two "mountains".
+
+        # Goal: to drive up the mountain on the right (reaching 0.5 position).
+        #   however, the car's engine is not strong enough to scale the mountain in a single pass.
+        #   Therefore, the only way to succeed is to drive back and forth to build up momentum.
+
+        # Starting State: Random position from -0.6 to -0.4 with no velocity.
+
+        # Episode Termination (besides reaching the goal): reaching 200 iterations.
+
+        # Rewards: -1 for each time-step.
+        #   As with MountainCarContinuous v0, there is no penalty for climbing the left hill,
+        #       which upon reached acts as a wall.
+
+        # Solved: getting average reward of -110.0 over 100 consecutive trials.
+
+        # Actions (3): drive backward = left (0), do nothing (1), drive forward = right (2)
+
+        CAR_POS = 0
+        CAR_VEL = 1
+
+        def __init__(self, single_state_space=-1, car_vel_bin_num=50):
+            self.name = 'Mountain Car'
+            self.file_name = 'mountain-car-v0'
+            self.env = gym.make('MountainCar-v0')
+
+            self.GAMMA = 1.0    # 0.99 (Q-learning) \ 1.0 (MC Policy Evaluation, TD-0)
+            self.EPS_MIN = 0.0  # 0.01 (Q-learning) \ 0.0 (MC Policy Evaluation, TD-0)
+                                # eps_max = 0.01 (Q-learning)
+
+            # State space analysis
+            # observation = (pos, vel)
+            # Num	Observation	    Min	    Max
+            # 0	    position	    -1.2	0.6
+            # 1	    velocity	    -0.07	0.07
+
+            # Discretize state space (into bins)
+            self.carPosSpace = np.linspace(-1.2, 0.6, 9)  # (-1.2, 0.5, 8)
+            self.carVelSpace = np.linspace(-0.07, 0.07, car_vel_bin_num)
+
+            self.single_state_space = single_state_space
+
+            # Construct state space (450)
+            self.states = []
+            if single_state_space == Envs_DSS.MountainCar.CAR_POS:
+                for pos in range(len(self.carPosSpace) + 1):
+                    self.states.append(pos)
+            elif single_state_space == Envs_DSS.MountainCar.CAR_VEL:
+                for vel in range(len(self.carVelSpace) + 1):
+                    self.states.append(vel)
+            else:
+                for pos in range(len(self.carPosSpace) + 1):
+                    for vel in range(len(self.carVelSpace) + 1):
+                        self.states.append((pos, vel))
+
+        def get_state(self, observation):
+            pos, vel = observation
+            car_pos = int(np.digitize(pos, self.carPosSpace))  # pos_bin
+            car_vel = int(np.digitize(vel, self.carVelSpace))  # vel_bin
+
+            if self.single_state_space == Envs_DSS.MountainCar.CAR_POS:
+                return car_pos
+            elif self.single_state_space == Envs_DSS.MountainCar.CAR_VEL:
+                return car_vel
+            else:
+                return car_pos, car_vel
+
     class CartPole:
 
         # AKA "Inverted Pendulum".
+        # A pole is attached by an un-actuated joint to a cart, which moves along a frictionless track.
+        #   The system is controlled by applying a force of +1 or -1 to the cart.
+
+        # Goal: to prevent the pendulum from falling over.
+
+        # Starting State: the pendulum starts upright.
+
+        # Episode Termination (besides reaching the goal):
+        #   the pole is more than 15 degrees from vertical.
+        #   the cart moves more than 2.4 units from the center.
+
+        # Rewards: +1 for every time-step that the pole remains upright.
+
+        # Solved: getting average reward of 195.0 over 100 consecutive trials.
 
         # Actions (2): go left (0), go right (1)
 
@@ -231,7 +321,7 @@ class Envs_DSS:
 
             self.single_state_space = single_state_space
 
-            # Construct state space
+            # Construct state space (10^4)
             self.states = []
             if single_state_space == Envs_DSS.CartPole.CART_X:
                 for i in range(len(self.cartXSpace) + 1):
@@ -273,12 +363,19 @@ class Envs_DSS:
     class Acrobot:
 
         # The acrobot system includes two joints and two links, where the joint between the two links is actuated.
-        # Initially, the links are hanging downwards.
-        # the goal is to swing the end of the lower link up to a given height.
 
-        # Acrobot-v1 is an unsolved environment, which means it does not have a specified reward threshold
-        #   at which it's considered solved.
-        # above -100 is prettty good. best score is: -42.37 ± 4.83
+        # Goal: to swing the end of the lower link up to a given height.
+
+        # Starting State: the links are hanging downwards.
+
+        # Episode Termination (besides reaching the goal): reaching 500 iterations.
+
+        # Rewards: -1 for each time-step the links are hanging downwards.
+
+        # Solved:
+        #   This is an unsolved environment (doesn't have a specified reward threshold at which it's considered solved).
+        #   above -100 is pretty good.
+        #   best score is: -42.37 ± 4.83
 
         # Actions (3):
 
@@ -297,7 +394,7 @@ class Envs_DSS:
             self.theta_space = np.linspace(-1, 1, 10)
             self.theta_dot_space = np.linspace(-10, 10, 10)
 
-            # Construct state space
+            # Construct state space (10^6)
             self.states = []
             for c1 in range(len(self.theta_space) + 1):
                 for s1 in range(len(self.theta_space) + 1):
@@ -318,63 +415,3 @@ class Envs_DSS:
 
             return c_th1, s_th1, c_th2, s_th2, th1_dot, th2_dot
 
-    class MountainCar:
-
-        # Starting State - Random position from -0.6 to -0.4 with no velocity.
-        # Episode Termination - The episode ends when you reach 0.5 position, or if 200 iterations are reached.
-
-        # Rewards:
-        # -1 for each time step.
-        # As with MountainCarContinuous v0, there is no penalty for climbing the left hill,
-        #   which upon reached acts as a wall.
-
-        # Actions (3): drive backward = left (0), do nothing (1), drive forward = right (2)
-
-        CAR_POS = 0
-        CAR_VEL = 1
-
-        def __init__(self, single_state_space=-1, car_vel_bin_num=50):
-            self.name = 'Mountain Car'
-            self.file_name = 'mountain-car-v0'
-            self.env = gym.make('MountainCar-v0')
-
-            self.GAMMA = 1.0    # 0.99 (Q-learning) \ 1.0 (MC Policy Evaluation, TD-0)
-            self.EPS_MIN = 0.0  # 0.01 (Q-learning) \ 0.0 (MC Policy Evaluation, TD-0)
-                                # eps_max = 0.01 (Q-learning)
-
-            # State space analysis
-            # observation = (pos, vel)
-            # Num	Observation	    Min	    Max
-            # 0	    position	    -1.2	0.6
-            # 1	    velocity	    -0.07	0.07
-
-            # Discretize state space (into bins)
-            self.carPosSpace = np.linspace(-1.2, 0.6, 9)  # (-1.2, 0.5, 8)
-            self.carVelSpace = np.linspace(-0.07, 0.07, car_vel_bin_num)
-
-            self.single_state_space = single_state_space
-
-            # Construct state space
-            self.states = []
-            if single_state_space == Envs_DSS.MountainCar.CAR_POS:
-                for pos in range(len(self.carPosSpace) + 1):
-                    self.states.append(pos)
-            elif single_state_space == Envs_DSS.MountainCar.CAR_VEL:
-                for vel in range(len(self.carVelSpace) + 1):
-                    self.states.append(vel)
-            else:
-                for pos in range(len(self.carPosSpace) + 1):
-                    for vel in range(len(self.carVelSpace) + 1):
-                        self.states.append((pos, vel))
-
-        def get_state(self, observation):
-            pos, vel = observation
-            car_pos = int(np.digitize(pos, self.carPosSpace))  # pos_bin
-            car_vel = int(np.digitize(vel, self.carVelSpace))  # vel_bin
-
-            if self.single_state_space == Envs_DSS.MountainCar.CAR_POS:
-                return car_pos
-            elif self.single_state_space == Envs_DSS.MountainCar.CAR_VEL:
-                return car_vel
-            else:
-                return car_pos, car_vel

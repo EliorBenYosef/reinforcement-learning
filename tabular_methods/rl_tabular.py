@@ -112,16 +112,22 @@ class TabularMethods:
     class MonteCarloModel:
 
         def __init__(self, custom_env_object, alpha=0.1, gamma=None, episodes=50000,
-                     eps_max=1.0, eps_min=None, eps_dec=0.001, eps_dec_type=Utils.EPS_DEC_LINEAR):
+                     eps_max=1.0, eps_min=None, eps_dec=None, eps_dec_type=Utils.EPS_DEC_LINEAR):
 
             self.custom_env_object = custom_env_object
             self.env = custom_env_object.env
             self.action_space_size = self.env.action_space.n
             self.states = custom_env_object.states
 
+            self.episodes = episodes
+            self.totalSteps = np.zeros(episodes)
+            self.totalRewards = np.zeros(episodes)
+            self.totalAccumulatedRewards = np.zeros(episodes)
+            self.states_returns = {}
+
             self.ALPHA = alpha
 
-            if gamma:
+            if gamma is not None:
                 self.GAMMA = gamma
             elif custom_env_object.GAMMA is not None:
                 self.GAMMA = custom_env_object.GAMMA
@@ -130,21 +136,21 @@ class TabularMethods:
 
             self.EPS = eps_max
             self.eps_max = eps_max
-            if eps_min:
+
+            if eps_min is not None:
                 self.eps_min = eps_min
             elif custom_env_object.EPS_MIN is not None:
                 self.eps_min = custom_env_object.EPS_MIN
             else:
                 self.eps_min = 0.0
-            self.eps_dec = eps_dec
+
+            if eps_dec is not None:
+                self.eps_dec = eps_dec
+            else:
+                # will arrive to eps_min after half the episodes:
+                self.eps_dec = (self.eps_max - self.eps_min) * 2 / self.episodes
+
             self.eps_dec_type = eps_dec_type
-
-            self.episodes = episodes
-            self.totalSteps = np.zeros(episodes)
-            self.totalRewards = np.zeros(episodes)
-            self.totalAccumulatedRewards = np.zeros(episodes)
-
-            self.states_returns = {}
 
         def update_states_returns(self, s, G):
             if s not in self.states_returns:
@@ -442,19 +448,19 @@ class TabularMethods:
             self.action_space_size = self.env.action_space.n
             self.states = custom_env_object.states
 
+            self.episodes = episodes
+            self.totalSteps = np.zeros(episodes)
+            self.totalRewards = np.zeros(episodes)
+            self.totalAccumulatedRewards = np.zeros(episodes)
+
             self.ALPHA = alpha
 
-            if gamma:
+            if gamma is not None:
                 self.GAMMA = gamma
             elif custom_env_object.GAMMA is not None:
                 self.GAMMA = custom_env_object.GAMMA
             else:
                 self.GAMMA = 0.9
-
-            self.episodes = episodes
-            self.totalSteps = np.zeros(episodes)
-            self.totalRewards = np.zeros(episodes)
-            self.totalAccumulatedRewards = np.zeros(episodes)
 
         def perform_td0_policy_evaluation(self, policy, print_info=False, visualize=False, record=False):
             if record:
@@ -524,16 +530,21 @@ class TabularMethods:
     class GeneralModel:
 
         def __init__(self, custom_env_object, alpha=0.1, gamma=None, episodes=50000,
-                     eps_max=1.0, eps_min=None, eps_dec=0.001, eps_dec_type=Utils.EPS_DEC_LINEAR):
+                     eps_max=1.0, eps_min=None, eps_dec=None, eps_dec_type=Utils.EPS_DEC_LINEAR):
 
             self.custom_env_object = custom_env_object
             self.env = custom_env_object.env
             self.action_space_size = self.env.action_space.n
             self.states = custom_env_object.states
 
+            self.episodes = episodes
+            self.totalSteps = np.zeros(episodes)
+            self.totalRewards = np.zeros(episodes)
+            self.totalAccumulatedRewards = np.zeros(episodes)
+
             self.ALPHA = alpha
 
-            if gamma:
+            if gamma is not None:
                 self.GAMMA = gamma
             elif custom_env_object.GAMMA is not None:
                 self.GAMMA = custom_env_object.GAMMA
@@ -542,19 +553,21 @@ class TabularMethods:
 
             self.EPS = eps_max
             self.eps_max = eps_max
-            if eps_min:
+
+            if eps_min is not None:
                 self.eps_min = eps_min
             elif custom_env_object.EPS_MIN is not None:
                 self.eps_min = custom_env_object.EPS_MIN
             else:
                 self.eps_min = 0.0
-            self.eps_dec = eps_dec
-            self.eps_dec_type = eps_dec_type
 
-            self.episodes = episodes
-            self.totalSteps = np.zeros(episodes)
-            self.totalRewards = np.zeros(episodes)
-            self.totalAccumulatedRewards = np.zeros(episodes)
+            if eps_dec is not None:
+                self.eps_dec = eps_dec
+            else:
+                # will arrive to eps_min after half the episodes:
+                self.eps_dec = (self.eps_max - self.eps_min) * 2 / self.episodes
+
+            self.eps_dec_type = eps_dec_type
 
         def perform_sarsa(self, visualize=False, record=False, pickle=False):
             if record:
@@ -597,8 +610,7 @@ class TabularMethods:
                 if (i + 1) % (self.episodes // 10) == 0:
                     print('episode %d - eps: %.2f, rewards: %d, steps: %d' % (i + 1, self.EPS, ep_rewards, ep_steps))
 
-                self.EPS = Utils.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type,
-                                               eps_max=self.eps_max, episodes=self.episodes)
+                self.EPS = Utils.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
 
                 self.totalSteps[i] = ep_steps
                 self.totalRewards[i] = ep_rewards
