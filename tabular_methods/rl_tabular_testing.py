@@ -160,42 +160,71 @@ class AlgorithmsTesting:
         Utils.plot_running_average(method_name + ' - ' + acrobot_env.name, acrobot_total_rewards, show=True)
 
     @staticmethod
-    def test_q_learning(episodes):
+    def test_q_learning():
         method_name = 'Q-learning'
 
         # Taxi:
         taxi_env = Envs_DSS.Taxi()
-        taxi_model = TabularMethods.GeneralModel(taxi_env, alpha=0.4, episodes=episodes)
+        taxi_model = TabularMethods.GeneralModel(taxi_env, alpha=0.4, episodes=10000)
         taxi_Q_table, taxi_total_rewards = taxi_model.perform_q_learning()
-        # Utils.plot_running_average(method_name + ' - ' + taxi_env.name, taxi_total_rewards)
-
-        # Cart Pole:
-        cart_pole_env = Envs_DSS.CartPole()
-        cart_pole_model = TabularMethods.GeneralModel(cart_pole_env, episodes=episodes)
-        cart_pole_Q_table, cart_pole_total_rewards = cart_pole_model.perform_q_learning()
-        # Utils.plot_running_average(method_name + ' - ' + cart_pole_env.name, cart_pole_total_rewards)
+        # Utils.plot_running_average(method_name + ' - ' + taxi_env.name, taxi_total_rewards, show=True)
+        taxi_total_rewards = Utils.test_q_table(taxi_env, taxi_Q_table)
+        Utils.plot_running_average(method_name + ' - ' + taxi_env.name, taxi_total_rewards, show=True)
 
         # Mountain Car:
         mountain_car_env = Envs_DSS.MountainCar()
-        mountain_car_model = TabularMethods.GeneralModel(mountain_car_env, episodes=episodes)
+        mountain_car_model = TabularMethods.GeneralModel(mountain_car_env, episodes=50000)
         mountain_car_Q_table, mountain_car_total_rewards = mountain_car_model.perform_q_learning()
-        # Utils.plot_running_average(method_name + ' - ' + mountain_car_env.name,
-        #                            mountain_car_total_rewards)
-
-        total_rewards_list = [taxi_total_rewards, cart_pole_total_rewards, mountain_car_total_rewards]
-        labels = [taxi_env.name, cart_pole_env.name, mountain_car_env.name]
-        Utils.plot_running_average_comparison(method_name, total_rewards_list, labels)
-
-    @staticmethod
-    def test_double_q_learning(episodes):
-        method_name = 'Double Q-learning'
+        # Utils.plot_running_average(method_name + ' - ' + mountain_car_env.name, mountain_car_total_rewards, show=True)
+        mountain_car_total_rewards = Utils.test_q_table(mountain_car_env, mountain_car_Q_table)
+        Utils.plot_running_average(method_name + ' - ' + mountain_car_env.name, mountain_car_total_rewards, show=True)
 
         # Cart Pole:
         cart_pole_env = Envs_DSS.CartPole()
-        cart_pole_double_q_learning_model = TabularMethods.GeneralModel(cart_pole_env, episodes=episodes)
-        cart_pole_total_rewards_double_q_learning_model = cart_pole_double_q_learning_model.perform_double_q_learning()
-        Utils.plot_running_average(method_name + ' - ' + cart_pole_env.name,
-                                   cart_pole_total_rewards_double_q_learning_model)
+        cart_pole_model = TabularMethods.GeneralModel(cart_pole_env, episodes=50000)
+        cart_pole_Q_table, cart_pole_total_rewards = cart_pole_model.perform_q_learning()
+        # Utils.plot_running_average(method_name + ' - ' + cart_pole_env.name, cart_pole_total_rewards, show=True)
+        cart_pole_total_rewards = Utils.test_q_table(cart_pole_env, cart_pole_Q_table)
+        Utils.plot_running_average(method_name + ' - ' + cart_pole_env.name, cart_pole_total_rewards, show=True)
+
+    @staticmethod
+    def test_double_q_learning():
+        method_name = 'Double Q-learning'
+
+        # Taxi:
+        taxi_env = Envs_DSS.Taxi()
+        taxi_model = TabularMethods.GeneralModel(taxi_env, alpha=0.4, episodes=10000)
+        taxi_Q1_table, taxi_Q2_table, taxi_total_rewards = taxi_model.perform_double_q_learning()
+        # Utils.plot_running_average(method_name + ' - ' + taxi_env.name, taxi_total_rewards, show=True)
+        taxi_Q1_total_rewards = Utils.test_q_table(taxi_env, taxi_Q1_table)
+        taxi_Q2_total_rewards = Utils.test_q_table(taxi_env, taxi_Q2_table)
+        total_rewards_list = [taxi_Q1_total_rewards, taxi_Q2_total_rewards]
+        labels = ['Q1', 'Q2']
+        Utils.plot_running_average_comparison(method_name + ' - ' + taxi_env.name, total_rewards_list, labels, show=True)
+
+        # Mountain Car:
+        mountain_car_env = Envs_DSS.MountainCar()
+        mountain_car_model = TabularMethods.GeneralModel(mountain_car_env, episodes=50000)
+        mountain_car_Q1_table, mountain_car_Q2_table, mountain_car_total_rewards = \
+            mountain_car_model.perform_double_q_learning()
+        # Utils.plot_running_average(method_name + ' - ' + mountain_car_env.name, mountain_car_total_rewards, show=True)
+        mountain_car_Q1_total_rewards = Utils.test_q_table(mountain_car_env, mountain_car_Q1_table)
+        mountain_car_Q2_total_rewards = Utils.test_q_table(mountain_car_env, mountain_car_Q2_table)
+        total_rewards_list = [mountain_car_Q1_total_rewards, mountain_car_Q2_total_rewards]
+        labels = ['Q1', 'Q2']
+        Utils.plot_running_average_comparison(method_name + ' - ' + mountain_car_env.name, total_rewards_list, labels, show=True)
+
+        # Cart Pole:
+        cart_pole_env = Envs_DSS.CartPole()
+        cart_pole_model = TabularMethods.GeneralModel(cart_pole_env, episodes=50000)
+        cart_pole_Q1_table, cart_pole_Q2_table, cart_pole_total_rewards = \
+            cart_pole_model.perform_double_q_learning()
+        # Utils.plot_running_average(method_name + ' - ' + cart_pole_env.name, cart_pole_total_rewards, show=True)
+        cart_pole_Q1_total_rewards = Utils.test_q_table(cart_pole_env, cart_pole_Q1_table)
+        cart_pole_Q2_total_rewards = Utils.test_q_table(cart_pole_env, cart_pole_Q2_table)
+        total_rewards_list = [cart_pole_Q1_total_rewards, cart_pole_Q2_total_rewards]
+        labels = ['Q1', 'Q2']
+        Utils.plot_running_average_comparison(method_name + ' - ' + cart_pole_env.name, total_rewards_list, labels, show=True)
 
 
 class EnvironmentsTesting:
@@ -298,8 +327,8 @@ def learning_algorithms_test():
     AlgorithmsTesting.test_sarsa()
     AlgorithmsTesting.test_expected_sarsa()
 
-    AlgorithmsTesting.test_q_learning(1000)
-    AlgorithmsTesting.test_double_q_learning(1000)
+    AlgorithmsTesting.test_q_learning()
+    AlgorithmsTesting.test_double_q_learning()
 
 
 def environments_test():

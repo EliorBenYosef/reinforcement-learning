@@ -797,5 +797,5 @@ class TabularMethods:
 
             print('\n', 'Game Ended', '\n')
 
-            return self.totalRewards
+            return Q1, Q2, self.totalRewards
 
