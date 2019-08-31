@@ -7,11 +7,27 @@ import matplotlib.pyplot as plt
 
 # Environments with Discretized State Space
 
+
+class BaseEnv:
+
+    @staticmethod
+    def get_evaluation_tuple():
+        return None
+
+    @staticmethod
+    def update_evaluation_tuple(episode, reward, done, eval):
+        return None
+
+    @staticmethod
+    def analyze_evaluation_tuple(eval, episodes):
+        return None
+
+
 class Envs_DSS:
 
     # Toy Text - Grid World, Windy Gridworld
 
-    class FrozenLake:
+    class FrozenLake(BaseEnv):
 
         # the agent walks on a 4x4 matrix.
         # there's a single starting point (S), and a single goal (G) where the frisbee is located.
@@ -45,38 +61,26 @@ class Envs_DSS:
         def get_state(self, observation):
             c = observation % self.columns
             r = (observation // self.columns) % self.rows
-
             return r, c
 
-        def test_policy(self, policy, episodes=1000):
-            total_accumulated_rewards = np.zeros(episodes)
-            accumulated_rewards = 0
-
+        @staticmethod
+        def get_evaluation_tuple():
             success = 0
+            return success
 
-            for i in range(episodes):
-                done = False
-                ep_rewards = 0
-                observation = self.env.reset()
-                s = self.get_state(observation)
-                while not done:
-                    a = policy[s]
-                    observation_, reward, done, info = self.env.step(a)
-                    s_ = self.get_state(observation_)
-                    ep_rewards += reward
-                    accumulated_rewards += reward
-                    s, observation = s_, observation_
-                total_accumulated_rewards[i] = accumulated_rewards
+        @staticmethod
+        def update_evaluation_tuple(episode, reward, done, eval):
+            success = eval
+            if reward == 1:
+                success += 1
+            return success
 
-                if ep_rewards == 1:
-                    success += 1
-
+        @staticmethod
+        def analyze_evaluation_tuple(eval, episodes):
+            success = eval
             print('success rate: %d%%' % (success * 100 / episodes))
 
-            plt.plot(total_accumulated_rewards)
-            plt.show()
-
-    class Taxi:
+    class Taxi(BaseEnv):
 
         # The taxi drives on a 5x5 matrix.
 
@@ -129,10 +133,35 @@ class Envs_DSS:
             pl = (observation // self.destinations) % self.passenger_locations
             tc = ((observation // self.destinations) // self.passenger_locations) % self.taxi_columns
             tr = (((observation // self.destinations) // self.passenger_locations) // self.taxi_columns) % self.taxi_rows
-
             return tr, tc, pl, d
 
-    class Blackjack:
+        @staticmethod
+        def get_evaluation_tuple():
+            successful_drop_offs = 0
+            illegal_pick_up_or_drop_off = 0
+            driving_against_a_wall = 0
+            return successful_drop_offs, illegal_pick_up_or_drop_off, driving_against_a_wall
+
+        @staticmethod
+        def update_evaluation_tuple(episode, reward, done, eval):
+            successful_drop_offs, illegal_pick_up_or_drop_off, driving_against_a_wall = eval
+            if reward == 20:
+                successful_drop_offs += 1
+            elif reward == -2:
+                illegal_pick_up_or_drop_off += 1
+            elif reward == -10:
+                driving_against_a_wall += 1
+            return successful_drop_offs, illegal_pick_up_or_drop_off, driving_against_a_wall
+
+        @staticmethod
+        def analyze_evaluation_tuple(eval, episodes):
+            successful_drop_offs, illegal_pick_up_or_drop_off, driving_against_a_wall = eval
+            print('Rates - ',
+                  'successful drop-offs: %d%% ;' % (successful_drop_offs * 100 / episodes),
+                  'illegal pick-ups or drop-offs: %d%% ;' % (illegal_pick_up_or_drop_off * 100 / episodes),
+                  'driving against a wall: %d%%' % (driving_against_a_wall * 100 / episodes))
+
+    class Blackjack(BaseEnv):
 
         # At the start, the player receives two cards (so the total min is 2 + 2 = 4)
         # Object: Have your card sum be greater than the dealers without exceeding 21.
@@ -150,7 +179,7 @@ class Envs_DSS:
             self.EPS_MIN = 0.0
 
             # State space analysis
-            self.agentCardsSumSpace = [i for i in range(4, 22)]  # agent's cards sum - sum of the player's cards
+            self.agentCardsSumSpace = [i for i in range(4, 32)]  # agent's cards sum - sum of the player's cards. was: range(4, 22), changed for e-SARSA
             self.dealerShowingCardSpace = [i + 1 for i in range(10)]  # dealer's showing card - the card that the dealer has showing, 1 = Ace, 10 = face card
             self.agentUsableAceSpace = [False, True]  # agent's usable ace - if the player has usable ace, it can count as 1 \ 11
 
@@ -165,45 +194,37 @@ class Envs_DSS:
             # observation == agentCardsSum, dealerShowingCard, agentUsableAce
             return observation
 
-        def test_policy(self, policy, episodes=1000):
-            accumulated_rewards_total = np.zeros(episodes)
-            accumulated_rewards = 0
-
+        @staticmethod
+        def get_evaluation_tuple():
             wins = 0
-            losses = 0
             draws = 0
+            losses = 0
+            return wins, draws, losses
 
-            for i in range(episodes):
-                done = False
-                ep_rewards = 0
-                s = self.env.reset()
-                while not done:
-                    a = policy[s]
-                    s_, reward, done, info = self.env.step(a)
-                    ep_rewards += reward
-                    accumulated_rewards += reward
-                    s = s_
-                accumulated_rewards_total[i] = accumulated_rewards
+        @staticmethod
+        def update_evaluation_tuple(episode, reward, done, eval):
+            wins, draws, losses = eval
+            if reward >= 1:
+                wins += 1
+            elif reward == 0:
+                draws += 1
+            elif reward == -1:
+                losses += 1
+            return wins, draws, losses
 
-                if ep_rewards >= 1:
-                    wins += 1
-                elif ep_rewards == 0:
-                    draws += 1
-                elif ep_rewards == -1:
-                    losses += 1
-
-            print('win rate', wins / episodes,
-                  'loss rate', losses / episodes,
-                  'draw rate', draws / episodes)
-
-            plt.plot(accumulated_rewards_total)
-            plt.show()
+        @staticmethod
+        def analyze_evaluation_tuple(eval, episodes):
+            wins, draws, losses = eval
+            print('Rates - ',
+                  'win: %d%% ;' % (wins * 100 / episodes),
+                  'draw: %d%% ;' % (losses * 100 / episodes),
+                  'loss: %d%%' % (draws * 100 / episodes))
 
     # Custom Grid World
 
     # Classic Control
 
-    class MountainCar:
+    class MountainCar(BaseEnv):
 
         # A car is on a one-dimensional track, positioned between two "mountains".
 
@@ -272,7 +293,24 @@ class Envs_DSS:
             else:
                 return car_pos, car_vel
 
-    class CartPole:
+        @staticmethod
+        def get_evaluation_tuple():
+            success = 0
+            return success
+
+        @staticmethod
+        def update_evaluation_tuple(episode, reward, done, eval):
+            success = eval
+            if done and episode < 200:
+                success += 1
+            return success
+
+        @staticmethod
+        def analyze_evaluation_tuple(eval, episodes):
+            success = eval
+            print('success rate: %d%%' % (success * 100 / episodes))
+
+    class CartPole(BaseEnv):
 
         # AKA "Inverted Pendulum".
         # A pole is attached by an un-actuated joint to a cart, which moves along a frictionless track.
@@ -360,7 +398,7 @@ class Envs_DSS:
             else:
                 return cart_x, cart_x_dot, pole_theta, pole_theta_dot
 
-    class Acrobot:
+    class Acrobot(BaseEnv):
 
         # The acrobot system includes two joints and two links, where the joint between the two links is actuated.
 
@@ -412,6 +450,21 @@ class Envs_DSS:
             s_th2 = int(np.digitize(sin_theta2, self.theta_space))
             th1_dot = int(np.digitize(theta1_dot, self.theta_dot_space))
             th2_dot = int(np.digitize(theta2_dot, self.theta_dot_space))
-
             return c_th1, s_th1, c_th2, s_th2, th1_dot, th2_dot
 
+        @staticmethod
+        def get_evaluation_tuple():
+            success = 0
+            return success
+
+        @staticmethod
+        def update_evaluation_tuple(episode, reward, done, eval):
+            success = eval
+            if done and reward == 0:
+                success += 1
+            return success
+
+        @staticmethod
+        def analyze_evaluation_tuple(eval, episodes):
+            success = eval
+            print('success rate: %d%%' % (success * 100 / episodes))

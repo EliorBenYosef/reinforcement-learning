@@ -62,6 +62,29 @@ Deep Q-learning, Policy Gradient | Deep Deterministic Policy Gradient
 **Observation Vector Input Type** | CartPole, LunarLander | Pendulum, MountainCarContinuous, LunarLanderContinuous, BipedalWalker
 **Stacked Frames Input Type** | Breakout, SpaceInvaders |
 
+## AI agent before and after training
+
+### Mountain Car
+
+<p float="left">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/tree/master/gif%20samples/mountain-car_untrained.gif" width="430">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/tree/master/gif%20samples/mountain-car_trained.gif" width="430">
+</p>
+
+### Cart Pole
+
+<p float="left">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/tree/master/gif%20samples/cart-pole_untrained.gif" width="430">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/tree/master/gif%20samples/cart-pole_trained.gif" width="430">
+</p>
+
+### Acrobot
+
+<p float="left">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/tree/master/gif%20samples/acrobot_untrained.gif" width="430">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/tree/master/gif%20samples/acrobot_trained.gif" width="430">
+</p>
+
 ## Dependencies
 * Python 3.7.1
 * OpenAI Gym 0.12.1

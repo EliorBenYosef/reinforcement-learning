@@ -3,7 +3,6 @@ import numpy as np
 import pickle
 
 from utils import Utils
-from tabular_methods.envs_dss import Envs_DSS
 
 
 class TabularMethods:
@@ -111,7 +110,7 @@ class TabularMethods:
 
     class MonteCarloModel:
 
-        def __init__(self, custom_env_object, alpha=0.1, gamma=None, episodes=50000,
+        def __init__(self, custom_env_object, episodes=50000, alpha=0.1, gamma=None,
                      eps_max=1.0, eps_min=None, eps_dec=None, eps_dec_type=Utils.EPS_DEC_LINEAR):
 
             self.custom_env_object = custom_env_object
@@ -121,8 +120,8 @@ class TabularMethods:
 
             self.episodes = episodes
             self.totalSteps = np.zeros(episodes)
-            self.totalRewards = np.zeros(episodes)
-            self.totalAccumulatedRewards = np.zeros(episodes)
+            self.totalScores = np.zeros(episodes)
+            self.totalAccumulatedScores = np.zeros(episodes)
             self.states_returns = {}
 
             self.ALPHA = alpha
@@ -184,14 +183,14 @@ class TabularMethods:
 
             dt = 1.0
 
-            accumulated_rewards = 0
+            accumulated_scores = 0
 
             print('\n', 'Game Started', '\n')
 
             for i in range(self.episodes):
                 done = False
                 ep_steps = 0
-                ep_rewards = 0
+                ep_score = 0
 
                 memory = []
                 observation = self.env.reset()
@@ -208,8 +207,8 @@ class TabularMethods:
 
                     observation_, reward, done, info = self.env.step(a)
                     ep_steps += 1
-                    ep_rewards += reward
-                    accumulated_rewards += reward
+                    ep_score += reward
+                    accumulated_scores += reward
 
                     s_ = self.custom_env_object.get_state(observation_)
 
@@ -221,11 +220,11 @@ class TabularMethods:
                         self.env.render()
 
                 if (i + 1) % (self.episodes // 10) == 0:
-                    print('episode %d - rewards: %d, steps: %d' % (i + 1, ep_rewards, ep_steps))
+                    print('episode %d - score: %d, steps: %d' % (i + 1, ep_score, ep_steps))
 
                 self.totalSteps[i] = ep_steps
-                self.totalRewards[i] = ep_rewards
-                self.totalAccumulatedRewards[i] = accumulated_rewards
+                self.totalScores[i] = ep_score
+                self.totalAccumulatedScores[i] = accumulated_scores
 
                 if visualize and i == self.episodes - 1:
                     self.env.close()
@@ -245,7 +244,7 @@ class TabularMethods:
 
             print('\n', 'Game Ended', '\n')
 
-            return V, self.totalRewards, self.totalAccumulatedRewards
+            return V, self.totalScores, self.totalAccumulatedScores
 
         def perform_MC_non_exploring_starts_control(self, print_info=False, visualize=False, record=False):
             # Monte Carlo control without exploring starts
@@ -263,14 +262,14 @@ class TabularMethods:
                     Q[s, a] = 0
                     states_actions_visited_counter[s, a] = 0
 
-            accumulated_rewards = 0
+            accumulated_scores = 0
 
             print('\n', 'Game Started', '\n')
 
             for i in range(self.episodes):
                 done = False
                 ep_steps = 0
-                ep_rewards = 0
+                ep_score = 0
 
                 memory = []
                 observation = self.env.reset()
@@ -285,8 +284,8 @@ class TabularMethods:
 
                     observation_, reward, done, info = self.env.step(a)
                     ep_steps += 1
-                    ep_rewards += reward
-                    accumulated_rewards += reward
+                    ep_score += reward
+                    accumulated_scores += reward
 
                     s_ = self.custom_env_object.get_state(observation_)
 
@@ -298,13 +297,13 @@ class TabularMethods:
                         self.env.render()
 
                 if (i + 1) % (self.episodes // 10) == 0:
-                    print('episode %d - rewards: %d, steps: %d' % (i + 1, ep_rewards, ep_steps))
+                    print('episode %d - score: %d, steps: %d' % (i + 1, ep_score, ep_steps))
 
                 self.EPS = Utils.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
 
                 self.totalSteps[i] = ep_steps
-                self.totalRewards[i] = ep_rewards
-                self.totalAccumulatedRewards[i] = accumulated_rewards
+                self.totalScores[i] = ep_score
+                self.totalAccumulatedScores[i] = accumulated_scores
 
                 if visualize and i == self.episodes - 1:
                     self.env.close()
@@ -333,7 +332,7 @@ class TabularMethods:
 
             print('\n', 'Game Ended', '\n')
 
-            return policy, self.totalRewards, self.totalAccumulatedRewards
+            return policy, self.totalScores, self.totalAccumulatedScores
 
         def perform_off_policy_MC_control(self, print_info=False, visualize=False, record=False):
             # off-policy methods are the alternative to non-exploring-starts
@@ -351,14 +350,14 @@ class TabularMethods:
                     Q[s, a] = 0
                     C[s, a] = 0
 
-            accumulated_rewards = 0
+            accumulated_scores = 0
 
             print('\n', 'Game Started', '\n')
 
             for i in range(self.episodes):
                 done = False
                 ep_steps = 0
-                ep_rewards = 0
+                ep_score = 0
 
                 behavior_policy = {}
                 for s in self.states:
@@ -380,13 +379,10 @@ class TabularMethods:
 
                     observation_, reward, done, info = self.env.step(a)
                     ep_steps += 1
-                    ep_rewards += reward
-                    accumulated_rewards += reward
+                    ep_score += reward
+                    accumulated_scores += reward
 
                     s_ = self.custom_env_object.get_state(observation_)
-
-                    if isinstance(self.custom_env_object, Envs_DSS.FrozenLake):
-                        a = Envs_DSS.FrozenLake.get_action(s, s_)
 
                     memory.append((s, a, reward))
 
@@ -396,11 +392,11 @@ class TabularMethods:
                         self.env.render()
 
                 if (i + 1) % (self.episodes // 10) == 0:
-                    print('episode %d - rewards: %d, steps: %d' % (i + 1, ep_rewards, ep_steps))
+                    print('episode %d - score: %d, steps: %d' % (i + 1, ep_score, ep_steps))
 
                 self.totalSteps[i] = ep_steps
-                self.totalRewards[i] = ep_rewards
-                self.totalAccumulatedRewards[i] = accumulated_rewards
+                self.totalScores[i] = ep_score
+                self.totalAccumulatedScores[i] = accumulated_scores
 
                 if visualize and i == self.episodes - 1:
                     self.env.close()
@@ -437,11 +433,11 @@ class TabularMethods:
 
             print('\n', 'Game Ended', '\n')
 
-            return target_policy, self.totalRewards, self.totalAccumulatedRewards
+            return target_policy, self.totalScores, self.totalAccumulatedScores
 
     class TdZeroModel:
 
-        def __init__(self, custom_env_object, alpha=0.1, gamma=None, episodes=50000):
+        def __init__(self, custom_env_object, episodes=50000, alpha=0.1, gamma=None):
 
             self.custom_env_object = custom_env_object
             self.env = custom_env_object.env
@@ -450,8 +446,8 @@ class TabularMethods:
 
             self.episodes = episodes
             self.totalSteps = np.zeros(episodes)
-            self.totalRewards = np.zeros(episodes)
-            self.totalAccumulatedRewards = np.zeros(episodes)
+            self.totalScores = np.zeros(episodes)
+            self.totalAccumulatedScores = np.zeros(episodes)
 
             self.ALPHA = alpha
 
@@ -471,14 +467,14 @@ class TabularMethods:
 
             V = TabularMethods.init_v(self.states)
 
-            accumulated_rewards = 0
+            accumulated_scores = 0
 
             print('\n', 'Game Started', '\n')
 
             for i in range(self.episodes):
                 done = False
                 ep_steps = 0
-                ep_rewards = 0
+                ep_score = 0
 
                 observation = self.env.reset()
 
@@ -494,8 +490,8 @@ class TabularMethods:
 
                     observation_, reward, done, info = self.env.step(a)
                     ep_steps += 1
-                    ep_rewards += reward
-                    accumulated_rewards += reward
+                    ep_score += reward
+                    accumulated_scores += reward
 
                     s_ = self.custom_env_object.get_state(observation_)
                     V[s] += self.ALPHA * (reward + self.GAMMA * V[s_] - V[s])
@@ -511,11 +507,11 @@ class TabularMethods:
                         self.env.render()
 
                 if (i + 1) % (self.episodes // 10) == 0:
-                    print('episode %d - rewards: %d, steps: %d' % (i + 1, ep_rewards, ep_steps))
+                    print('episode %d - score: %d, steps: %d' % (i + 1, ep_score, ep_steps))
 
                 self.totalSteps[i] = ep_steps
-                self.totalRewards[i] = ep_rewards
-                self.totalAccumulatedRewards[i] = accumulated_rewards
+                self.totalScores[i] = ep_score
+                self.totalAccumulatedScores[i] = accumulated_scores
 
                 if visualize and i == self.episodes - 1:
                     self.env.close()
@@ -525,11 +521,11 @@ class TabularMethods:
 
             print('\n', 'Game Ended', '\n')
 
-            return V, self.totalRewards, self.totalAccumulatedRewards
+            return V, self.totalScores, self.totalAccumulatedScores
 
     class GeneralModel:
 
-        def __init__(self, custom_env_object, alpha=0.1, gamma=None, episodes=50000,
+        def __init__(self, custom_env_object, episodes=50000, alpha=0.1, gamma=None,
                      eps_max=1.0, eps_min=None, eps_dec=None, eps_dec_type=Utils.EPS_DEC_LINEAR):
 
             self.custom_env_object = custom_env_object
@@ -539,8 +535,8 @@ class TabularMethods:
 
             self.episodes = episodes
             self.totalSteps = np.zeros(episodes)
-            self.totalRewards = np.zeros(episodes)
-            self.totalAccumulatedRewards = np.zeros(episodes)
+            self.totalScores = np.zeros(episodes)
+            self.totalAccumulatedScores = np.zeros(episodes)
 
             self.ALPHA = alpha
 
@@ -578,12 +574,14 @@ class TabularMethods:
 
             Q = TabularMethods.init_q(self.states, self.action_space_size, self.custom_env_object.file_name, pickle)
 
+            accumulated_scores = 0
+
             print('\n', 'Game Started', '\n')
 
             for i in range(self.episodes):
                 done = False
                 ep_steps = 0
-                ep_rewards = 0
+                ep_score = 0
 
                 observation = self.env.reset()
 
@@ -596,7 +594,8 @@ class TabularMethods:
                 while not done:
                     observation_, reward, done, info = self.env.step(a)
                     ep_steps += 1
-                    ep_rewards += reward
+                    ep_score += reward
+                    accumulated_scores += reward
 
                     s_ = self.custom_env_object.get_state(observation_)
                     a_ = TabularMethods.eps_greedy_q(Q, s_, self.action_space_size, self.EPS, self.env)
@@ -608,12 +607,13 @@ class TabularMethods:
                         self.env.render()
 
                 if (i + 1) % (self.episodes // 10) == 0:
-                    print('episode %d - eps: %.2f, rewards: %d, steps: %d' % (i + 1, self.EPS, ep_rewards, ep_steps))
+                    print('episode %d - eps: %.2f, score: %d, steps: %d' % (i + 1, self.EPS, ep_score, ep_steps))
 
                 self.EPS = Utils.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
 
                 self.totalSteps[i] = ep_steps
-                self.totalRewards[i] = ep_rewards
+                self.totalScores[i] = ep_score
+                self.totalAccumulatedScores[i] = accumulated_scores
 
                 if visualize and i == self.episodes - 1:
                     self.env.close()
@@ -623,7 +623,7 @@ class TabularMethods:
             if pickle:
                 TabularMethods.pickle_out(Q, self.custom_env_object.file_name)
 
-            return Q, self.totalRewards
+            return Q, self.totalScores, self.totalAccumulatedScores
 
         def perform_expected_sarsa(self, visualize=False, record=False, pickle=False):
             if record:
@@ -634,12 +634,14 @@ class TabularMethods:
 
             Q = TabularMethods.init_q(self.states, self.action_space_size, self.custom_env_object.file_name, pickle)
 
+            accumulated_scores = 0
+
             print('\n', 'Game Started', '\n')
 
             for i in range(self.episodes):
                 done = False
                 ep_steps = 0
-                ep_rewards = 0
+                ep_score = 0
 
                 observation = self.env.reset()
 
@@ -653,7 +655,8 @@ class TabularMethods:
 
                     observation_, reward, done, info = self.env.step(a)
                     ep_steps += 1
-                    ep_rewards += reward
+                    ep_score += reward
+                    accumulated_scores += reward
 
                     s_ = self.custom_env_object.get_state(observation_)
                     expected_value = np.mean(np.array([Q[s_, a] for a in range(self.action_space_size)]))
@@ -665,12 +668,13 @@ class TabularMethods:
                         self.env.render()
 
                 if (i + 1) % (self.episodes // 10) == 0:
-                    print('episode %d - eps: %.2f, rewards: %d, steps: %d' % (i + 1, self.EPS, ep_rewards, ep_steps))
+                    print('episode %d - eps: %.2f, score: %d, steps: %d' % (i + 1, self.EPS, ep_score, ep_steps))
 
                 self.EPS = Utils.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
 
                 self.totalSteps[i] = ep_steps
-                self.totalRewards[i] = ep_rewards
+                self.totalScores[i] = ep_score
+                self.totalAccumulatedScores[i] = accumulated_scores
 
                 if visualize and i == self.episodes - 1:
                     self.env.close()
@@ -680,7 +684,7 @@ class TabularMethods:
             if pickle:
                 TabularMethods.pickle_out(Q, self.custom_env_object.file_name)
 
-            return Q, self.totalRewards
+            return Q, self.totalScores, self.totalAccumulatedScores
 
         def perform_q_learning(self, visualize=False, record=False, pickle=False):
             if record:
@@ -691,12 +695,14 @@ class TabularMethods:
 
             Q = TabularMethods.init_q(self.states, self.action_space_size, self.custom_env_object.file_name, pickle)
 
+            accumulated_scores = 0
+
             print('\n', 'Game Started', '\n')
 
             for i in range(self.episodes):
                 done = False
                 ep_steps = 0
-                ep_rewards = 0
+                ep_score = 0
 
                 observation = self.env.reset()
 
@@ -710,7 +716,8 @@ class TabularMethods:
 
                     observation_, reward, done, info = self.env.step(a)
                     ep_steps += 1
-                    ep_rewards += reward
+                    ep_score += reward
+                    accumulated_scores += reward
 
                     s_ = self.custom_env_object.get_state(observation_)
                     a_ = Utils.get_max_action_from_q_table(Q, s_, self.action_space_size)
@@ -723,12 +730,13 @@ class TabularMethods:
                         self.env.render()
 
                 if (i + 1) % (self.episodes // 10) == 0:
-                    print('episode %d - eps: %.2f, rewards: %d, steps: %d' % (i + 1, self.EPS, ep_rewards, ep_steps))
+                    print('episode %d - eps: %.2f, score: %d, steps: %d' % (i + 1, self.EPS, ep_score, ep_steps))
 
                 self.EPS = Utils.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
 
                 self.totalSteps[i] = ep_steps
-                self.totalRewards[i] = ep_rewards
+                self.totalScores[i] = ep_score
+                self.totalAccumulatedScores[i] = accumulated_scores
 
                 if visualize and i == self.episodes - 1:
                     self.env.close()
@@ -738,7 +746,7 @@ class TabularMethods:
             if pickle:
                 TabularMethods.pickle_out(Q, self.custom_env_object.file_name)
 
-            return Q, self.totalRewards
+            return Q, self.totalScores, self.totalAccumulatedScores
 
         def perform_double_q_learning(self, visualize=False, record=False):
             if record:
@@ -749,12 +757,14 @@ class TabularMethods:
 
             Q1, Q2 = TabularMethods.init_q1_q2(self.states, self.action_space_size)
 
+            accumulated_scores = 0
+
             print('\n', 'Game Started', '\n')
 
             for i in range(self.episodes):
                 done = False
                 ep_steps = 0
-                ep_rewards = 0
+                ep_score = 0
 
                 observation = self.env.reset()
 
@@ -768,7 +778,8 @@ class TabularMethods:
 
                     observation_, reward, done, info = self.env.step(a)
                     ep_steps += 1
-                    ep_rewards += reward
+                    ep_score += reward
+                    accumulated_scores += reward
 
                     s_ = self.custom_env_object.get_state(observation_)
                     rand = np.random.random()
@@ -785,17 +796,17 @@ class TabularMethods:
                         self.env.render()
 
                 if (i + 1) % (self.episodes // 10) == 0:
-                    print('episode %d - eps: %.2f, rewards: %d, steps: %d' % (i + 1, self.EPS, ep_rewards, ep_steps))
+                    print('episode %d - eps: %.2f, score: %d, steps: %d' % (i + 1, self.EPS, ep_score, ep_steps))
 
                 self.EPS = Utils.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
 
                 self.totalSteps[i] = ep_steps
-                self.totalRewards[i] = ep_rewards
+                self.totalScores[i] = ep_score
+                self.totalAccumulatedScores[i] = accumulated_scores
 
                 if visualize and i == self.episodes - 1:
                     self.env.close()
 
             print('\n', 'Game Ended', '\n')
 
-            return Q1, Q2, self.totalRewards
-
+            return Q1, Q2, self.totalScores, self.totalAccumulatedScores

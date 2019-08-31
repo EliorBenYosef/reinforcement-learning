@@ -40,25 +40,25 @@ class Utils:
             plt.show()
 
     @staticmethod
-    def plot_accumulated_rewards(main_title, rewards, show=False, file_name=None):
-        plt.title(main_title + ' - Accumulated Rewards')
-        plt.ylabel('Accumulated Rewards')
+    def plot_accumulated_scores(main_title, scores, show=False, file_name=None):
+        plt.title(main_title + ' - Accumulated Scores')
+        plt.ylabel('Accumulated Scores')
         plt.xlabel('Episode')
-        x = [i + 1 for i in range(len(rewards))]
-        plt.plot(x, rewards)
+        x = [i + 1 for i in range(len(scores))]
+        plt.plot(x, scores)
         if file_name:
             plt.savefig(file_name + '.png')
         if show:
             plt.show()
 
     @staticmethod
-    def plot_running_average_comparison(main_title, rewards_list, labels=None, window=100, show=False, file_name=None):
+    def plot_running_average_comparison(main_title, scores_list, labels=None, window=100, show=False, file_name=None):
         plt.title(main_title + ' - Running Average (%d)' % window)
-        plt.ylabel('Total Rewards')
+        plt.ylabel('Total Scores')
         plt.xlabel('Episode')
         colors = ['r--', 'g--', 'b--', 'c--', 'm--', 'y--', 'k--']
-        for i, rewards in enumerate(rewards_list):
-            plt.plot(*Utils.get_running_avg(rewards, window), colors[i])
+        for i, scores in enumerate(scores_list):
+            plt.plot(*Utils.get_running_avg(scores, window), colors[i])
         if labels:
             plt.legend(labels)
         if file_name:
@@ -67,15 +67,15 @@ class Utils:
             plt.show()
 
     @staticmethod
-    def plot_accumulated_rewards_comparison(main_title, rewards_list, labels=None, show=False, file_name=None):
-        plt.title(main_title + ' - Accumulated Rewards')
-        plt.ylabel('Accumulated Rewards')
+    def plot_accumulated_scores_comparison(main_title, scores_list, labels=None, show=False, file_name=None):
+        plt.title(main_title + ' - Accumulated Scores')
+        plt.ylabel('Accumulated Scores')
         plt.xlabel('Episode')
         colors = ['r--', 'g--', 'b--', 'c--', 'm--', 'y--', 'k--']
 
-        for i, rewards in enumerate(rewards_list):
-            x = [i + 1 for i in range(len(rewards))]
-            plt.plot(x, rewards, colors[i])
+        for i, scores in enumerate(scores_list):
+            x = [i + 1 for i in range(len(scores))]
+            plt.plot(x, scores, colors[i])
         if labels:
             plt.legend(labels)
         if file_name:
@@ -84,16 +84,16 @@ class Utils:
             plt.show()
 
     @staticmethod
-    def print_average_reward(total_rewards, ratio=10):
-        # Calculate and print the average reward per a number of episodes (tick)
+    def print_average_score(total_scores, ratio=10):
+        # Calculate and print the average score per a number of episodes (tick)
 
-        rewards_per_tick_episodes = np.split(np.array(total_rewards), ratio)  # episodes / tick
+        scores_per_tick_episodes = np.split(np.array(total_scores), ratio)  # episodes / tick
 
-        episodes = len(total_rewards)
+        episodes = len(total_scores)
         tick = episodes // ratio
-        print('\n********Average reward per %d episodes********\n' % tick)
+        print('\n********Average score per %d episodes********\n' % tick)
         count = tick
-        for r in rewards_per_tick_episodes:
+        for r in scores_per_tick_episodes:
             print(count, ": ", str(sum(r / 1000)))
             count += tick
 
@@ -123,18 +123,18 @@ class Utils:
     ##############################################
 
     @staticmethod
-    def plot_running_average_scatter(ax, total_rewards, window, x=None):
+    def plot_running_average_scatter(ax, total_scores, window, x=None):
         # if x is None:
-        #     # x = [i for i in range(len(total_rewards))]
-        #     x = [i + 1 for i in range(len(total_rewards))]
+        #     # x = [i for i in range(len(total_scores))]
+        #     x = [i + 1 for i in range(len(total_scores))]
 
-        # ax.scatter(x, Utils.get_running_avg(total_rewards, window), color="C1")
-        ax.scatter(*Utils.get_running_avg(total_rewards, window), color="C1")
+        # ax.scatter(x, Utils.get_running_avg(total_scores, window), color="C1")
+        ax.scatter(*Utils.get_running_avg(total_scores, window), color="C1")
         # ax.xaxis.tick_top()
         ax.axes.get_xaxis().set_visible(False)
         ax.yaxis.tick_right()
         # ax.set_xlabel('x label 2', color="C1")
-        ax.set_ylabel('Total Rewards', color="C1")
+        ax.set_ylabel('Total Scores', color="C1")
         # ax.xaxis.set_label_position('top')
         ax.yaxis.set_label_position('right')
         # ax.tick_params(axis='x', colors="C1")
@@ -153,12 +153,12 @@ class Utils:
         ax.tick_params(axis='y', colors="C0")
 
     @staticmethod
-    def plot_eps_history_and_running_avg(main_title, total_rewards, eps_history, window=100, show=False, file_name=None):
+    def plot_eps_history_and_running_avg(main_title, total_scores, eps_history, window=100, show=False, file_name=None):
         plt.title(main_title)
         fig = plt.figure()
 
         ax01 = fig.add_subplot(111, label="Running Average", frame_on=False)
-        Utils.plot_running_average_scatter(ax01, total_rewards, window)
+        Utils.plot_running_average_scatter(ax01, total_scores, window)
 
         ax02 = fig.add_subplot(111, label="Epsilon History")
         Utils.plot_eps_history(ax02, eps_history)
@@ -344,55 +344,61 @@ class Utils:
         return policy
 
     @staticmethod
-    def test_q_table(custom_env_object, Q, episodes=1000, return_accumulated_rewards=False):
+    def test_q_table(custom_env_object, Q, episodes=1000):
         env = custom_env_object.env
         action_space_size = env.action_space.n
 
-        total_rewards = np.zeros(episodes)
-        total_accumulated_rewards = np.zeros(episodes)
-        accumulated_rewards = 0
+        total_scores = np.zeros(episodes)
+        total_accumulated_scores = np.zeros(episodes)
+        accumulated_score = 0
+        eval = custom_env_object.get_evaluation_tuple()
         for i in range(episodes):
             done = False
             ep_steps = 0
-            ep_rewards = 0
+            ep_score = 0
             observation = env.reset()
             s = custom_env_object.get_state(observation)
             while not done:
                 a = Utils.get_max_action_from_q_table(Q, s, action_space_size)
                 observation_, reward, done, info = env.step(a)
+                eval = custom_env_object.update_evaluation_tuple(i+1, reward, done, eval)
                 ep_steps += 1
-                ep_rewards += reward
-                accumulated_rewards += reward
+                ep_score += reward
+                accumulated_score += reward
                 s_ = custom_env_object.get_state(observation_)
                 observation, s = observation_, s_
-            total_rewards[i] = ep_rewards
-            total_accumulated_rewards[i] = accumulated_rewards
-        return total_accumulated_rewards if return_accumulated_rewards else total_rewards
+            total_scores[i] = ep_score
+            total_accumulated_scores[i] = accumulated_score
+        custom_env_object.analyze_evaluation_tuple(eval, episodes)
+        return total_scores, total_accumulated_scores
 
     @staticmethod
-    def test_policy(custom_env_object, policy, episodes=1000, return_accumulated_rewards=False):
+    def test_policy(custom_env_object, policy, episodes=1000):
         env = custom_env_object.env
 
-        total_rewards = np.zeros(episodes)
-        total_accumulated_rewards = np.zeros(episodes)
-        accumulated_rewards = 0
+        total_scores = np.zeros(episodes)
+        total_accumulated_scores = np.zeros(episodes)
+        accumulated_score = 0
+        eval = custom_env_object.get_evaluation_tuple()
         for i in range(episodes):
             done = False
             ep_steps = 0
-            ep_rewards = 0
+            ep_score = 0
             observation = env.reset()
             s = custom_env_object.get_state(observation)
             while not done:
                 a = policy[s]
                 observation_, reward, done, info = env.step(a)
+                eval = custom_env_object.update_evaluation_tuple(i+1, reward, done, eval)
                 ep_steps += 1
-                ep_rewards += reward
-                accumulated_rewards += reward
+                ep_score += reward
+                accumulated_score += reward
                 s_ = custom_env_object.get_state(observation_)
                 observation, s = observation_, s_
-            total_rewards[i] = ep_rewards
-            total_accumulated_rewards[i] = accumulated_rewards
-        return total_accumulated_rewards if return_accumulated_rewards else total_rewards
+            total_scores[i] = ep_score
+            total_accumulated_scores[i] = accumulated_score
+        custom_env_object.analyze_evaluation_tuple(eval, episodes)
+        return total_scores, total_accumulated_scores
 
     @staticmethod
     def watch_trained_agent_play(custom_env_object, Q, action_space_size, episodes=3, is_toy_text=False):
@@ -403,7 +409,7 @@ class Utils:
         for i in range(episodes):
             done = False
             ep_steps = 0
-            ep_rewards = 0
+            ep_score = 0
             observation = env.reset()
             s = custom_env_object.get_state(observation)
 
@@ -419,7 +425,7 @@ class Utils:
                 a = Utils.get_max_action_from_q_table(Q, s, action_space_size)
                 observation_, reward, done, info = env.step(a)
                 ep_steps += 1
-                ep_rewards += reward
+                ep_score += reward
                 s_ = custom_env_object.get_state(observation_)
                 observation, s = observation_, s_
 
@@ -429,7 +435,7 @@ class Utils:
                 if is_toy_text:
                     time.sleep(0.3)
 
-            print('Episode reward:', ep_rewards)
+            print('Episode Score:', ep_score)
             if is_toy_text:
                 time.sleep(3)
                 clear_output(wait=True)
