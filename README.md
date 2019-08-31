@@ -67,22 +67,22 @@ Deep Q-learning, Policy Gradient | Deep Deterministic Policy Gradient
 ### Mountain Car
 
 <p float="left">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/tree/master/gif%20samples/mountain-car_untrained.gif" width="430">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/tree/master/gif%20samples/mountain-car_trained.gif" width="430">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/gif%20samples/mountain-car_untrained.gif" width="400">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/gif%20samples/mountain-car_trained.gif" width="400">
 </p>
 
 ### Cart Pole
 
 <p float="left">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/tree/master/gif%20samples/cart-pole_untrained.gif" width="430">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/tree/master/gif%20samples/cart-pole_trained.gif" width="430">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/gif%20samples/cart-pole_untrained.gif" width="400">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/gif%20samples/cart-pole_trained.gif" width="400">
 </p>
 
 ### Acrobot
 
 <p float="left">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/tree/master/gif%20samples/acrobot_untrained.gif" width="430">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/tree/master/gif%20samples/acrobot_trained.gif" width="430">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/gif%20samples/acrobot_untrained.gif" width="400">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/gif%20samples/acrobot_trained.gif" width="400">
 </p>
 
 ## Dependencies
