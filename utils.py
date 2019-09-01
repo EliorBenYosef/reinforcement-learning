@@ -17,23 +17,23 @@ LIBRARY_KERAS = 2
 class Utils:
 
     @staticmethod
-    def get_running_avg(rewards, window):
-        episodes = len(rewards)
+    def get_running_avg(scores, window):
+        episodes = len(scores)
 
         x = [i + 1 for i in range(episodes)]
 
         running_avg = np.empty(episodes)
         for t in range(episodes):
-            running_avg[t] = np.mean(rewards[max(0, t - window):(t + 1)])
+            running_avg[t] = np.mean(scores[max(0, t - window):(t + 1)])
 
         return x, running_avg
 
     @staticmethod
-    def plot_running_average(main_title, rewards, window=100, show=False, file_name=None):
-        plt.title(main_title + ' - Running Average (%d)' % window)
-        plt.ylabel('Total Rewards')
+    def plot_running_average(main_title, scores, window=100, show=False, file_name=None):
+        plt.title(main_title + (' - Score' if window == 0 else ' - Running Score Avg. (%d)' % window))
+        plt.ylabel('Total Scores')
         plt.xlabel('Episode')
-        plt.plot(*Utils.get_running_avg(rewards, window))
+        plt.plot(*Utils.get_running_avg(scores, window))
         if file_name:
             plt.savefig(file_name + '.png')
         if show:
@@ -53,14 +53,17 @@ class Utils:
 
     @staticmethod
     def plot_running_average_comparison(main_title, scores_list, labels=None, window=100, show=False, file_name=None):
-        plt.title(main_title + ' - Running Average (%d)' % window)
+        plt.figure(figsize=(8.5, 4.5))
+        plt.title(main_title + (' - Score' if window == 0 else ' - Running Score Avg. (%d)' % window))
         plt.ylabel('Total Scores')
         plt.xlabel('Episode')
         colors = ['r--', 'g--', 'b--', 'c--', 'm--', 'y--', 'k--']
         for i, scores in enumerate(scores_list):
             plt.plot(*Utils.get_running_avg(scores, window), colors[i])
         if labels:
-            plt.legend(labels)
+            # plt.legend(labels)
+            plt.legend(labels, bbox_to_anchor=(1.04, 0.5), loc="center left", borderaxespad=0)
+            plt.subplots_adjust(right=0.7)
         if file_name:
             plt.savefig(file_name + '.png')
         if show:
@@ -68,6 +71,7 @@ class Utils:
 
     @staticmethod
     def plot_accumulated_scores_comparison(main_title, scores_list, labels=None, show=False, file_name=None):
+        plt.figure(figsize=(8.5, 4.5))
         plt.title(main_title + ' - Accumulated Scores')
         plt.ylabel('Accumulated Scores')
         plt.xlabel('Episode')
@@ -77,7 +81,9 @@ class Utils:
             x = [i + 1 for i in range(len(scores))]
             plt.plot(x, scores, colors[i])
         if labels:
-            plt.legend(labels)
+            # plt.legend(labels)
+            plt.legend(labels, bbox_to_anchor=(1.04, 0.5), loc="center left", borderaxespad=0)
+            plt.subplots_adjust(right=0.7)
         if file_name:
             plt.savefig(file_name + '.png')
         if show:
@@ -157,10 +163,11 @@ class Utils:
         plt.title(main_title)
         fig = plt.figure()
 
-        ax01 = fig.add_subplot(111, label="Running Average", frame_on=False)
+        label = ' - Score' if window == 0 else ' - Running Score Avg. (%d)' % window
+        ax01 = fig.add_subplot(111, label=label, frame_on=False)
         Utils.plot_running_average_scatter(ax01, total_scores, window)
 
-        ax02 = fig.add_subplot(111, label="Epsilon History")
+        ax02 = fig.add_subplot(111, label='Epsilon History')
         Utils.plot_eps_history(ax02, eps_history)
 
         if file_name:

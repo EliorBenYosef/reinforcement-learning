@@ -6,30 +6,6 @@ from tabular_methods.rl_tabular import TabularMethods
 class AlgorithmsTesting:
 
     @staticmethod
-    def test_td0_policy_evaluation(episodes, print_v_table):
-        # Mountain Car:
-        car_vel_bin_num = 34  # ~100% success rate (32 rarely loses)
-        mountain_car_env = Envs_DSS.MountainCar(Envs_DSS.MountainCar.CAR_VEL, car_vel_bin_num=car_vel_bin_num)
-        mountain_car_model = TabularMethods.TdZeroModel(mountain_car_env, episodes=episodes)
-        # possible actions: backward (0), none (1), forward (2)
-        mountain_car_policy = lambda velocity_state: 0 if velocity_state < (car_vel_bin_num//2) else 2
-        mountain_car_model.perform_td0_policy_evaluation(mountain_car_policy, print_info=print_v_table)
-
-        # Cart Pole:
-        pole_theta_bin_num = 10
-        cart_pole_env = Envs_DSS.CartPole(Envs_DSS.CartPole.POLE_THETA, pole_theta_bin_num=pole_theta_bin_num)
-        cart_pole_model = TabularMethods.TdZeroModel(cart_pole_env, episodes=episodes)
-        # possible actions: left (0), right (1)
-        cart_pole_policy = lambda theta_state: 0 if theta_state < (pole_theta_bin_num//2) else 1
-        cart_pole_model.perform_td0_policy_evaluation(cart_pole_policy, print_info=print_v_table)
-
-        # Frozen Lake:
-        frozen_lake_env = Envs_DSS.FrozenLake()
-        frozen_lake_model = TabularMethods.TdZeroModel(frozen_lake_env, episodes=episodes)
-        frozen_lake_policy = lambda s: frozen_lake_env.env.action_space.sample()  # random policy
-        frozen_lake_model.perform_td0_policy_evaluation(frozen_lake_policy, print_info=print_v_table)
-
-    @staticmethod
     def test_mc_policy_evaluation(episodes, print_v_table):
         # Mountain Car:
         car_vel_bin_num = 34  # ~100% success rate (32 rarely loses)
@@ -52,6 +28,30 @@ class AlgorithmsTesting:
         frozen_lake_model = TabularMethods.MonteCarloModel(frozen_lake_env, episodes=episodes)
         frozen_lake_policy = lambda s: frozen_lake_env.env.action_space.sample()  # random policy
         frozen_lake_model.perform_MC_policy_evaluation(frozen_lake_policy, print_info=print_v_table)
+
+    @staticmethod
+    def test_td0_policy_evaluation(episodes, print_v_table):
+        # Mountain Car:
+        car_vel_bin_num = 34  # ~100% success rate (32 rarely loses)
+        mountain_car_env = Envs_DSS.MountainCar(Envs_DSS.MountainCar.CAR_VEL, car_vel_bin_num=car_vel_bin_num)
+        mountain_car_model = TabularMethods.TdZeroModel(mountain_car_env, episodes=episodes)
+        # possible actions: backward (0), none (1), forward (2)
+        mountain_car_policy = lambda velocity_state: 0 if velocity_state < (car_vel_bin_num//2) else 2
+        mountain_car_model.perform_td0_policy_evaluation(mountain_car_policy, print_info=print_v_table)
+
+        # Cart Pole:
+        pole_theta_bin_num = 10
+        cart_pole_env = Envs_DSS.CartPole(Envs_DSS.CartPole.POLE_THETA, pole_theta_bin_num=pole_theta_bin_num)
+        cart_pole_model = TabularMethods.TdZeroModel(cart_pole_env, episodes=episodes)
+        # possible actions: left (0), right (1)
+        cart_pole_policy = lambda theta_state: 0 if theta_state < (pole_theta_bin_num//2) else 1
+        cart_pole_model.perform_td0_policy_evaluation(cart_pole_policy, print_info=print_v_table)
+
+        # Frozen Lake:
+        frozen_lake_env = Envs_DSS.FrozenLake()
+        frozen_lake_model = TabularMethods.TdZeroModel(frozen_lake_env, episodes=episodes)
+        frozen_lake_policy = lambda s: frozen_lake_env.env.action_space.sample()  # random policy
+        frozen_lake_model.perform_td0_policy_evaluation(frozen_lake_policy, print_info=print_v_table)
 
     @staticmethod
     def test_mc_non_exploring_starts_control(episodes, print_q_table_and_policy):
@@ -259,6 +259,9 @@ class EnvironmentsTesting:
                          policy_test_method=Utils.test_policy,
                          show_scores=True, show_accumulated_scores=True):
 
+        labels = ['MC non-exploring starts', 'off-policy MC',
+                  'SARSA', 'Expected SARSA', 'Q-learning', 'Double Q-learning']
+
         mc_model_01 = TabularMethods.MonteCarloModel(env, episodes=episodes, alpha=alpha, eps_max=eps_max, eps_dec=eps_dec)
         policy_mc_01, scores_mc_01, accumulated_scores_mc_01 = mc_model_01.perform_MC_non_exploring_starts_control()
 
@@ -280,20 +283,17 @@ class EnvironmentsTesting:
         for s in Q1_table_d_q_l:
             Q_table_d_q_l[s] = (Q1_table_d_q_l[s] + Q2_table_d_q_l[s]) / 2
 
-        labels = ['MC non-exploring starts', 'off-policy MC',
-                  'SARSA', 'Expected SARSA', 'Q-learning', 'Double Q-learning']
-
         if show_scores:
             scores_list = [scores_mc_01, scores_mc_02, scores_sarsa, scores_e_sarsa, scores_q_l, scores_d_q_l]
-            Utils.plot_running_average_comparison(env.name, scores_list, labels, window=episodes//100,
-                                                  file_name=env.file_name + '-01')
+            Utils.plot_running_average_comparison(env.name + ' - Training', scores_list, labels,  # window=episodes//100,
+                                                  file_name=env.file_name + '-score-training')
 
         if show_accumulated_scores:
             accumulated_scores_list = [accumulated_scores_mc_01, accumulated_scores_mc_02,
                                        accumulated_scores_sarsa, accumulated_scores_e_sarsa,
                                        accumulated_scores_q_l, accumulated_scores_d_q_l]
-            Utils.plot_accumulated_scores_comparison(env.name, accumulated_scores_list, labels,
-                                                     file_name=env.file_name + '-02')
+            Utils.plot_accumulated_scores_comparison(env.name + ' - Training', accumulated_scores_list, labels,
+                                                     file_name=env.file_name + '-accumulated-score-training')
 
         scores_mc_01, accumulated_scores_mc_01 = policy_test_method(env, policy_mc_01)
         scores_mc_02, accumulated_scores_mc_02 = policy_test_method(env, policy_mc_02)
@@ -304,15 +304,15 @@ class EnvironmentsTesting:
 
         if show_scores:
             scores_list = [scores_mc_01, scores_mc_02, scores_sarsa, scores_e_sarsa, scores_q_l, scores_d_q_l]
-            Utils.plot_running_average_comparison(env.name, scores_list, labels, window=episodes//100,
-                                                  file_name=env.file_name + '-03')
+            Utils.plot_running_average_comparison(env.name + ' - Test', scores_list, labels,  # window=episodes//100,
+                                                  file_name=env.file_name + '-scores-test')
 
         if show_accumulated_scores:
             accumulated_scores_list = [accumulated_scores_mc_01, accumulated_scores_mc_02,
                                        accumulated_scores_sarsa, accumulated_scores_e_sarsa,
                                        accumulated_scores_q_l, accumulated_scores_d_q_l]
-            Utils.plot_accumulated_scores_comparison(env.name, accumulated_scores_list, labels,
-                                                     file_name=env.file_name + '-04')
+            Utils.plot_accumulated_scores_comparison(env.name + ' - Test', accumulated_scores_list, labels,
+                                                     file_name=env.file_name + '-accumulated-scores-test')
 
 
 def policy_evaluation_algorithms_test():
@@ -330,15 +330,15 @@ def learning_algorithms_test():
 
 
 def environments_test():
-    EnvironmentsTesting.test_environment(Envs_DSS.FrozenLake(), episodes=100000, eps_max=0.1, eps_dec=None)
-    EnvironmentsTesting.test_environment(Envs_DSS.Blackjack(), episodes=100000, eps_max=0.05, eps_dec=1e-7)
-    EnvironmentsTesting.test_environment(Envs_DSS.Taxi(), episodes=10000, alpha=0.4)
-    EnvironmentsTesting.test_environment(Envs_DSS.MountainCar(), episodes=50000)
+    # EnvironmentsTesting.test_environment(Envs_DSS.FrozenLake(), episodes=100000, eps_max=0.1, eps_dec=None)
+    # EnvironmentsTesting.test_environment(Envs_DSS.Blackjack(), episodes=100000, eps_max=0.05, eps_dec=1e-7)
+    # EnvironmentsTesting.test_environment(Envs_DSS.Taxi(), episodes=10000, alpha=0.4)
+    # EnvironmentsTesting.test_environment(Envs_DSS.MountainCar(), episodes=50000)
     EnvironmentsTesting.test_environment(Envs_DSS.CartPole(), episodes=50000)
-    EnvironmentsTesting.test_environment(Envs_DSS.Acrobot(), episodes=50000)
+    # EnvironmentsTesting.test_environment(Envs_DSS.Acrobot(), episodes=50000)
 
 
 if __name__ == '__main__':
-    policy_evaluation_algorithms_test()
-    learning_algorithms_test()
+    # policy_evaluation_algorithms_test()
+    # learning_algorithms_test()
     environments_test()
