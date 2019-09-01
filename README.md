@@ -10,7 +10,7 @@ This is a **modular** implementation, meaning: you can plug-and-play **almost an
 
 ### How to use
 
-Simply run the testing file ([rl_tabular_testing.py](../blob/master/tabular_methods/rl_tabular_testing.py)).
+Simply run the testing file ([rl_tabular_testing.py](../master/tabular_methods/rl_tabular_testing.py)).
 
 There are 3 main operations (comment out what you don't need):
 * `policy_evaluation_algorithms_test()` - performs either Monte Carlo or TD-0 policy evaluation.
@@ -33,7 +33,7 @@ of both: running average of episode scores, and accumulated scores.
   <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/samples/cart-pole-v0-accumulated-scores-test.png" width="400">
 </p>
 
-### Implemented Algorithms ([rl_tabular.py](../blob/master/tabular_methods/rl_tabular.py))
+### Implemented Algorithms ([rl_tabular.py](../master/tabular_methods/rl_tabular.py))
 
 * **Monte Carlo**
   * MC policy evaluation
@@ -48,7 +48,7 @@ of both: running average of episode scores, and accumulated scores.
   * **Q-learning**
   * **Double Q-learning**
 
-### Implemented Environments ([envs_dss.py](../blob/master/tabular_methods/envs_dss.py))
+### Implemented Environments ([envs_dss.py](../master/tabular_methods/envs_dss.py))
 
 *(environments with **Discrete\Discretized State Space**)*
 
@@ -66,7 +66,7 @@ of both: running average of episode scores, and accumulated scores.
 
 ### How to use
 
-Simply run the testing file ([rl_deep_testing.py](../blob/master/deep_reinforcement_learning/rl_deep_testing.py)).
+Simply run the testing file ([rl_deep_testing.py](../master/deep_reinforcement_learning/rl_deep_testing.py)).
 
 There are 4 main operation (comment out what you don't need):
 * `DQL.play()` - performs the **Deep Q-learning** algorithm on one of the environments: CartPole (0), Breakout (1), SpaceInvaders (2).
@@ -76,7 +76,7 @@ There are 4 main operation (comment out what you don't need):
 
 Most of the cases, you can select the desired library type (`lib_type`) implementation: `LIBRARY_TF`, `LIBRARY_TORCH`, `LIBRARY_KERAS`. 
 
-### Implemented Algorithms ([rl_deep.py](../blob/master/deep_reinforcement_learning/rl_deep.py))
+### Implemented Algorithms ([rl_deep.py](../master/deep_reinforcement_learning/rl_deep.py))
 
 * **Deep Q-learning (DQL)**
 * **Policy Gradient (PG)**
@@ -93,7 +93,7 @@ Deep Q-learning, Policy Gradient | Deep Deterministic Policy Gradient
 
 * or because I haven't completed the code, meaning: writing for **every library implementation** (tensorflow, torch, keras) or for **every input type** (observation vector, stacked frames).
 
-### Implemented Environments ([envs.py](../blob/master/deep_reinforcement_learning/envs.py))
+### Implemented Environments ([envs.py](../master/deep_reinforcement_learning/envs.py))
 *(environments with **Continuous State Space**)*
 
 . | Discrete Action Space | Continuous Action Space
