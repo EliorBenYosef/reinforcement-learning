@@ -330,15 +330,15 @@ def learning_algorithms_test():
 
 
 def environments_test():
-    # EnvironmentsTesting.test_environment(Envs_DSS.FrozenLake(), episodes=100000, eps_max=0.1, eps_dec=None)
-    # EnvironmentsTesting.test_environment(Envs_DSS.Blackjack(), episodes=100000, eps_max=0.05, eps_dec=1e-7)
-    # EnvironmentsTesting.test_environment(Envs_DSS.Taxi(), episodes=10000, alpha=0.4)
-    # EnvironmentsTesting.test_environment(Envs_DSS.MountainCar(), episodes=50000)
+    EnvironmentsTesting.test_environment(Envs_DSS.FrozenLake(), episodes=100000, eps_max=0.1, eps_dec=None)
+    EnvironmentsTesting.test_environment(Envs_DSS.Blackjack(), episodes=100000, eps_max=0.05, eps_dec=1e-7)
+    EnvironmentsTesting.test_environment(Envs_DSS.Taxi(), episodes=10000, alpha=0.4)
+    EnvironmentsTesting.test_environment(Envs_DSS.MountainCar(), episodes=50000)
     EnvironmentsTesting.test_environment(Envs_DSS.CartPole(), episodes=50000)
-    # EnvironmentsTesting.test_environment(Envs_DSS.Acrobot(), episodes=50000)
+    EnvironmentsTesting.test_environment(Envs_DSS.Acrobot(), episodes=50000)
 
 
 if __name__ == '__main__':
-    # policy_evaluation_algorithms_test()
-    # learning_algorithms_test()
+    policy_evaluation_algorithms_test()
+    learning_algorithms_test()
     environments_test()
