@@ -26,7 +26,7 @@ of both: running average of episode scores, and accumulated scores.
 
 <p float="left">
   <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/samples/cart-pole-v0-scores-test.png" width="400">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/samples/cart-cart-pole-v0-accumulated-scores-test.png" width="400">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/samples/cart-pole-v0-accumulated-scores-test.png" width="400">
 </p>
 
 ### Implemented Algorithms ([rl_tabular.py](../blob/master/tabular_methods/rl_tabular.py))
