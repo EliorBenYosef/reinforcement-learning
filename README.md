@@ -20,6 +20,10 @@ Training & Test results come in the forms of graphs and statistics (for some of 
 of both: running average of episode scores, and accumulated scores.
 
 <p float="left">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/samples/algorithms_comparison_legend.png" width="400">
+</p>
+
+<p float="left">
   <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/samples/cart-pole-v0-score-training.png" width="400">
   <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/samples/cart-pole-v0-accumulated-score-training.png" width="400">
 </p>
