@@ -31,7 +31,7 @@ class Utils:
     @staticmethod
     def plot_running_average(main_title, scores, window=100, show=False, file_name=None):
         plt.title(main_title + (' - Score' if window == 0 else ' - Running Score Avg. (%d)' % window))
-        plt.ylabel('Total Scores')
+        plt.ylabel('Score')
         plt.xlabel('Episode')
         plt.plot(*Utils.get_running_avg(scores, window))
         if file_name:
@@ -41,8 +41,8 @@ class Utils:
 
     @staticmethod
     def plot_accumulated_scores(main_title, scores, show=False, file_name=None):
-        plt.title(main_title + ' - Accumulated Scores')
-        plt.ylabel('Accumulated Scores')
+        plt.title(main_title + ' - Accumulated Score')
+        plt.ylabel('Accumulated Score')
         plt.xlabel('Episode')
         x = [i + 1 for i in range(len(scores))]
         plt.plot(x, scores)
@@ -55,7 +55,7 @@ class Utils:
     def plot_running_average_comparison(main_title, scores_list, labels=None, window=100, show=False, file_name=None):
         plt.figure(figsize=(8.5, 4.5))
         plt.title(main_title + (' - Score' if window == 0 else ' - Running Score Avg. (%d)' % window))
-        plt.ylabel('Total Scores')
+        plt.ylabel('Score')
         plt.xlabel('Episode')
         colors = ['r--', 'g--', 'b--', 'c--', 'm--', 'y--', 'k--']
         for i, scores in enumerate(scores_list):
@@ -72,8 +72,8 @@ class Utils:
     @staticmethod
     def plot_accumulated_scores_comparison(main_title, scores_list, labels=None, show=False, file_name=None):
         plt.figure(figsize=(8.5, 4.5))
-        plt.title(main_title + ' - Accumulated Scores')
-        plt.ylabel('Accumulated Scores')
+        plt.title(main_title + ' - Accumulated Score')
+        plt.ylabel('Accumulated Score')
         plt.xlabel('Episode')
         colors = ['r--', 'g--', 'b--', 'c--', 'm--', 'y--', 'k--']
 
@@ -140,7 +140,7 @@ class Utils:
         ax.axes.get_xaxis().set_visible(False)
         ax.yaxis.tick_right()
         # ax.set_xlabel('x label 2', color="C1")
-        ax.set_ylabel('Total Scores', color="C1")
+        ax.set_ylabel('Score', color="C1")
         # ax.xaxis.set_label_position('top')
         ax.yaxis.set_label_position('right')
         # ax.tick_params(axis='x', colors="C1")
