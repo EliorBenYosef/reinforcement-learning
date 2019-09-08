@@ -66,22 +66,25 @@ of both: running average of episode scores, and accumulated scores.
 
 ### How to use
 
-Simply run the testing file ([rl_deep_testing.py](../master/deep_reinforcement_learning/rl_deep_testing.py)).
+Simply run the desired algorithm file to perform it on the desired environment:
 
-There are 4 main operation (comment out what you don't need):
-* `DQL.play()` - performs the **Deep Q-learning** algorithm on one of the environments: CartPole (0), Breakout (1), SpaceInvaders (2).
-* `PG.play()` - performs the **Policy Gradient** algorithm on one of the environments: CartPole (0), Breakout (1), SpaceInvaders (2).
-* `AC.play()` - performs the **Actor-Critic** algorithm on one of the environments: CartPole (0), Pendulum (1), MountainCarContinuous (2).
-* `DDPG.play()` - performs the **Deep Deterministic Policy Gradient** algorithm on one of the environments: Pendulum (0), MountainCarContinuous (1).
+* [deep_q_learning.py](../master/deep_reinforcement_learning/algorithms/deep_q_learning.py) - 
+example environments: CartPole (0), Breakout (1), SpaceInvaders (2).
+* [policy_gradient.py](../master/deep_reinforcement_learning/algorithms/policy_gradient.py) - 
+example environments: CartPole (0), Breakout (1), SpaceInvaders (2).
+* [actor_critic.py](../master/deep_reinforcement_learning/algorithms/actor_critic.py) - 
+example environments: CartPole (0), Pendulum (1), MountainCarContinuous (2).
+* [deep_deterministic_policy_gradient.py](../master/deep_reinforcement_learning/algorithms/deep_deterministic_policy_gradient.py) - 
+example environments: Pendulum (0), MountainCarContinuous (1).
 
 Most of the cases, you can select the desired library type (`lib_type`) implementation: `LIBRARY_TF`, `LIBRARY_TORCH`, `LIBRARY_KERAS`. 
 
-### Implemented Algorithms ([rl_deep.py](../master/deep_reinforcement_learning/rl_deep.py))
+### Implemented Algorithms
 
-* **Deep Q-learning (DQL)**
-* **Policy Gradient (PG)**
-* **Actor-Critic (AC)**
-* **Deep Deterministic Policy Gradient (DDPG)**
+* **[Deep Q-learning](../master/deep_reinforcement_learning/algorithms/deep_q_learning.py) (DQL)**
+* **[Policy Gradient](../master/deep_reinforcement_learning/algorithms/policy_gradient.py) (PG)**
+* **[Actor-Critic](../master/deep_reinforcement_learning/algorithms/actor_critic.py) (AC)**
+* **[Deep Deterministic Policy Gradient](../master/deep_reinforcement_learning/algorithms/deep_deterministic_policy_gradient.py) (DDPG)**
 
 Note that some some algorithms have restrictions.
 
