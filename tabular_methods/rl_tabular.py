@@ -1,23 +1,13 @@
+from numpy.random import seed
+seed(28)
+
 from gym import wrappers
 import numpy as np
-import pickle
 
 from utils import Utils
 
 
 class TabularMethods:
-
-    @staticmethod
-    def pickle_in(pickle_file_name):
-        pickle_in = open(pickle_file_name + '.pkl', 'rb')
-        Q = pickle.load(pickle_in)
-        return Q
-
-    @staticmethod
-    def pickle_out(Q, pickle_file_name):
-        f = open(pickle_file_name + '.pkl', "wb")
-        pickle.dump(Q, f)
-        f.close()
 
     @staticmethod
     def init_v(states):
@@ -30,7 +20,7 @@ class TabularMethods:
     @staticmethod
     def init_q(states, action_space_size, pickle_file_name, pickle):
         if pickle:
-            Q = TabularMethods.pickle_in(pickle_file_name)
+            Q = Utils.pickle_load(pickle_file_name)
 
         else:
             # if Q is a numpy.ndarray, options:
@@ -621,7 +611,7 @@ class TabularMethods:
             print('\n', 'Game Ended', '\n')
 
             if pickle:
-                TabularMethods.pickle_out(Q, self.custom_env_object.file_name)
+                Utils.pickle_save(Q, self.custom_env_object.file_name + '-q-table')
 
             return Q, self.totalScores, self.totalAccumulatedScores
 
@@ -682,7 +672,7 @@ class TabularMethods:
             print('\n', 'Game Ended', '\n')
 
             if pickle:
-                TabularMethods.pickle_out(Q, self.custom_env_object.file_name)
+                Utils.pickle_save(Q, self.custom_env_object.file_name + '-q-table')
 
             return Q, self.totalScores, self.totalAccumulatedScores
 
@@ -744,7 +734,7 @@ class TabularMethods:
             print('\n', 'Game Ended', '\n')
 
             if pickle:
-                TabularMethods.pickle_out(Q, self.custom_env_object.file_name)
+                Utils.pickle_save(Q, self.custom_env_object.file_name + '-q-table')
 
             return Q, self.totalScores, self.totalAccumulatedScores
 

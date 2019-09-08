@@ -48,6 +48,7 @@ class Envs:
                 self.file_name = 'cart-pole-v1'
                 self.env = gym.make('CartPole-v1')
                 self.GAMMA = 0.99
+                self.EPS_MIN = None
                 self.input_type = Envs.INPUT_TYPE_OBSERVATION_VECTOR
                 self.input_dims = [4]   # Box(4,)
                 self.is_discrete_action_space = True
@@ -64,6 +65,7 @@ class Envs:
                 self.file_name = 'pendulum-v0'
                 self.env = gym.make('Pendulum-v0')
                 self.GAMMA = 0.99
+                self.EPS_MIN = None
                 self.input_type = Envs.INPUT_TYPE_OBSERVATION_VECTOR
                 self.input_dims = [3]   # Box(3,)
                 self.is_discrete_action_space = False
@@ -80,6 +82,7 @@ class Envs:
                 self.file_name = 'mountain-car-continuous-v0'
                 self.env = gym.make('MountainCarContinuous-v0')
                 self.GAMMA = 0.99
+                self.EPS_MIN = None
                 self.input_type = Envs.INPUT_TYPE_OBSERVATION_VECTOR
                 self.input_dims = [2]   # Box(2,)
                 self.is_discrete_action_space = False
@@ -100,6 +103,7 @@ class Envs:
                 self.file_name = 'lunar-lander-v2'
                 self.env = gym.make('LunarLander-v2')
                 self.GAMMA = 0.99
+                self.EPS_MIN = None
                 self.input_type = Envs.INPUT_TYPE_OBSERVATION_VECTOR
                 self.input_dims = [8]   # Box(8,)
                 self.is_discrete_action_space = True
@@ -118,6 +122,7 @@ class Envs:
                 self.file_name = 'lunar-lander-continuous-v2'
                 self.env = gym.make('LunarLanderContinuous-v2')
                 self.GAMMA = 0.99
+                self.EPS_MIN = None
                 self.input_type = Envs.INPUT_TYPE_OBSERVATION_VECTOR
                 self.input_dims = [8]   # Box(8,)
                 self.is_discrete_action_space = False
@@ -151,6 +156,7 @@ class Envs:
                 self.file_name = 'bipedal-walker-v2'
                 self.env = gym.make('BipedalWalker-v2')
                 self.GAMMA = 0.99
+                self.EPS_MIN = None
                 self.input_type = Envs.INPUT_TYPE_OBSERVATION_VECTOR
                 self.input_dims = [24]      # Box(24,)
                 self.is_discrete_action_space = False
@@ -204,6 +210,7 @@ class Envs:
                 self.file_name = 'breakout-v0'
                 self.env = gym.make('Breakout-v0')
                 self.GAMMA = 0.99
+                self.EPS_MIN = None
                 self.input_type = Envs.INPUT_TYPE_STACKED_FRAMES
                 self.image_channels = Envs.Atari.IMAGE_CHANNELS_GRAYSCALE
                 self.relevant_screen_size = (180, 160)
@@ -236,6 +243,7 @@ class Envs:
                 self.file_name = 'space-invaders-v0'
                 self.env = gym.make('SpaceInvaders-v0')
                 self.GAMMA = 0.95  # 0.9 in PG tf.
+                self.EPS_MIN = None
                 self.input_type = Envs.INPUT_TYPE_STACKED_FRAMES
                 self.image_channels = Envs.Atari.IMAGE_CHANNELS_GRAYSCALE
                 self.relevant_screen_size = (185, 95)

@@ -2,6 +2,7 @@ import os
 
 from IPython.display import clear_output
 import time
+import pickle
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -237,24 +238,9 @@ class Utils:
     ##############################################
 
     @staticmethod
-    def init_seeds(lib_type, env, env_seed, np_seed, tf_seed):
-        if lib_type == LIBRARY_TF:
-            # use environment variables, to specify which GPU should models run on, in tensorflow.
-            # gets the graphics cards' bus ids from the motherboards, and lets the DEVICE_ORDER know what it is.
-            os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-            # puts it on first GPU, with respect to the previous order.
-            os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-
-            tf.set_random_seed(tf_seed)
-
-        # set the numpy random number generator seed, to improve reproducibility
-        #   (because this is an inherently probabilistic model).
-        # not seeding it --> uses the system clock as a seed --> different random seeds every run.
-        np.random.seed(np_seed)
-
-        env.seed(env_seed)
-
-    ##############################################
+    def tf_set_device():
+        os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+        os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
     @staticmethod
     def get_torch_device_according_to_device_type(device_type):
@@ -449,3 +435,15 @@ class Utils:
 
         env.close()
 
+    ##############################################
+
+    @staticmethod
+    def pickle_load(file_name):
+        with open(file_name + '.pkl', 'rb') as file:  # .pickle  # rb = read binary
+            var = pickle.load(file)  # var == [X_train, y_train]
+        return var
+
+    @staticmethod
+    def pickle_save(var, file_name):
+        with open(file_name + '.pkl', 'wb') as file:  # .pickle  # wb = write binary
+            pickle.dump(var, file)  # var == [X_train, y_train]
