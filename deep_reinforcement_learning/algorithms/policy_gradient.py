@@ -17,6 +17,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.optim.rmsprop as optim_rmsprop
+import torch.optim.adagrad as optim_adagrad
+import torch.optim.adadelta as optim_adadelta
 
 import keras.models as models
 import keras.layers as layers
@@ -114,8 +116,12 @@ class DNN(object):
                     loss = tf.reduce_mean(loss)
 
                 if self.dnn.optimizer_type == utils.OPTIMIZER_SGD:
-                    optimizer = tf.train.MomentumOptimizer(self.dnn.ALPHA, 0.9)  # SGD + momentum
+                    optimizer = tf.train.MomentumOptimizer(self.dnn.ALPHA, momentum=0.9)  # SGD + momentum
                     # optimizer = tf.train.GradientDescentOptimizer(self.dqn.ALPHA)  # SGD?
+                elif self.dnn.optimizer_type == utils.OPTIMIZER_Adagrad:
+                    optimizer = tf.train.AdagradOptimizer(self.dnn.ALPHA)
+                elif self.dnn.optimizer_type == utils.OPTIMIZER_Adadelta:
+                    optimizer = tf.train.AdadeltaOptimizer(self.dnn.ALPHA)
                 elif self.dnn.optimizer_type == utils.OPTIMIZER_RMSprop:
                     optimizer = tf.train.RMSPropOptimizer(self.dnn.ALPHA, decay=0.99, momentum=0.0, epsilon=1e-6)
                 else:  # self.dqn.optimizer_type == utils.OPTIMIZER_Adam
@@ -165,6 +171,10 @@ class DNN(object):
 
             if self.dnn.optimizer_type == utils.OPTIMIZER_SGD:
                 self.optimizer = optim.SGD(self.parameters(), lr=self.dnn.ALPHA, momentum=0.9)
+            elif self.dnn.optimizer_type == utils.OPTIMIZER_Adagrad:
+                self.optimizer = optim_adagrad.Adagrad(self.parameters(), lr=self.dnn.ALPHA)
+            elif self.dnn.optimizer_type == utils.OPTIMIZER_Adadelta:
+                self.optimizer = optim_adadelta.Adadelta(self.parameters(), lr=self.dnn.ALPHA)
             elif self.dnn.optimizer_type == utils.OPTIMIZER_RMSprop:
                 self.optimizer = optim_rmsprop.RMSprop(self.parameters(), lr=self.dnn.ALPHA)
             else:  # self.dnn.optimizer_type == utils.OPTIMIZER_Adam

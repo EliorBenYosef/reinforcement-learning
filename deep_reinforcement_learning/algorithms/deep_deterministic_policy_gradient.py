@@ -17,6 +17,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.optim.rmsprop as optim_rmsprop
+import torch.optim.adagrad as optim_adagrad
+import torch.optim.adadelta as optim_adadelta
 
 import keras.models as models
 import keras.layers as layers
@@ -71,8 +73,12 @@ class DNN:
                     map(lambda x: tf.div(x, self.ac.memory_batch_size), self.mu_gradients))
 
                 if self.ac.optimizer_type == utils.OPTIMIZER_SGD:
-                    optimizer = tf.train.MomentumOptimizer(self.ac.lr, 0.9)  # SGD + momentum
+                    optimizer = tf.train.MomentumOptimizer(self.ac.lr, momentum=0.9)  # SGD + momentum
                     # optimizer = tf.train.GradientDescentOptimizer(self.dqn.ALPHA)  # SGD?
+                elif self.ac.optimizer_type == utils.OPTIMIZER_Adagrad:
+                    optimizer = tf.train.AdagradOptimizer(self.ac.lr)
+                elif self.ac.optimizer_type == utils.OPTIMIZER_Adadelta:
+                    optimizer = tf.train.AdadeltaOptimizer(self.ac.lr)
                 elif self.ac.optimizer_type == utils.OPTIMIZER_RMSprop:
                     optimizer = tf.train.RMSPropOptimizer(self.ac.lr)
                 else:  # self.ac.optimizer_type == utils.OPTIMIZER_Adam
@@ -127,8 +133,12 @@ class DNN:
                 self.params = tf.trainable_variables(scope=self.ac.name)
 
                 if self.ac.optimizer_type == utils.OPTIMIZER_SGD:
-                    optimizer = tf.train.MomentumOptimizer(self.ac.lr, 0.9)  # SGD + momentum
+                    optimizer = tf.train.MomentumOptimizer(self.ac.lr, momentum=0.9)  # SGD + momentum
                     # optimizer = tf.train.GradientDescentOptimizer(self.dqn.ALPHA)  # SGD?
+                elif self.ac.optimizer_type == utils.OPTIMIZER_Adagrad:
+                    optimizer = tf.train.AdagradOptimizer(self.ac.lr)
+                elif self.ac.optimizer_type == utils.OPTIMIZER_Adadelta:
+                    optimizer = tf.train.AdadeltaOptimizer(self.ac.lr)
                 elif self.ac.optimizer_type == utils.OPTIMIZER_RMSprop:
                     optimizer = tf.train.RMSPropOptimizer(self.ac.lr)
                 else:  # self.ac.optimizer_type == utils.OPTIMIZER_Adam
@@ -212,6 +222,10 @@ class DNN:
 
             if optimizer_type == utils.OPTIMIZER_SGD:
                 self.optimizer = optim.SGD(self.parameters(), lr=lr, momentum=0.9)
+            elif optimizer_type == utils.OPTIMIZER_Adagrad:
+                self.optimizer = optim_adagrad.Adagrad(self.parameters(), lr=lr)
+            elif optimizer_type == utils.OPTIMIZER_Adadelta:
+                self.optimizer = optim_adadelta.Adadelta(self.parameters(), lr=lr)
             elif optimizer_type == utils.OPTIMIZER_RMSprop:
                 self.optimizer = optim_rmsprop.RMSprop(self.parameters(), lr=lr)
             else:  # optimizer_type == utils.OPTIMIZER_Adam

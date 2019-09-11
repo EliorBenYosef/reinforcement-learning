@@ -18,6 +18,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.optim.rmsprop as optim_rmsprop
+import torch.optim.adagrad as optim_adagrad
+import torch.optim.adadelta as optim_adadelta
 
 import keras.models as models
 import keras.layers as layers
@@ -105,8 +107,12 @@ class DQN(object):
                 self.loss = tf.reduce_mean(tf.square(self.q - self.q_target))  # self.q - self.q_target
 
                 if self.dqn.optimizer_type == utils.OPTIMIZER_SGD:
-                    optimizer = tf.train.MomentumOptimizer(self.dqn.ALPHA, 0.9)  # SGD + momentum
+                    optimizer = tf.train.MomentumOptimizer(self.dqn.ALPHA, momentum=0.9)  # SGD + momentum
                     # optimizer = tf.train.GradientDescentOptimizer(self.dqn.ALPHA)  # SGD?
+                elif self.dqn.optimizer_type == utils.OPTIMIZER_Adagrad:
+                    optimizer = tf.train.AdagradOptimizer(self.dqn.ALPHA)
+                elif self.dqn.optimizer_type == utils.OPTIMIZER_Adadelta:
+                    optimizer = tf.train.AdadeltaOptimizer(self.dqn.ALPHA)
                 elif self.dqn.optimizer_type == utils.OPTIMIZER_RMSprop:
                     optimizer = tf.train.RMSPropOptimizer(self.dqn.ALPHA)
                 else:  # self.dqn.optimizer_type == utils.OPTIMIZER_Adam
@@ -157,6 +163,10 @@ class DQN(object):
 
             if self.dqn.optimizer_type == utils.OPTIMIZER_SGD:
                 self.optimizer = optim.SGD(self.parameters(), lr=self.dqn.ALPHA, momentum=0.9)
+            elif self.dqn.optimizer_type == utils.OPTIMIZER_Adagrad:
+                self.optimizer = optim_adagrad.Adagrad(self.parameters(), lr=self.dqn.ALPHA)
+            elif self.dqn.optimizer_type == utils.OPTIMIZER_Adadelta:
+                self.optimizer = optim_adadelta.Adadelta(self.parameters(), lr=self.dqn.ALPHA)
             elif self.dqn.optimizer_type == utils.OPTIMIZER_RMSprop:
                 self.optimizer = optim_rmsprop.RMSprop(self.parameters(), lr=self.dqn.ALPHA)
             else:  # self.dqn.optimizer_type == utils.OPTIMIZER_Adam
@@ -274,6 +284,10 @@ class DQN(object):
 
             if self.dqn.optimizer_type == utils.OPTIMIZER_SGD:
                 optimizer = optimizers.SGD(lr=self.dqn.ALPHA, momentum=0.9)
+            elif self.dqn.optimizer_type == utils.OPTIMIZER_Adagrad:
+                optimizer = optimizers.Adagrad(lr=self.dqn.ALPHA)
+            elif self.dqn.optimizer_type == utils.OPTIMIZER_Adadelta:
+                optimizer = optimizers.Adadelta(lr=self.dqn.ALPHA)
             elif self.dqn.optimizer_type == utils.OPTIMIZER_RMSprop:
                 optimizer = optimizers.RMSprop(lr=self.dqn.ALPHA)
             else:  # self.dqn.optimizer_type == utils.OPTIMIZER_Adam
