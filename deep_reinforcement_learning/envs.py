@@ -47,16 +47,21 @@ class Envs:
                 self.name = 'Cart Pole'
                 self.file_name = 'cart-pole-v1'
                 self.env = gym.make('CartPole-v1')
-                self.GAMMA = 0.99
-                self.EPS_MIN = None
+
                 self.input_type = Envs.INPUT_TYPE_OBSERVATION_VECTOR
                 self.input_dims = [4]   # Box(4,)
+
                 self.is_discrete_action_space = True
                 self.n_actions = 2      # Discrete(2)
                 self.action_space = [i for i in range(self.n_actions)]
+
+                self.window = 100
+
+                self.GAMMA = 0.99
+                self.EPS_MIN = None
+
                 self.memory_size = 1000000
                 self.memory_batch_size = 64
-                self.window = 100
 
         class Pendulum(BaseEnv):
 
@@ -64,16 +69,21 @@ class Envs:
                 self.name = 'Pendulum'
                 self.file_name = 'pendulum-v0'
                 self.env = gym.make('Pendulum-v0')
-                self.GAMMA = 0.99
-                self.EPS_MIN = None
+
                 self.input_type = Envs.INPUT_TYPE_OBSERVATION_VECTOR
                 self.input_dims = [3]   # Box(3,)
+
                 self.is_discrete_action_space = False
                 self.n_actions = 1      # Box(1,)
                 self.action_boundary = 2
+
+                self.window = Envs.WINDOW_UNKNOWN
+
+                self.GAMMA = 0.99
+                self.EPS_MIN = None
+
                 self.memory_size = 1000000
                 self.memory_batch_size = 64
-                self.window = Envs.WINDOW_UNKNOWN
 
         class MountainCarContinuous(BaseEnv):
 
@@ -81,16 +91,21 @@ class Envs:
                 self.name = 'Mountain Car Continuous'
                 self.file_name = 'mountain-car-continuous-v0'
                 self.env = gym.make('MountainCarContinuous-v0')
-                self.GAMMA = 0.99
-                self.EPS_MIN = None
+
                 self.input_type = Envs.INPUT_TYPE_OBSERVATION_VECTOR
                 self.input_dims = [2]   # Box(2,)
+
                 self.is_discrete_action_space = False
                 self.n_actions = 1      # Box(1,)
                 self.action_boundary = 1
+
+                self.window = Envs.WINDOW_UNKNOWN
+
+                self.GAMMA = 0.99
+                self.EPS_MIN = None
+
                 self.memory_size = 1000000
                 self.memory_batch_size = 64
-                self.window = Envs.WINDOW_UNKNOWN
 
     class Box2D:
 
@@ -102,16 +117,21 @@ class Envs:
                 self.name = 'Lunar Lander'
                 self.file_name = 'lunar-lander-v2'
                 self.env = gym.make('LunarLander-v2')
-                self.GAMMA = 0.99
-                self.EPS_MIN = None
+
                 self.input_type = Envs.INPUT_TYPE_OBSERVATION_VECTOR
                 self.input_dims = [8]   # Box(8,)
+
                 self.is_discrete_action_space = True
                 self.n_actions = 4      # Discrete(4)
                 self.action_space = [i for i in range(self.n_actions)]
+
+                self.window = 100
+
+                self.GAMMA = 0.99
+                self.EPS_MIN = None
+
                 self.memory_size = 1000000
                 self.memory_batch_size = 64
-                self.window = 100
 
         class LunarLanderContinuous(BaseEnv):
 
@@ -121,16 +141,21 @@ class Envs:
                 self.name = 'Lunar Lander Continuous'
                 self.file_name = 'lunar-lander-continuous-v2'
                 self.env = gym.make('LunarLanderContinuous-v2')
-                self.GAMMA = 0.99
-                self.EPS_MIN = None
+
                 self.input_type = Envs.INPUT_TYPE_OBSERVATION_VECTOR
                 self.input_dims = [8]   # Box(8,)
+
                 self.is_discrete_action_space = False
                 self.n_actions = 2      # Box(2,)
                 self.action_boundary = [1, 1]
+
+                self.window = 100
+
+                self.GAMMA = 0.99
+                self.EPS_MIN = None
+
                 self.memory_size = 1000000
                 self.memory_batch_size = 64
-                self.window = 100
 
         class BipedalWalker(BaseEnv):
 
@@ -155,16 +180,21 @@ class Envs:
                 self.name = 'Bipedal Walker'
                 self.file_name = 'bipedal-walker-v2'
                 self.env = gym.make('BipedalWalker-v2')
-                self.GAMMA = 0.99
-                self.EPS_MIN = None
+
                 self.input_type = Envs.INPUT_TYPE_OBSERVATION_VECTOR
                 self.input_dims = [24]      # Box(24,)
+
                 self.is_discrete_action_space = False
                 self.n_actions = 4          # Box(4,)
                 self.action_boundary = [1, 1, 1, 1]
+
+                self.window = 100
+
+                self.GAMMA = 0.99
+                self.EPS_MIN = None
+
                 self.memory_size = 1000000
                 self.memory_batch_size = 64
-                self.window = 100
 
     class Atari:
 
@@ -209,18 +239,23 @@ class Envs:
                 self.name = 'Breakout'
                 self.file_name = 'breakout-v0'
                 self.env = gym.make('Breakout-v0')
-                self.GAMMA = 0.99
-                self.EPS_MIN = None
+
                 self.input_type = Envs.INPUT_TYPE_STACKED_FRAMES
                 self.image_channels = Envs.Atari.IMAGE_CHANNELS_GRAYSCALE
                 self.relevant_screen_size = (180, 160)
                 self.input_dims = (*self.relevant_screen_size, Envs.Atari.frames_stack_size)    # Box(210,160,3)
+
                 self.is_discrete_action_space = True
                 self.n_actions = 3                                                              # Discrete(4)
                 self.action_space = [1, 2, 3]
+
+                self.window = 10
+
+                self.GAMMA = 0.99
+                self.EPS_MIN = None
+
                 self.memory_size = 6000  # saving transitions (stacked frames): 6-7K --> ~16Gb RAM, 25K --> ~48Gb RAM
                 self.memory_batch_size = 32
-                self.window = 10
 
             def get_state(self, observation, prev_s):
                 observation_pre_processed = self.preprocess(observation)
@@ -242,18 +277,23 @@ class Envs:
                 self.name = 'Space Invaders'
                 self.file_name = 'space-invaders-v0'
                 self.env = gym.make('SpaceInvaders-v0')
-                self.GAMMA = 0.95  # 0.9 in PG tf.
-                self.EPS_MIN = None
+
                 self.input_type = Envs.INPUT_TYPE_STACKED_FRAMES
                 self.image_channels = Envs.Atari.IMAGE_CHANNELS_GRAYSCALE
                 self.relevant_screen_size = (185, 95)
                 self.input_dims = (*self.relevant_screen_size, Envs.Atari.frames_stack_size)    # Box(210,160,3)
+
                 self.is_discrete_action_space = True
                 self.n_actions = 6                                                              # Discrete(6)
                 self.action_space = [i for i in range(self.n_actions)]
+
+                self.window = 10
+
+                self.GAMMA = 0.95  # 0.9 in PG tf.
+                self.EPS_MIN = None
+
                 self.memory_size = 5000
                 self.memory_batch_size = 32
-                self.window = 10
 
             def get_state(self, observation, prev_s):
                 observation_pre_processed = self.preprocess(observation)

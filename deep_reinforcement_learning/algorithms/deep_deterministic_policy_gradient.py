@@ -22,8 +22,7 @@ import keras.models as models
 import keras.layers as layers
 import keras.optimizers as optimizers
 
-from utils import Utils
-from utils import LIBRARY_KERAS, LIBRARY_TF, LIBRARY_TORCH
+import utils
 from deep_reinforcement_learning.envs import Envs
 from deep_reinforcement_learning.replay_buffer import ReplayBuffer
 
@@ -35,13 +34,15 @@ class DNN:
 
     class AC_DNN_TF(object):
 
-        def __init__(self, custom_env, fc_layers_dims, sess, lr, name):
+        def __init__(self, custom_env, fc_layers_dims, sess, optimizer_type, lr, name):
             self.name = name
-            self.lr = lr
 
             self.input_dims = custom_env.input_dims
             self.fc_layers_dims = fc_layers_dims
             self.n_actions = custom_env.n_actions
+
+            self.optimizer_type = optimizer_type
+            self.lr = lr
 
             # relevant for the Actor only:
             self.memory_batch_size = custom_env.memory_batch_size
@@ -68,8 +69,16 @@ class DNN:
                 self.mu_gradients = tf.gradients(self.mu, self.params, -self.a_grad)
                 self.normalized_mu_gradients = list(
                     map(lambda x: tf.div(x, self.ac.memory_batch_size), self.mu_gradients))
-                self.optimize = tf.train.AdamOptimizer(self.ac.lr).apply_gradients(
-                    zip(self.normalized_mu_gradients, self.params))
+
+                if self.ac.optimizer_type == utils.OPTIMIZER_SGD:
+                    optimizer = tf.train.MomentumOptimizer(self.ac.lr, 0.9)  # SGD + momentum
+                    # optimizer = tf.train.GradientDescentOptimizer(self.dqn.ALPHA)  # SGD?
+                elif self.ac.optimizer_type == utils.OPTIMIZER_RMSprop:
+                    optimizer = tf.train.RMSPropOptimizer(self.ac.lr)
+                else:  # self.ac.optimizer_type == utils.OPTIMIZER_Adam
+                    optimizer = tf.train.AdamOptimizer(self.ac.lr)
+
+                self.optimize = optimizer.apply_gradients(zip(self.normalized_mu_gradients, self.params))  # train_op
 
             def build_network(self):
                 with tf.variable_scope(self.ac.name):
@@ -117,7 +126,15 @@ class DNN:
 
                 self.params = tf.trainable_variables(scope=self.ac.name)
 
-                self.optimize = tf.train.AdamOptimizer(self.ac.lr).minimize(self.loss)  # train_op
+                if self.ac.optimizer_type == utils.OPTIMIZER_SGD:
+                    optimizer = tf.train.MomentumOptimizer(self.ac.lr, 0.9)  # SGD + momentum
+                    # optimizer = tf.train.GradientDescentOptimizer(self.dqn.ALPHA)  # SGD?
+                elif self.ac.optimizer_type == utils.OPTIMIZER_RMSprop:
+                    optimizer = tf.train.RMSPropOptimizer(self.ac.lr)
+                else:  # self.ac.optimizer_type == utils.OPTIMIZER_Adam
+                    optimizer = tf.train.AdamOptimizer(self.ac.lr)
+
+                self.optimize = optimizer.minimize(self.loss)  # train_op
 
                 self.action_gradients = tf.gradients(self.q, self.a)  # a list containing an ndarray of ndarrays
 
@@ -174,12 +191,11 @@ class DNN:
 
     class AC_DNN_Torch(nn.Module):
 
-        def __init__(self, custom_env, fc_layers_dims, lr, name, chkpt_dir, is_actor, device_type='cuda'):
+        def __init__(self, custom_env, fc_layers_dims, optimizer_type, lr, name, chkpt_dir, is_actor, device_type='cuda'):
             super(DNN.AC_DNN_Torch, self).__init__()
 
-            self.name = name
-            self.lr = lr
             self.is_actor = is_actor
+            self.name = name
 
             self.model_file = os.path.join(chkpt_dir, 'ddpg_torch_' + name)
 
@@ -194,9 +210,14 @@ class DNN:
 
             self.build_network()
 
-            self.optimizer = optim.Adam(self.parameters(), lr=lr)
+            if optimizer_type == utils.OPTIMIZER_SGD:
+                self.optimizer = optim.SGD(self.parameters(), lr=lr, momentum=0.9)
+            elif optimizer_type == utils.OPTIMIZER_RMSprop:
+                self.optimizer = optim_rmsprop.RMSprop(self.parameters(), lr=lr)
+            else:  # optimizer_type == utils.OPTIMIZER_Adam
+                self.optimizer = optim.Adam(self.parameters(), lr=lr)
 
-            self.device = Utils.get_torch_device_according_to_device_type(device_type)
+            self.device = utils.get_torch_device_according_to_device_type(device_type)
             self.to(self.device)
 
         def load_model_file(self):
@@ -300,29 +321,29 @@ class AC(object):
 
     class AC_TF(object):
 
-        def __init__(self, custom_env, lr_actor, lr_critic, tau, fc_layers_dims, chkpt_dir, device_type):
+        def __init__(self, custom_env, fc_layers_dims, optimizer_type, lr_actor, lr_critic, tau, chkpt_dir, device_type):
 
             self.GAMMA = 0.99
             self.TAU = tau
 
-            self.sess = Utils.get_tf_session_according_to_device_type(device_type)
+            self.sess = utils.get_tf_session_according_to_device_type(device_type)
 
             #############################
 
             # Networks:
 
             self.actor = DNN.AC_DNN_TF(
-                custom_env, fc_layers_dims, self.sess, lr_actor, 'Actor'
+                custom_env, fc_layers_dims, self.sess, optimizer_type, lr_actor, 'Actor'
             ).create_actor()
             self.target_actor = DNN.AC_DNN_TF(
-                custom_env, fc_layers_dims, self.sess, lr_actor, 'ActorTarget'
+                custom_env, fc_layers_dims, self.sess, optimizer_type, lr_actor, 'ActorTarget'
             ).create_actor()
 
             self.critic = DNN.AC_DNN_TF(
-                custom_env, fc_layers_dims, self.sess, lr_critic, 'Critic'
+                custom_env, fc_layers_dims, self.sess, optimizer_type, lr_critic, 'Critic'
             ).create_critic()
             self.target_critic = DNN.AC_DNN_TF(
-                custom_env, fc_layers_dims, self.sess, lr_critic, 'CriticTarget'
+                custom_env, fc_layers_dims, self.sess, optimizer_type, lr_critic, 'CriticTarget'
             ).create_critic()
 
             #############################
@@ -395,7 +416,7 @@ class AC(object):
 
     class AC_Torch(object):
 
-        def __init__(self, custom_env, lr_actor, lr_critic, tau, fc_layers_dims, chkpt_dir):
+        def __init__(self, custom_env, fc_layers_dims, optimizer_type, lr_actor, lr_critic, tau, chkpt_dir):
 
             self.GAMMA = 0.99
             self.TAU = tau
@@ -405,17 +426,17 @@ class AC(object):
             # Networks:
 
             self.actor = DNN.AC_DNN_Torch(
-                custom_env, fc_layers_dims, lr_actor, 'Actor', chkpt_dir, is_actor=True
+                custom_env, fc_layers_dims, optimizer_type, lr_actor, 'Actor', chkpt_dir, is_actor=True
             )
             self.target_actor = DNN.AC_DNN_Torch(
-                custom_env, fc_layers_dims, lr_actor, 'ActorTarget', chkpt_dir, is_actor=True
+                custom_env, fc_layers_dims, optimizer_type, lr_actor, 'ActorTarget', chkpt_dir, is_actor=True
             )
 
             self.critic = DNN.AC_DNN_Torch(
-                custom_env, fc_layers_dims, lr_critic, 'Critic', chkpt_dir, is_actor=False
+                custom_env, fc_layers_dims, optimizer_type, lr_critic, 'Critic', chkpt_dir, is_actor=False
             )
             self.target_critic = DNN.AC_DNN_Torch(
-                custom_env, fc_layers_dims, lr_critic, 'CriticTarget', chkpt_dir, is_actor=False
+                custom_env, fc_layers_dims, optimizer_type, lr_critic, 'CriticTarget', chkpt_dir, is_actor=False
             )
 
             #############################
@@ -546,31 +567,34 @@ class OUActionNoise(object):
 
 class Agent(object):
 
-    def __init__(self, custom_env, lr_actor=0.0001, lr_critic=0.001, tau=0.001,
-                 fc_layers_dims=(400, 300), memory_batch_size=None, device_type=None, lib_type=LIBRARY_TF):
+    def __init__(self, custom_env, fc_layers_dims=(400, 300),  # paper
+                 optimizer_type=utils.OPTIMIZER_Adam, lr_actor=0.0001, lr_critic=0.001, tau=0.001,  # paper
+                 memory_size=None, memory_batch_size=None,
+                 device_type=None, lib_type=utils.LIBRARY_TF):
 
-        # necessary for filename when saving:
+        self.GAMMA = 0.99  # paper
         self.fc_layers_dims = fc_layers_dims
+
+        self.optimizer_type = optimizer_type
         self.ALPHA = lr_actor
         self.BETA = lr_critic
 
-        self.GAMMA = 0.99
         self.TAU = tau
 
         self.noise = OUActionNoise(mu=np.zeros(custom_env.n_actions), sigma=0.2)
 
-        if memory_batch_size is not None:
-            self.memory_batch_size = memory_batch_size
-        else:
-            self.memory_batch_size = 64 if custom_env.input_type == Envs.INPUT_TYPE_OBSERVATION_VECTOR else 16
-        self.memory = ReplayBuffer(custom_env, lib_type, is_discrete_action_space=False)
+        self.memory_size = memory_size if memory_size is not None else custom_env.memory_size
+        self.memory_batch_size = memory_batch_size if memory_batch_size is not None else (
+            64 if custom_env.input_type == Envs.INPUT_TYPE_OBSERVATION_VECTOR else 16  # paper
+        )
+        self.memory = ReplayBuffer(custom_env, self.memory_size, lib_type, is_discrete_action_space=False)
 
         chkpt_dir = 'tmp/' + custom_env.file_name + '/DDPG/NNs/'
-        if lib_type == LIBRARY_TF:
-            self.ac = AC.AC_TF(custom_env, lr_actor, lr_critic, tau, fc_layers_dims, chkpt_dir,
+        if lib_type == utils.LIBRARY_TF:
+            self.ac = AC.AC_TF(custom_env, fc_layers_dims, optimizer_type, lr_actor, lr_critic, tau, chkpt_dir,
                                     device_type)
         else:
-            self.ac = AC.AC_Torch(custom_env, lr_actor, lr_critic, tau, fc_layers_dims, chkpt_dir)
+            self.ac = AC.AC_Torch(custom_env, fc_layers_dims, optimizer_type, lr_actor, lr_critic, tau, chkpt_dir)
 
     def store_transition(self, s, a, r, s_, is_terminal):
         self.memory.store_transition(s, a, r, s_, is_terminal)
@@ -630,27 +654,28 @@ def train(custom_env, agent, n_episodes, enable_models_saving, save_checkpoint=2
             observation, s = observation_, s_
         scores_history.append(ep_score)
 
-        Utils.print_training_progress(i, ep_score, scores_history, custom_env.window)
+        utils.print_training_progress(i, ep_score, scores_history, custom_env.window)
 
         if enable_models_saving and (i + 1) % save_checkpoint == 0:
             agent.save_models()
 
     print('\n', 'Game Ended', '\n')
 
-    Utils.plot_running_average(
+    utils.plot_running_average(
         custom_env.name, scores_history, window=custom_env.window, show=False,
-        file_name=Utils.get_plot_file_name(custom_env, agent.fc_layers_dims, agent.ALPHA, agent.BETA)
+        file_name=utils.get_plot_file_name(custom_env.file_name, agent, beta=agent.BETA, memory=True)
     )
 
 
-def play(env_type, lib_type=LIBRARY_TF, enable_models_saving=False, load_checkpoint=False):
-    if lib_type == LIBRARY_KERAS:
+def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_checkpoint=False):
+    if lib_type == utils.LIBRARY_KERAS:
         print('\n', "Algorithm currently doesn't work with Keras", '\n')
         return
 
     if env_type == 0:
         custom_env = Envs.ClassicControl.Pendulum()
         fc_layers_dims = (800, 600)
+        optimizer_type = utils.OPTIMIZER_Adam
         alpha = 0.00005
         beta = 0.0005
         n_episodes = 1000
@@ -658,6 +683,7 @@ def play(env_type, lib_type=LIBRARY_TF, enable_models_saving=False, load_checkpo
     # elif env_type == 1:
     # custom_env = Envs.Box2D.BipedalWalker()
     # fc_layers_dims = (400, 300)
+    # optimizer_type = utils.OPTIMIZER_Adam
     # alpha = 0.00005
     # beta = 0.0005
     # n_episodes = 5000
@@ -666,6 +692,7 @@ def play(env_type, lib_type=LIBRARY_TF, enable_models_saving=False, load_checkpo
         # custom_env = Envs.Box2D.LunarLanderContinuous()
         custom_env = Envs.ClassicControl.MountainCarContinuous()
         fc_layers_dims = (400, 300)
+        optimizer_type = utils.OPTIMIZER_Adam
         alpha = 0.000025
         beta = 0.00025
         n_episodes = 1000
@@ -682,11 +709,11 @@ def play(env_type, lib_type=LIBRARY_TF, enable_models_saving=False, load_checkpo
 
     custom_env.env.seed(28)
 
-    if lib_type == LIBRARY_TF:
-        Utils.tf_set_device()
+    if lib_type == utils.LIBRARY_TF:
+        utils.tf_set_device()
 
     agent = Agent(
-        custom_env, alpha, beta, tau, fc_layers_dims,
+        custom_env, fc_layers_dims, optimizer_type, alpha, beta, tau,
         memory_batch_size=custom_env.memory_batch_size, lib_type=lib_type
     )
 
@@ -697,4 +724,4 @@ def play(env_type, lib_type=LIBRARY_TF, enable_models_saving=False, load_checkpo
 
 
 if __name__ == '__main__':
-    play(0, lib_type=LIBRARY_TF)        # Pendulum (0), MountainCarContinuous (1)
+    play(0, lib_type=utils.LIBRARY_TF)        # Pendulum (0), MountainCarContinuous (1)

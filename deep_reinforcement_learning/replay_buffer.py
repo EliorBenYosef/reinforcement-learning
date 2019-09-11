@@ -1,11 +1,11 @@
 import numpy as np
 
-from utils import LIBRARY_KERAS, LIBRARY_TF, LIBRARY_TORCH
+from utils import LIBRARY_TORCH
 
 
 class ReplayBuffer(object):  # aka 'ReplayMemory'
 
-    def __init__(self, custom_env, lib_type, is_discrete_action_space=None):
+    def __init__(self, custom_env, memory_size, lib_type, is_discrete_action_space=None):
 
         self.is_discrete_action_space = is_discrete_action_space if is_discrete_action_space is not None \
             else custom_env.is_discrete_action_space
@@ -14,7 +14,7 @@ class ReplayBuffer(object):  # aka 'ReplayMemory'
         self.action_space = custom_env.action_space if self.is_discrete_action_space else None
         # self.action_boundary = custom_env.action_boundary if not self.is_discrete_action_space else None
 
-        self.memory_size = custom_env.memory_size
+        self.memory_size = memory_size
         self.memory_counter = 0
 
         # init memory:

@@ -4,7 +4,7 @@ seed(28)
 from gym import wrappers
 import numpy as np
 
-from utils import Utils
+import utils
 
 
 class TabularMethods:
@@ -20,7 +20,7 @@ class TabularMethods:
     @staticmethod
     def init_q(states, action_space_size, pickle_file_name, pickle):
         if pickle:
-            Q = Utils.pickle_load(pickle_file_name)
+            Q = utils.pickle_load(pickle_file_name)
 
         else:
             # if Q is a numpy.ndarray, options:
@@ -54,7 +54,7 @@ class TabularMethods:
     @staticmethod
     def eps_greedy_q(Q, s, action_space_size, EPS, env):
         rand = np.random.random()
-        a = Utils.get_max_action_from_q_table(Q, s, action_space_size) \
+        a = utils.get_max_action_from_q_table(Q, s, action_space_size) \
             if rand >= EPS \
             else env.action_space.sample()
         return a
@@ -101,7 +101,7 @@ class TabularMethods:
     class MonteCarloModel:
 
         def __init__(self, custom_env_object, episodes=50000, alpha=0.1, gamma=None,
-                     eps_max=1.0, eps_min=None, eps_dec=None, eps_dec_type=Utils.EPS_DEC_LINEAR):
+                     eps_max=1.0, eps_min=None, eps_dec=None, eps_dec_type=utils.EPS_DEC_LINEAR):
 
             self.custom_env_object = custom_env_object
             self.env = custom_env_object.env
@@ -230,7 +230,7 @@ class TabularMethods:
                 V[s] = np.mean(self.states_returns[s])
 
             if print_info:
-                Utils.print_v(V)
+                utils.print_v(V)
 
             print('\n', 'Game Ended', '\n')
 
@@ -289,7 +289,7 @@ class TabularMethods:
                 if (i + 1) % (self.episodes // 10) == 0:
                     print('episode %d - score: %d, steps: %d' % (i + 1, ep_score, ep_steps))
 
-                self.EPS = Utils.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
+                self.EPS = utils.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
 
                 self.totalSteps[i] = ep_steps
                 self.totalScores[i] = ep_score
@@ -314,11 +314,11 @@ class TabularMethods:
                         # new estimate = old estimate + [sample - old estimate] / N
                         Q[s, a] += (G - Q[s, a]) / states_actions_visited_counter[s, a]
 
-            policy = Utils.get_policy_from_q_table(self.states, Q, self.action_space_size)
+            policy = utils.get_policy_from_q_table(self.states, Q, self.action_space_size)
 
             if print_info:
-                Utils.print_q(Q)
-                Utils.print_policy(Q, policy)
+                utils.print_q(Q)
+                utils.print_policy(Q, policy)
 
             print('\n', 'Game Ended', '\n')
 
@@ -401,7 +401,7 @@ class TabularMethods:
                     C[s, a] += W
                     Q[s, a] += (W / C[s, a]) * (G - Q[s, a])
 
-                    target_policy[s] = Utils.get_max_action_from_q_table(Q, s, self.action_space_size)
+                    target_policy[s] = utils.get_max_action_from_q_table(Q, s, self.action_space_size)
 
                     # taking a sub-optimal action breaks the learning loop
                     #   it only learns from greedy actions - this is a shortcoming of the class of algorithms
@@ -415,11 +415,11 @@ class TabularMethods:
                         prob = self.EPS / len(behavior_policy[s])   # probability of taking a random action.
                     W *= 1 / prob                                   # updating the weight
 
-                self.EPS = Utils.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
+                self.EPS = utils.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
 
             if print_info:
-                Utils.print_q(Q)
-                Utils.print_policy(Q, target_policy)
+                utils.print_q(Q)
+                utils.print_policy(Q, target_policy)
 
             print('\n', 'Game Ended', '\n')
 
@@ -507,7 +507,7 @@ class TabularMethods:
                     self.env.close()
 
             if print_info:
-                Utils.print_v(V)
+                utils.print_v(V)
 
             print('\n', 'Game Ended', '\n')
 
@@ -516,7 +516,7 @@ class TabularMethods:
     class GeneralModel:
 
         def __init__(self, custom_env_object, episodes=50000, alpha=0.1, gamma=None,
-                     eps_max=1.0, eps_min=None, eps_dec=None, eps_dec_type=Utils.EPS_DEC_LINEAR):
+                     eps_max=1.0, eps_min=None, eps_dec=None, eps_dec_type=utils.EPS_DEC_LINEAR):
 
             self.custom_env_object = custom_env_object
             self.env = custom_env_object.env
@@ -599,7 +599,7 @@ class TabularMethods:
                 if (i + 1) % (self.episodes // 10) == 0:
                     print('episode %d - eps: %.2f, score: %d, steps: %d' % (i + 1, self.EPS, ep_score, ep_steps))
 
-                self.EPS = Utils.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
+                self.EPS = utils.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
 
                 self.totalSteps[i] = ep_steps
                 self.totalScores[i] = ep_score
@@ -611,7 +611,7 @@ class TabularMethods:
             print('\n', 'Game Ended', '\n')
 
             if pickle:
-                Utils.pickle_save(Q, self.custom_env_object.file_name + '-q-table')
+                utils.pickle_save(Q, self.custom_env_object.file_name + '-q-table')
 
             return Q, self.totalScores, self.totalAccumulatedScores
 
@@ -660,7 +660,7 @@ class TabularMethods:
                 if (i + 1) % (self.episodes // 10) == 0:
                     print('episode %d - eps: %.2f, score: %d, steps: %d' % (i + 1, self.EPS, ep_score, ep_steps))
 
-                self.EPS = Utils.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
+                self.EPS = utils.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
 
                 self.totalSteps[i] = ep_steps
                 self.totalScores[i] = ep_score
@@ -672,7 +672,7 @@ class TabularMethods:
             print('\n', 'Game Ended', '\n')
 
             if pickle:
-                Utils.pickle_save(Q, self.custom_env_object.file_name + '-q-table')
+                utils.pickle_save(Q, self.custom_env_object.file_name + '-q-table')
 
             return Q, self.totalScores, self.totalAccumulatedScores
 
@@ -710,7 +710,7 @@ class TabularMethods:
                     accumulated_scores += reward
 
                     s_ = self.custom_env_object.get_state(observation_)
-                    a_ = Utils.get_max_action_from_q_table(Q, s_, self.action_space_size)
+                    a_ = utils.get_max_action_from_q_table(Q, s_, self.action_space_size)
                     Q[s, a] += self.ALPHA * (reward + self.GAMMA * Q[s_, a_] - Q[s, a])
                     # Q[s, a] += self.ALPHA * (reward + self.GAMMA * np.max(Q[s_, :]) - Q[s, a])  # if Q is a numpy.ndarray
 
@@ -722,7 +722,7 @@ class TabularMethods:
                 if (i + 1) % (self.episodes // 10) == 0:
                     print('episode %d - eps: %.2f, score: %d, steps: %d' % (i + 1, self.EPS, ep_score, ep_steps))
 
-                self.EPS = Utils.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
+                self.EPS = utils.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
 
                 self.totalSteps[i] = ep_steps
                 self.totalScores[i] = ep_score
@@ -734,7 +734,7 @@ class TabularMethods:
             print('\n', 'Game Ended', '\n')
 
             if pickle:
-                Utils.pickle_save(Q, self.custom_env_object.file_name + '-q-table')
+                utils.pickle_save(Q, self.custom_env_object.file_name + '-q-table')
 
             return Q, self.totalScores, self.totalAccumulatedScores
 
@@ -788,7 +788,7 @@ class TabularMethods:
                 if (i + 1) % (self.episodes // 10) == 0:
                     print('episode %d - eps: %.2f, score: %d, steps: %d' % (i + 1, self.EPS, ep_score, ep_steps))
 
-                self.EPS = Utils.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
+                self.EPS = utils.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
 
                 self.totalSteps[i] = ep_steps
                 self.totalScores[i] = ep_score

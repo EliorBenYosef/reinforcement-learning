@@ -22,22 +22,21 @@ import keras.models as models
 import keras.layers as layers
 import keras.optimizers as optimizers
 
-from utils import Utils
-from utils import LIBRARY_KERAS, LIBRARY_TF, LIBRARY_TORCH
+import utils
 from deep_reinforcement_learning.envs import Envs
-from deep_reinforcement_learning.replay_buffer import ReplayBuffer
 
 
 class DNN(object):
 
-    def __init__(self, alpha, fc_layers_dims, custom_env):
-        self.ALPHA = alpha
-
+    def __init__(self, custom_env, fc_layers_dims, optimizer_type, alpha):
         self.input_type = custom_env.input_type
 
         self.input_dims = custom_env.input_dims
         self.fc_layers_dims = fc_layers_dims
         self.n_actions = custom_env.n_actions
+
+        self.optimizer_type = optimizer_type
+        self.ALPHA = alpha
 
         self.chkpt_dir = 'tmp/' + custom_env.file_name + '/PG/NNs'
 
@@ -54,7 +53,7 @@ class DNN(object):
 
             self.name = name
 
-            self.sess = Utils.get_tf_session_according_to_device_type(device_type)
+            self.sess = utils.get_tf_session_according_to_device_type(device_type)
             self.build_network()
             self.sess.run(tf.global_variables_initializer())
 
@@ -114,15 +113,15 @@ class DNN(object):
                 if self.dnn.input_type == Envs.INPUT_TYPE_STACKED_FRAMES:
                     loss = tf.reduce_mean(loss)
 
-                # train_op:
-                if self.dnn.input_type == Envs.INPUT_TYPE_OBSERVATION_VECTOR:
-                    self.optimize = tf.train.AdamOptimizer(
-                        self.dnn.ALPHA
-                    ).minimize(loss)
-                else:
-                    self.optimize = tf.train.RMSPropOptimizer(
-                        self.dnn.ALPHA, decay=0.99, momentum=0.0, epsilon=1e-6
-                    ).minimize(loss)
+                if self.dnn.optimizer_type == utils.OPTIMIZER_SGD:
+                    optimizer = tf.train.MomentumOptimizer(self.dnn.ALPHA, 0.9)  # SGD + momentum
+                    # optimizer = tf.train.GradientDescentOptimizer(self.dqn.ALPHA)  # SGD?
+                elif self.dnn.optimizer_type == utils.OPTIMIZER_RMSprop:
+                    optimizer = tf.train.RMSPropOptimizer(self.dnn.ALPHA, decay=0.99, momentum=0.0, epsilon=1e-6)
+                else:  # self.dqn.optimizer_type == utils.OPTIMIZER_Adam
+                    optimizer = tf.train.AdamOptimizer(self.dnn.ALPHA)
+
+                self.optimize = optimizer.minimize(loss)  # train_op
 
         def get_actions_probabilities(self, batch_s):
             return self.sess.run(self.actions_probabilities, feed_dict={self.s: batch_s})[0]
@@ -133,7 +132,7 @@ class DNN(object):
             memory_r = np.array(memory.memory_r)
             memory_terminal = np.array(memory.memory_terminal, dtype=np.int8)
 
-            memory_G = Utils.calculate_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA)
+            memory_G = utils.calculate_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA)
 
             print('Training Started')
             _ = self.sess.run(self.optimize,
@@ -164,13 +163,14 @@ class DNN(object):
 
             self.build_network()
 
-            if self.dnn.input_type == Envs.INPUT_TYPE_OBSERVATION_VECTOR:
-                self.optimizer = optim.Adam(self.parameters(), lr=self.dnn.ALPHA)
-            else:  # self.input_type == Envs.INPUT_TYPE_STACKED_FRAMES
-                # self.optimizer = optim.SGD(self.parameters(), lr=self.dnn.ALPHA, momentum=0.9)
+            if self.dnn.optimizer_type == utils.OPTIMIZER_SGD:
+                self.optimizer = optim.SGD(self.parameters(), lr=self.dnn.ALPHA, momentum=0.9)
+            elif self.dnn.optimizer_type == utils.OPTIMIZER_RMSprop:
                 self.optimizer = optim_rmsprop.RMSprop(self.parameters(), lr=self.dnn.ALPHA)
+            else:  # self.dnn.optimizer_type == utils.OPTIMIZER_Adam
+                self.optimizer = optim.Adam(self.parameters(), lr=self.dnn.ALPHA)
 
-            self.device = Utils.get_torch_device_according_to_device_type(device_type)
+            self.device = utils.get_torch_device_according_to_device_type(device_type)
             self.to(self.device)
 
         def build_network(self):
@@ -196,9 +196,9 @@ class DNN(object):
                                        padding=conv3_fps[1], stride=conv3_fps[2])
 
                 i_H, i_W = self.dnn.input_dims[0], self.dnn.input_dims[1]
-                conv1_o_H, conv1_o_W = Utils.calc_conv_layer_output_dims(i_H, i_W, *conv1_fps)
-                conv2_o_H, conv2_o_W = Utils.calc_conv_layer_output_dims(conv1_o_H, conv1_o_W, *conv2_fps)
-                conv3_o_H, conv3_o_W = Utils.calc_conv_layer_output_dims(conv2_o_H, conv2_o_W, *conv3_fps)
+                conv1_o_H, conv1_o_W = utils.calc_conv_layer_output_dims(i_H, i_W, *conv1_fps)
+                conv2_o_H, conv2_o_W = utils.calc_conv_layer_output_dims(conv1_o_H, conv1_o_W, *conv2_fps)
+                conv3_o_H, conv3_o_W = utils.calc_conv_layer_output_dims(conv2_o_H, conv2_o_W, *conv3_fps)
                 self.flat_dims = conv3_filters * conv3_o_H * conv3_o_W
 
                 self.fc1 = nn.Linear(self.flat_dims, self.dnn.fc_layers_dims[0])
@@ -232,7 +232,7 @@ class DNN(object):
             memory_r = np.array(memory.memory_r)
             memory_terminal = np.array(memory.memory_terminal, dtype=np.uint8)
 
-            memory_G = Utils.calculate_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA)
+            memory_G = utils.calculate_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA)
             memory_G = T.tensor(memory_G, dtype=T.float).to(self.device)
 
             self.optimizer.zero_grad()
@@ -262,7 +262,7 @@ class Memory(object):
 
         self.lib_type = lib_type
 
-        if self.lib_type == LIBRARY_TF:
+        if self.lib_type == utils.LIBRARY_TF:
             self.memory_s = []
             self.memory_a_index = []
         else:  # self.lib_type == LIBRARY_TORCH
@@ -272,7 +272,7 @@ class Memory(object):
         self.memory_terminal = []
 
     def store_transition(self, s, a, r, is_terminal):
-        if self.lib_type == LIBRARY_TF:
+        if self.lib_type == utils.LIBRARY_TF:
             self.memory_s.append(s)
             self.memory_a_index.append(self.action_space.index(a))
 
@@ -280,11 +280,11 @@ class Memory(object):
         self.memory_terminal.append(int(is_terminal))
 
     def store_a_log_probs(self, a_log_probs):
-        if self.lib_type == LIBRARY_TORCH:
+        if self.lib_type == utils.LIBRARY_TORCH:
             self.memory_a_log_probs.append(a_log_probs)
 
     def reset_memory(self):
-        if self.lib_type == LIBRARY_TF:
+        if self.lib_type == utils.LIBRARY_TF:
             self.memory_s = []
             self.memory_a_index = []
         else:
@@ -296,11 +296,13 @@ class Memory(object):
 
 class Agent(object):
 
-    def __init__(self, custom_env, alpha, fc_layers_dims, lib_type=LIBRARY_TF):
+    def __init__(self, custom_env, fc_layers_dims, alpha, optimizer_type=utils.OPTIMIZER_Adam, lib_type=utils.LIBRARY_TF):
 
-        self.fc_layers_dims = fc_layers_dims
-        self.ALPHA = alpha
         self.GAMMA = custom_env.GAMMA
+        self.fc_layers_dims = fc_layers_dims
+
+        self.optimizer_type = optimizer_type
+        self.ALPHA = alpha
 
         self.action_space = custom_env.action_space
 
@@ -311,10 +313,10 @@ class Agent(object):
         self.policy_dnn = self.init_network(custom_env)
 
     def init_network(self, custom_env):
-        if self.lib_type == LIBRARY_TF:
-            dnn = DNN(
-                self.ALPHA, self.fc_layers_dims, custom_env
-            ).create_dnn_tensorflow(name='q_policy')
+        dnn_base = DNN(custom_env, self.fc_layers_dims, self.optimizer_type, self.ALPHA)
+
+        if self.lib_type == utils.LIBRARY_TF:
+            dnn = dnn_base.create_dnn_tensorflow(name='q_policy')
 
         else:  # self.lib_type == LIBRARY_TORCH
             if custom_env.input_type == Envs.INPUT_TYPE_STACKED_FRAMES:
@@ -324,9 +326,7 @@ class Agent(object):
                 relevant_screen_size = None
                 image_channels = None
 
-            dnn = DNN(
-                self.ALPHA, self.fc_layers_dims, custom_env
-            ).create_dnn_torch(relevant_screen_size, image_channels)
+            dnn = dnn_base.create_dnn_torch(relevant_screen_size, image_channels)
 
         return dnn
 
@@ -336,7 +336,7 @@ class Agent(object):
     def choose_action(self, s):
         s = s[np.newaxis, :]
 
-        if self.lib_type == LIBRARY_TF:
+        if self.lib_type == utils.LIBRARY_TF:
             probabilities = self.policy_dnn.get_actions_probabilities(s)
             a = np.random.choice(self.action_space, p=probabilities)
 
@@ -394,7 +394,7 @@ def train(custom_env, agent, n_episodes, enable_models_saving, ep_batch_num=1):
         avg_num = custom_env.window
         if ep_batch_num > avg_num:
             avg_num = ep_batch_num
-        Utils.print_training_progress(i, ep_score, scores_history, avg_num)
+        utils.print_training_progress(i, ep_score, scores_history, avg_num)
 
         if (i + 1) % ep_batch_num == 0:
             agent.learn()
@@ -403,39 +403,38 @@ def train(custom_env, agent, n_episodes, enable_models_saving, ep_batch_num=1):
 
     print('\n', 'Game Ended', '\n')
 
-    Utils.plot_running_average(
+    utils.plot_running_average(
         custom_env.name, scores_history, window=custom_env.window, show=False,
-        file_name=Utils.get_plot_file_name(custom_env, agent.fc_layers_dims, agent.ALPHA)
+        file_name=utils.get_plot_file_name(custom_env.file_name, agent, memory=True)
     )
 
 
-def play(env_type, lib_type=LIBRARY_TF, enable_models_saving=False, load_checkpoint=False):
-    if lib_type == LIBRARY_KERAS:
+def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_checkpoint=False):
+    if lib_type == utils.LIBRARY_KERAS:
         print('\n', "Algorithm currently doesn't work with Keras", '\n')
         return
 
     if env_type == 0:
         # custom_env = Envs.Box2D.LunarLander()
         custom_env = Envs.ClassicControl.CartPole()
+        optimizer_type = utils.OPTIMIZER_Adam
+        alpha = 0.0005 if lib_type == utils.LIBRARY_TF else 0.001
+        fc_layers_dims = [64, 64] if lib_type == utils.LIBRARY_TF else [128, 128]
         ep_batch_num = 1  # REINFORCE algorithm (MC PG)
         n_episodes = 2500  # supposed to be enough for good results in PG
-        if lib_type == LIBRARY_TF:
-            alpha = 0.0005
-            fc_layers_dims = [64, 64]
-        else:
-            alpha = 0.001
-            fc_layers_dims = [128, 128]
     elif env_type == 1:
         custom_env = Envs.Atari.Breakout()
-        ep_batch_num = 1  # REINFORCE algorithm (MC PG)
+        optimizer_type = utils.OPTIMIZER_RMSprop  # utils.OPTIMIZER_SGD
         alpha = 0.00025
         fc_layers_dims = [256]
+        ep_batch_num = 1  # REINFORCE algorithm (MC PG)
         n_episodes = 200  # start with 200, then 5000 ?
     else:
         custom_env = Envs.Atari.SpaceInvaders()
-        ep_batch_num = 10
+        optimizer_type = utils.OPTIMIZER_RMSprop  # utils.OPTIMIZER_SGD
         alpha = 0.001  # 0.003
         fc_layers_dims = [256]
+        ep_batch_num = 10
         n_episodes = 1000
 
     if not custom_env.is_discrete_action_space:
@@ -444,7 +443,7 @@ def play(env_type, lib_type=LIBRARY_TF, enable_models_saving=False, load_checkpo
 
     custom_env.env.seed(28)
 
-    agent = Agent(custom_env, alpha, fc_layers_dims, lib_type=lib_type)
+    agent = Agent(custom_env, fc_layers_dims, alpha, optimizer_type=optimizer_type, lib_type=lib_type)
 
     if enable_models_saving and load_checkpoint:
         agent.load_models()
@@ -453,4 +452,4 @@ def play(env_type, lib_type=LIBRARY_TF, enable_models_saving=False, load_checkpo
 
 
 if __name__ == '__main__':
-    play(0, lib_type=LIBRARY_TF)          # CartPole (0), Breakout (1), SpaceInvaders (2)
+    play(0, lib_type=utils.LIBRARY_TF)          # CartPole (0), Breakout (1), SpaceInvaders (2)
