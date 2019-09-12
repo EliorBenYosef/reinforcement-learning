@@ -557,10 +557,7 @@ def train(custom_env, agent, n_episodes, enable_models_saving, save_checkpoint=1
 
     print('\n', 'Game Ended', '\n')
 
-    utils.plot_running_average(
-        custom_env.name, scores_history, window=custom_env.window, show=False,
-        file_name=utils.get_plot_file_name(custom_env.file_name, agent, eps=True, memory=True)
-    )
+    return scores_history
 
 
 def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_checkpoint=False,
@@ -612,7 +609,13 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
         # however, we can overwrite these zeros with actual gameplay sampled from the environment.
         load_up_agent_memory_with_random_gameplay(custom_env, agent)
 
-    train(custom_env, agent, n_episodes, enable_models_saving)
+    scores_history = train(custom_env, agent, n_episodes, enable_models_saving)
+
+    utils.plot_running_average(
+        custom_env.name, scores_history, window=custom_env.window, show=False,
+        file_name=utils.get_plot_file_name(custom_env.file_name, agent, eps=True, memory=True)
+    )
+
 
 
 def autotune_hyperparams(lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_checkpoint=False,
@@ -674,13 +677,106 @@ def autotune_hyperparams(lib_type=utils.LIBRARY_TF, enable_models_saving=False, 
         agent.load_models()
 
     if perform_random_gameplay:
-        # the agent's memory is originally initialized with zeros (which is perfectly acceptable).
-        # however, we can overwrite these zeros with actual gameplay sampled from the environment.
         load_up_agent_memory_with_random_gameplay(custom_env, agent)
 
-    train(custom_env, agent, args.n_episodes, enable_models_saving)
+    scores_history = train(custom_env, agent, args.n_episodes, enable_models_saving)
+
+    utils.plot_running_average(
+        custom_env.name, scores_history, window=custom_env.window, show=False,
+        file_name=utils.get_plot_file_name(custom_env.file_name, agent, eps=True, memory=True)
+    )
+
+
+def perform_grid_search(lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_checkpoint=False,
+                        perform_random_gameplay=False):
+
+    custom_env = Envs.ClassicControl.CartPole()
+    custom_env.env.seed(28)
+    n_episodes = 10  # 500
+
+    # double_dql = False
+    # tau = None
+
+    ###########################################
+
+    optimizer_list = [utils.OPTIMIZER_SGD, utils.OPTIMIZER_Adagrad, utils.OPTIMIZER_Adadelta, utils.OPTIMIZER_RMSprop,
+                      utils.OPTIMIZER_Adam]
+    alpha_list = [0.0005, 0.001, 0.002, 0.004]
+
+    fc1_dim_list = [64, 128, 256, 512]
+    fc2_dim_list = [64, 128, 256, 512]
+
+    gamma_list = [0.9, 0.95, 0.99, 1.0]  # [0.9, 0.95, 0.99, 1.0]
+
+    eps_max_list = [1.0]
+    eps_min_list = [0.0, 0.01, 0.02, 0.04]
+    eps_dec_list = [0.1, 0.2, 0.3, 0.4]  # (1.0 - min) * 2 / n_episodes[0]  # 0.996
+    # eps_dec_type = utils.EPS_DEC_LINEAR,
+
+    memory_size_list = [10000, 100000, 1000000]
+    memory_batch_size_list = [8, 16, 32, 64]
+
+    ###########################################
+
+    optimizer_list = [utils.OPTIMIZER_Adam]
+    alpha_list = [0.0005]
+
+    fc1_dim_list = [64, 128, 256, 512]
+    fc2_dim_list = [64, 128, 256, 512]
+
+    gamma_list = [0.99]
+
+    eps_max_list = [1.0]
+    eps_min_list = [0.1]
+    eps_dec_list = [0.1]  # (1.0 - min) * 2 / n_episodes[0]  # 0.996
+    # eps_dec_type = utils.EPS_DEC_LINEAR,
+
+    memory_size_list = [1000000]
+    memory_batch_size_list = [64]
+
+    ###########################################
+
+    scores_histories = []
+    labels = []
+
+    for optimizer in optimizer_list:
+        for alpha in alpha_list:
+            for fc1_dim in fc1_dim_list:
+                for fc2_dim in fc2_dim_list:
+                    for gamma in gamma_list:
+                        for eps_max in eps_max_list:
+                            for eps_min in eps_min_list:
+                                for eps_dec in eps_dec_list:
+                                    for memory_size in memory_size_list:
+                                        for memory_batch_size in memory_batch_size_list:
+
+                                            agent = Agent(
+                                                custom_env, [fc1_dim, fc2_dim], n_episodes,
+                                                alpha, optimizer_type=optimizer, gamma=gamma,
+                                                eps_min=eps_min, eps_dec=eps_dec,  # eps_max=eps_max,
+                                                memory_size=memory_size, memory_batch_size=memory_batch_size,
+                                                double_dql=False, tau=None, lib_type=lib_type
+                                            )
+
+                                            if enable_models_saving and load_checkpoint:
+                                                agent.load_models()
+
+                                            if perform_random_gameplay:
+                                                load_up_agent_memory_with_random_gameplay(custom_env, agent)
+
+                                            scores_history = train(custom_env, agent, n_episodes, enable_models_saving)
+                                            scores_histories.append(scores_history)
+                                            labels.append('[%d,%d]' % (fc1_dim, fc2_dim))
+
+                                            tf.reset_default_graph()
+
+    utils.plot_running_average_comparison(
+        custom_env.name, scores_histories, labels, window=custom_env.window, show=False,
+        file_name=custom_env.file_name + '_dql'
+    )
 
 
 if __name__ == '__main__':
     # play(0, lib_type=utils.LIBRARY_TF)         # CartPole (0), Breakout (1), SpaceInvaders (2)
-    autotune_hyperparams()
+    # autotune_hyperparams()
+    perform_grid_search()
