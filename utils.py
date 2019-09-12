@@ -22,6 +22,29 @@ OPTIMIZER_Adagrad = 3
 OPTIMIZER_SGD = 4
 
 
+# colors = ['r--', 'g--', 'b--', 'c--', 'm--', 'y--', 'k--', 'w--']
+
+# colors = ['#FF0000', '#fa3c3c', '#E53729',
+#           '#f08228', '#FB9946', '#FF7F00',
+#           '#e6af2d',
+#           '#e6dc32', '#FFFF00',
+#           '#a0e632', '#00FF00',  '#00dc00',
+#           '#17A858', '#00d28c',
+#           '#00c8c8', '#0DB0DD',  '#00a0ff', '#1e3cff', '#0000FF',
+#           '#6e00dc', '#8B00FF',  '#4B0082', '#a000c8', '#662371',
+#           '#f00082']
+
+colors = ['#FF0000', '#E53729',
+          '#f08228', '#FF7F00',
+          '#e6af2d',
+          '#e6dc32', '#FFFF00',
+          '#a0e632', '#00dc00',
+          '#17A858', '#00d28c',
+          '#00c8c8', '#1e3cff',
+          '#6e00dc', '#a000c8',
+          '#f00082']
+
+
 ##############################################
 
 def get_running_avg(scores, window):
@@ -66,7 +89,9 @@ def plot_running_average_comparison(main_title, scores_list, labels=None, window
     plt.title(main_title + (' - Score' if window == 0 else ' - Running Score Avg. (%d)' % window))
     plt.ylabel('Score')
     plt.xlabel('Episode')
-    colors = ['r--', 'g--', 'b--', 'c--', 'm--', 'y--', 'k--', 'w--']
+    # colors = []
+    # for i in range(len(scores_list)):
+    #     colors.append(np.random.rand(3, ))
     for i, scores in enumerate(scores_list):
         plt.plot(*get_running_avg(scores, window), colors[i])
     if labels:
@@ -85,8 +110,9 @@ def plot_accumulated_scores_comparison(main_title, scores_list, labels=None, sho
     plt.title(main_title + ' - Accumulated Score')
     plt.ylabel('Accumulated Score')
     plt.xlabel('Episode')
-    colors = ['r--', 'g--', 'b--', 'c--', 'm--', 'y--', 'k--']
-
+    # colors = []
+    # for i in range(len(scores_list)):
+    #     colors.append(np.random.rand(3, ))
     for i, scores in enumerate(scores_list):
         x = [i + 1 for i in range(len(scores))]
         plt.plot(x, scores, colors[i])
