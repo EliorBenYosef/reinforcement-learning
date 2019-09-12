@@ -434,3 +434,27 @@ def pickle_load(file_name):
 def pickle_save(var, file_name):
     with open(file_name + '.pkl', 'wb') as file:  # .pickle  # wb = write binary
         pickle.dump(var, file)  # var == [X_train, y_train]
+
+
+##############################################
+
+def query_env(env):
+
+    print(
+        'Environment Id -', env.spec.id, '\n',  # id (str): The official environment ID
+        'Non-Deterministic -', env.spec.nondeterministic, '\n',  # nondeterministic (bool): Whether this environment is non-deterministic even after seeding
+        'Observation Space -', env.observation_space, '\n',
+        'Action Space -', env.action_space, '\n',
+
+        'Max Episode Seconds -', env.spec.max_episode_seconds, '\n',
+        'Max Episode Steps -', env.spec.max_episode_steps, '\n',  # max_episode_steps (Optional[int]): The maximum number of steps that an episode can consist of
+
+        'Reward Range -', env.reward_range, '\n',
+        'Reward Threshold -', env.spec.reward_threshold, '\n',  # reward_threshold (Optional[int]): The reward threshold before the task is considered solved
+
+        'TimeStep Limit -', env.spec.timestep_limit, '\n',
+        'Trials -', env.spec.trials, '\n',
+
+        'Local Only -', getattr(env.spec, '_local_only', 'not defined'), '\n',
+        'kwargs -', getattr(env.spec, '_kwargs', '')  # kwargs (dict): The kwargs to pass to the environment class
+    )
