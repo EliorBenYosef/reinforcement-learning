@@ -45,6 +45,7 @@ def plot_running_average(main_title, scores, window=100, show=False, file_name=N
         plt.savefig(file_name + '.png')
     if show:
         plt.show()
+    plt.close()
 
 
 def plot_accumulated_scores(main_title, scores, show=False, file_name=None):
@@ -57,6 +58,7 @@ def plot_accumulated_scores(main_title, scores, show=False, file_name=None):
         plt.savefig(file_name + '.png')
     if show:
         plt.show()
+    plt.close()
 
 
 def plot_running_average_comparison(main_title, scores_list, labels=None, window=100, show=False, file_name=None):
@@ -64,7 +66,7 @@ def plot_running_average_comparison(main_title, scores_list, labels=None, window
     plt.title(main_title + (' - Score' if window == 0 else ' - Running Score Avg. (%d)' % window))
     plt.ylabel('Score')
     plt.xlabel('Episode')
-    colors = ['r--', 'g--', 'b--', 'c--', 'm--', 'y--', 'k--']
+    colors = ['r--', 'g--', 'b--', 'c--', 'm--', 'y--', 'k--', 'w--']
     for i, scores in enumerate(scores_list):
         plt.plot(*get_running_avg(scores, window), colors[i])
     if labels:
@@ -75,6 +77,7 @@ def plot_running_average_comparison(main_title, scores_list, labels=None, window
         plt.savefig(file_name + '.png')
     if show:
         plt.show()
+    plt.close()
 
 
 def plot_accumulated_scores_comparison(main_title, scores_list, labels=None, show=False, file_name=None):
@@ -95,6 +98,7 @@ def plot_accumulated_scores_comparison(main_title, scores_list, labels=None, sho
         plt.savefig(file_name + '.png')
     if show:
         plt.show()
+    plt.close()
 
 
 def print_average_score(total_scores, ratio=10):
@@ -177,7 +181,7 @@ def decrement_eps(eps_current, eps_min, eps_dec, eps_dec_type, eps_max=None, t=N
 
 ##############################################
 
-def get_plot_file_name(env_file_name, agent, beta=None, eps=False, memory=False, extended=False):
+def get_plot_file_name(env_file_name, agent, beta=None, eps=False, memory=False):
     # options:
     #   .replace('.', 'p')
     #   .split('.')[1]
@@ -191,17 +195,16 @@ def get_plot_file_name(env_file_name, agent, beta=None, eps=False, memory=False,
         fc_layers_dims += str(fc_layer_dims)
     fc_layers_dims += '_'
 
-    if extended:
-        if agent.optimizer == OPTIMIZER_Adam:
-            optimizer = 'adam_'
-        elif agent.optimizer == OPTIMIZER_RMSprop:
-            optimizer = 'rmsprop_'
-        elif agent.optimizer == OPTIMIZER_Adadelta:
-            optimizer = 'adadelta_'
-        elif agent.optimizer == OPTIMIZER_Adagrad:
-            optimizer = 'adagrad_'
-        else:  # agent.optimizer == OPTIMIZER_SGD
-            optimizer = 'sgd_'
+    if agent.optimizer_type == OPTIMIZER_Adam:
+        optimizer = 'adam_'
+    elif agent.optimizer_type == OPTIMIZER_RMSprop:
+        optimizer = 'rmsprop_'
+    elif agent.optimizer_type == OPTIMIZER_Adadelta:
+        optimizer = 'adadelta_'
+    elif agent.optimizer_type == OPTIMIZER_Adagrad:
+        optimizer = 'adagrad_'
+    else:  # agent.optimizer_type == OPTIMIZER_SGD
+        optimizer = 'sgd_'
     alpha = 'alpha-' + str(agent.ALPHA).replace('.', 'p') + '_'
     beta = 'beta-' + str(beta).replace('.', 'p') if beta else '' + '_'
 
