@@ -103,7 +103,10 @@ class Envs_DSS:
         #       top of the leader boars - 9.716
         #       bottom of the leader boars - 9.23
 
-        # Actions (6): north (0), south (1), east (2), west (3), pick up (4), drop off (5)
+        # Actions (Discrete 6): north (0), south (1), east (2), west (3), pick up (4), drop off (5)
+
+        # Discrete observation space.
+        # Goal changes over time.
 
         def __init__(self):
             self.name = 'Taxi'
@@ -242,7 +245,10 @@ class Envs_DSS:
 
         # Solved: getting average reward of -110.0 over 100 consecutive trials.
 
-        # Actions (3): drive backward = left (0), do nothing (1), drive forward = right (2)
+        # Actions (Discrete 3): drive backward = left (0), do nothing (1), drive forward = right (2)
+
+        # Continuous observation space
+        # No reward surrounding initial state.
 
         CAR_POS = 0
         CAR_VEL = 1
@@ -327,8 +333,11 @@ class Envs_DSS:
         # Rewards: +1 for every time-step that the pole remains upright.
 
         # Solved: getting average reward of 195.0 over 100 consecutive trials.
+        #         avg score >= 195.0 over 100 consecutive trials.
 
-        # Actions (2): go left (0), go right (1)
+        # Actions (Discrete 2): go left (0), go right (1)
+
+        # Continuous observation space.
 
         CART_X = 0
         CART_X_VEL = 1
@@ -415,7 +424,10 @@ class Envs_DSS:
         #   above -100 is pretty good.
         #   best score is: -42.37 ± 4.83
 
-        # Actions (3):
+        # Actions (Discrete 3): applying +1, 0 or -1 torque on the joint between the two pendulum links
+
+        # Continuous observation space.
+        # No reward surrounding initial state.
 
         def __init__(self):
             self.name = 'Acrobot'

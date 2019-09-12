@@ -18,30 +18,18 @@ class BaseEnv:
 
 class Envs:
 
-    # input_dims == env.observation_space  # how many elements is the observation vector comprised of.
-
-    # env.action_space -
-    # is_discrete_action_space = isinstance(self.env.action_space, gym.spaces.discrete.Discrete)
-    # n_actions == env.action_space.n
-    # action_boundary == env.action_space.high  # needs to be positive so that we won't flip the actions.
-
     INPUT_TYPE_OBSERVATION_VECTOR = 0
     INPUT_TYPE_STACKED_FRAMES = 1
 
     WINDOW_UNKNOWN = 100
 
-    # Observation types:
-    #   Discrete
-    #   Box - Continuous Range
-    #   Pixels (which is usually a Box(0, 255, [height, width, 3]) for RGB pixels).
-
-    # n_actions == action_space_size
-
     class ClassicControl:
 
         class CartPole(BaseEnv):
 
-            # Solved: avg score >= 195.0 over 100 consecutive trials.
+            # if you check gym/gym/envs/__init__.py :
+            # CartPole-v0 (rows 53-58): max_episode_steps = 200, reward_threshold = 195.0
+            # CartPole-v1 (rows 60-65): max_episode_steps = 500, reward_threshold = 475.0
 
             def __init__(self):
                 self.name = 'Cart Pole'
@@ -64,6 +52,9 @@ class Envs:
                 self.memory_batch_size = 64
 
         class Pendulum(BaseEnv):
+
+            # Continuous observation space.
+            # Continuous action space (1 dimension).
 
             def __init__(self):
                 self.name = 'Pendulum'
@@ -198,7 +189,7 @@ class Envs:
 
     class Atari:
 
-        # must be trained on a GPU. will basically take thousands of years on CPU.
+        # Atari environments must be trained on a GPU (will basically take thousands of years on CPU).
 
         frames_stack_size = 4  # to give the agent a sense of motion, buffer_size
 
@@ -271,7 +262,9 @@ class Envs:
 
         class SpaceInvaders(BaseEnv):
 
-            # 0 no action, 1 fire, 2 move right, 3 move left, 4 move right fire, 5 move left fire
+            # Actions (Discrete 6): no action (0), fire (1),
+            #                       move right (2), move left (3),
+            #                       move right fire (4), move left fire (5)
 
             def __init__(self):
                 self.name = 'Space Invaders'
