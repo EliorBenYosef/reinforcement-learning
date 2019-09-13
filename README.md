@@ -116,14 +116,24 @@ Simply run the desired algorithm file to perform it on the desired environment:
 
 Most of the cases, you can select the desired library type (`lib_type`) implementation: `LIBRARY_TF`, `LIBRARY_TORCH`, `LIBRARY_KERAS`. 
 
-In each algorithm file, there are 3 main operations (leave the one you need, comment out the rest):
-* `play()` - performs the algorithm on a single environment.
-* `command_line_play()` - performs the algorithm on a single environment, 
+To **play from the command-line**, run [cmdline_play.py](../master/deep_reinforcement_learning/cmdline_play.py).
+This performs the algorithm on a single environment, 
 through the command-line (using the `argparse` module to parse command-line options). 
-This enables concatenating multiple independent runs via `&&`.
-* `perform_grid_search()` - performs a comparative grid search for a single environment, and plots the results.
-Training & Test results come in the forms of graphs and statistics (for some of the environments)
-of both: running average of episode scores, and accumulated scores.
+The major benefit from this is that it enables concatenating multiple independent runs via `&&`
+(so you can run multiple tests in one go).
+
+To **perform grid search**, run [grid_search.py](../master/deep_reinforcement_learning/grid_search.py).
+This performs a comparative grid search for a single environment, and plots the results.
+This is mostly done for hyper-parameters tuning. Note that currently I added 16 colors 
+(more than that will raise an error, so add more colors if you need more than 16 combinations)
+
+Note that currently both grid search and cmdline play are tuned to DQL, but it's applicable to every algorithm with only minor changes:
+1. comment out all unnecessary algorithms Agent & train modules 
+2. make sure Agent class gets all needed unique arguments:
+   * DQL - `double_dql`, `tau`
+   * PG - `ep_batch_num`
+   * AC & DDPG - `beta`
+3. for `cmdline_play.py`, adjust `plot_running_average()` args (`memory`, `eps`, `beta`)
 
 ### Implemented Algorithms
 
@@ -154,7 +164,8 @@ Deep Q-learning, Policy Gradient | Deep Deterministic Policy Gradient
 
 #### DQL
 
-performance of `perform_grid_search()` on first & second FC layers' sizes (number of nodes \ neurons):
+performance of [Grid Search](../master/deep_reinforcement_learning/grid_search.py)
+on first & second FC layers' sizes (number of nodes \ neurons):
 
 <p float="left">
   <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/deep_reinforcement_learning/performance/cart-pole-v1_dql.png" width="500">
