@@ -521,23 +521,42 @@ def load_up_agent_memory_with_random_gameplay(custom_env, agent, n_episodes=None
     print('\n', "Done with random gameplay. Game on.", '\n')
 
 
-def train(custom_env, agent, n_episodes, enable_models_saving, save_checkpoint=10):
+def train(custom_env, agent, n_episodes,
+          enable_models_saving, load_checkpoint, save_checkpoint=10,
+          visualize=False, record=False):
+
     env = custom_env.env
 
-    # uncomment the line below to record every episode.
-    # env = wrappers.Monitor(env, 'tmp/' + custom_env.file_name + '/DQL/recordings',
-    #                        video_callable=lambda episode_id: True, force=True)
+    if record:
+        env = wrappers.Monitor(
+            env, 'recordings/DQL/', force=True,
+            video_callable=lambda episode_id: episode_id == 0 or episode_id == (n_episodes - 1)
+        )
+
+    best_score_episode_index = -1
+    if load_checkpoint:
+        try:
+            print('...Loading best_score_data...')
+            best_score_data = utils.pickle_load('best_score_data')
+            best_score = best_score_data[0]
+            best_score_episode_index = best_score_data[1]
+        except FileNotFoundError:
+            print('...No best_score_data to load...')
 
     print('\n', 'Game Started', '\n')
 
     scores_history = []
 
-    for i in range(n_episodes):
+    for i in range(best_score_episode_index + 1, n_episodes):
         done = False
         ep_score = 0
 
         observation = env.reset()
         s = custom_env.get_state(observation, None)
+
+        if visualize and i == n_episodes - 1:
+            env.render()
+
         while not done:
             a = agent.choose_action(s)
             observation_, r, done, info = env.step(a)
@@ -548,12 +567,23 @@ def train(custom_env, agent, n_episodes, enable_models_saving, save_checkpoint=1
             agent.learn_wrapper()
             observation, s = observation_, s_
 
+            if visualize and i == n_episodes - 1:
+                env.render()
+
+        # if enable_models_saving and (i + 1) % save_checkpoint == 0:
+        if enable_models_saving and ('best_score' not in locals() or ep_score > best_score):
+            best_score = ep_score
+            best_score_episode_index = i
+            utils.pickle_save([best_score, best_score_episode_index], 'best_score_data')
+            agent.save_models()
+
         scores_history.append(ep_score)
 
         utils.print_training_progress(i, ep_score, scores_history, custom_env.window, agent.EPS)
+        print('Best - Episode: %d, Score: %d' % (best_score_episode_index + 1, best_score))
 
-        if enable_models_saving and (i + 1) % save_checkpoint == 0:
-            agent.save_models()
+        if visualize and i == n_episodes - 1:
+            env.close()
 
     print('\n', 'Game Ended', '\n')
 
@@ -601,19 +631,23 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
         double_dql=double_dql, tau=tau, lib_type=lib_type
     )
 
-    if enable_models_saving and load_checkpoint:
-        agent.load_models()
+    if load_checkpoint:
+        try:
+            agent.load_models()
+        except (ValueError, tf.OpError):
+            print('...No models to load...')
+            load_checkpoint = False
 
     if perform_random_gameplay:
         # the agent's memory is originally initialized with zeros (which is perfectly acceptable).
         # however, we can overwrite these zeros with actual gameplay sampled from the environment.
         load_up_agent_memory_with_random_gameplay(custom_env, agent)
 
-    scores_history = train(custom_env, agent, n_episodes, enable_models_saving)
+    scores_history = train(custom_env, agent, n_episodes, enable_models_saving, load_checkpoint)
 
     utils.plot_running_average(
         custom_env.name, scores_history, window=custom_env.window, show=False,
-        file_name=utils.get_plot_file_name(custom_env.file_name, agent, eps=True, memory=True)
+        file_name=utils.get_plot_file_name(custom_env.file_name, agent, memory=True, eps=True)
     )
 
 
@@ -682,7 +716,7 @@ def command_line_play(lib_type=utils.LIBRARY_TF, enable_models_saving=False, loa
 
     utils.plot_running_average(
         custom_env.name, scores_history, window=custom_env.window, show=False,
-        file_name=utils.get_plot_file_name(custom_env.file_name, agent, eps=True, memory=True)
+        file_name=utils.get_plot_file_name(custom_env.file_name, agent, memory=True, eps=True)
     )
 
 

@@ -374,23 +374,40 @@ class Agent(object):
         self.policy_dnn.load_model_file()
 
 
-def train(custom_env, agent, n_episodes, enable_models_saving, ep_batch_num=1):
+def train(custom_env, agent, n_episodes,
+          enable_models_saving, load_checkpoint, ep_batch_num=1,
+          visualize=False, record=False):
+
     env = custom_env.env
 
-    # uncomment the line below to record every episode.
-    # env = wrappers.Monitor(env, 'tmp/' + custom_env.file_name + '/PG/recordings',
-    #                        video_callable=lambda episode_id: True, force=True)
+    if record:
+        env = wrappers.Monitor(
+            env, 'recordings/PG/', force=True,
+            video_callable=lambda episode_id: episode_id == 0 or episode_id == (n_episodes - 1)
+        )
+
+    episode_index = -1
+    if load_checkpoint:
+        try:
+            print('...Loading episode_index...')
+            episode_index = utils.pickle_load('episode_index')
+        except FileNotFoundError:
+            print('...No episode_index to load...')
 
     print('\n', 'Game Started', '\n')
 
     scores_history = []
 
-    for i in range(n_episodes):
+    for i in range(episode_index + 1, n_episodes):
         done = False
         ep_score = 0
 
         observation = env.reset()
         s = custom_env.get_state(observation, None)
+
+        if visualize and i == n_episodes - 1:
+            env.render()
+
         while not done:
             a = agent.choose_action(s)
             observation_, r, done, info = env.step(a)
@@ -399,6 +416,17 @@ def train(custom_env, agent, n_episodes, enable_models_saving, ep_batch_num=1):
             ep_score += r
             agent.store_transition(s, a, r, done)
             observation, s = observation_, s_
+
+            if visualize and i == n_episodes - 1:
+                env.render()
+
+        if (i + 1) % ep_batch_num == 0:
+            agent.learn()
+            if enable_models_saving:
+                episode_index = i
+                utils.pickle_save(episode_index, 'episode_index')
+                agent.save_models()
+
         scores_history.append(ep_score)
 
         avg_num = custom_env.window
@@ -406,17 +434,12 @@ def train(custom_env, agent, n_episodes, enable_models_saving, ep_batch_num=1):
             avg_num = ep_batch_num
         utils.print_training_progress(i, ep_score, scores_history, avg_num)
 
-        if (i + 1) % ep_batch_num == 0:
-            agent.learn()
-            if enable_models_saving:
-                agent.save_models()
+        if visualize and i == n_episodes - 1:
+            env.close()
 
     print('\n', 'Game Ended', '\n')
 
-    utils.plot_running_average(
-        custom_env.name, scores_history, window=custom_env.window, show=False,
-        file_name=utils.get_plot_file_name(custom_env.file_name, agent, memory=True)
-    )
+    return scores_history
 
 
 def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_checkpoint=False):
@@ -455,10 +478,19 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
 
     agent = Agent(custom_env, fc_layers_dims, alpha, optimizer_type=optimizer_type, lib_type=lib_type)
 
-    if enable_models_saving and load_checkpoint:
-        agent.load_models()
+    if load_checkpoint:
+        try:
+            agent.load_models()
+        except (ValueError, tf.OpError):
+            print('...No models to load...')
+            load_checkpoint = False
 
-    train(custom_env, agent, n_episodes, enable_models_saving, ep_batch_num)
+    scores_history = train(custom_env, agent, n_episodes, enable_models_saving, load_checkpoint, ep_batch_num)
+
+    utils.plot_running_average(
+        custom_env.name, scores_history, window=custom_env.window, show=False,
+        file_name=utils.get_plot_file_name(custom_env.file_name, agent, memory=True)
+    )
 
 
 if __name__ == '__main__':

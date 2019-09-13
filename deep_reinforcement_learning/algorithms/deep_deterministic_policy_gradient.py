@@ -638,18 +638,33 @@ class Agent(object):
         self.ac.load_model_file()
 
 
-def train(custom_env, agent, n_episodes, enable_models_saving, save_checkpoint=25):
+def train(custom_env, agent, n_episodes,
+          enable_models_saving, load_checkpoint, save_checkpoint=25,
+          visualize=False, record=False):
+
     env = custom_env.env
 
-    # uncomment the line below to record every episode.
-    # env = wrappers.Monitor(env, 'tmp/' + custom_env.file_name + '/DDPG/recordings',
-    #                        video_callable=lambda episode_id: True, force=True)
+    if record:
+        env = wrappers.Monitor(
+            env, 'recordings/DDPG/', force=True,
+            video_callable=lambda episode_id: episode_id == 0 or episode_id == (n_episodes - 1)
+        )
+
+    best_score_episode_index = -1
+    if load_checkpoint:
+        try:
+            print('...Loading best_score_data...')
+            best_score_data = utils.pickle_load('best_score_data')
+            best_score = best_score_data[0]
+            best_score_episode_index = best_score_data[1]
+        except FileNotFoundError:
+            print('...No best_score_data to load...')
 
     print('\n', 'Game Started', '\n')
 
     scores_history = []
 
-    for i in range(n_episodes):
+    for i in range(best_score_episode_index + 1, n_episodes):
         done = False
         ep_score = 0
 
@@ -657,6 +672,10 @@ def train(custom_env, agent, n_episodes, enable_models_saving, save_checkpoint=2
 
         observation = env.reset()
         s = custom_env.get_state(observation, None)
+
+        if visualize and i == n_episodes - 1:
+            env.render()
+
         while not done:
             a = agent.choose_action(s, training_mode=True)
             observation_, r, done, info = env.step(a)
@@ -666,19 +685,28 @@ def train(custom_env, agent, n_episodes, enable_models_saving, save_checkpoint=2
             agent.store_transition(s, a, r, s_, done)
             agent.learn()
             observation, s = observation_, s_
+
+            if visualize and i == n_episodes - 1:
+                env.render()
+
+        # if enable_models_saving and (i + 1) % save_checkpoint == 0:
+        if enable_models_saving and ('best_score' not in locals() or ep_score > best_score):
+            best_score = ep_score
+            best_score_episode_index = i
+            utils.pickle_save([best_score, best_score_episode_index], 'best_score_data')
+            agent.save_models()
+
         scores_history.append(ep_score)
 
         utils.print_training_progress(i, ep_score, scores_history, custom_env.window)
+        print('Best - Episode: %d, Score: %d' % (best_score_episode_index + 1, best_score))
 
-        if enable_models_saving and (i + 1) % save_checkpoint == 0:
-            agent.save_models()
+        if visualize and i == n_episodes - 1:
+            env.close()
 
     print('\n', 'Game Ended', '\n')
 
-    utils.plot_running_average(
-        custom_env.name, scores_history, window=custom_env.window, show=False,
-        file_name=utils.get_plot_file_name(custom_env.file_name, agent, beta=agent.BETA, memory=True)
-    )
+    return scores_history
 
 
 def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_checkpoint=False):
@@ -731,10 +759,19 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
         memory_batch_size=custom_env.memory_batch_size, lib_type=lib_type
     )
 
-    if enable_models_saving and load_checkpoint:
-        agent.load_models()
+    if load_checkpoint:
+        try:
+            agent.load_models()
+        except (ValueError, tf.OpError):
+            print('...No models to load...')
+            load_checkpoint = False
 
-    train(custom_env, agent, n_episodes, enable_models_saving)
+    scores_history = train(custom_env, agent, n_episodes, enable_models_saving, load_checkpoint)
+
+    utils.plot_running_average(
+        custom_env.name, scores_history, window=custom_env.window, show=False,
+        file_name=utils.get_plot_file_name(custom_env.file_name, agent, memory=True, beta=agent.BETA)
+    )
 
 
 if __name__ == '__main__':
