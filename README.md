@@ -20,17 +20,17 @@ Training & Test results come in the forms of graphs and statistics (for some of 
 of both: running average of episode scores, and accumulated scores.
 
 <p float="left">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/samples/algorithms_comparison_legend.png" width="200">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/tabular_methods/performance/algorithms_comparison_legend.png" width="200">
 </p>
 
 <p float="left">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/samples/cart-pole-v0-score-training.png" width="390">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/samples/cart-pole-v0-accumulated-score-training.png" width="410">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/tabular_methods/performance/cart-pole-v0-score-training.png" width="390">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/tabular_methods/performance/cart-pole-v0-accumulated-score-training.png" width="410">
 </p>
 
 <p float="left">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/samples/cart-pole-v0-scores-test.png" width="390">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/samples/cart-pole-v0-accumulated-scores-test.png" width="410">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/tabular_methods/performance/cart-pole-v0-scores-test.png" width="390">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/tabular_methods/performance/cart-pole-v0-accumulated-scores-test.png" width="410">
 </p>
 
 ### Implemented Algorithms ([rl_tabular.py](../master/tabular_methods/rl_tabular.py))
