@@ -463,6 +463,19 @@ def train(custom_env, agent, n_episodes,
           enable_models_saving, load_checkpoint, save_checkpoint=25,
           visualize=False, record=False):
 
+    best_score_episode_index = -1
+    if load_checkpoint:
+        try:
+            agent.load_models()
+            print('...Loading best_score_data...')
+            best_score_data = utils.pickle_load('best_score_data')
+            best_score = best_score_data[0]
+            best_score_episode_index = best_score_data[1]
+        except (ValueError, tf.OpError):
+            print('...No models to load...')
+        except FileNotFoundError:
+            print('...No best_score_data to load...')
+
     env = custom_env.env
 
     if record:
@@ -470,16 +483,6 @@ def train(custom_env, agent, n_episodes,
             env, 'recordings/AC/', force=True,
             video_callable=lambda episode_id: episode_id == 0 or episode_id == (n_episodes - 1)
         )
-
-    best_score_episode_index = -1
-    if load_checkpoint:
-        try:
-            print('...Loading best_score_data...')
-            best_score_data = utils.pickle_load('best_score_data')
-            best_score = best_score_data[0]
-            best_score_episode_index = best_score_data[1]
-        except FileNotFoundError:
-            print('...No best_score_data to load...')
 
     print('\n', 'Game Started', '\n')
 
@@ -567,13 +570,6 @@ def play(env_type, lib_type=utils.LIBRARY_TORCH, enable_models_saving=False, loa
         utils.tf_set_device()
 
     agent = Agent(custom_env, fc_layers_dims, optimizer_type, lr_actor=alpha, lr_critic=beta, lib_type=lib_type)
-
-    if load_checkpoint:
-        try:
-            agent.load_models()
-        except (ValueError, tf.OpError):
-            print('...No models to load...')
-            load_checkpoint = False
 
     scores_history = train(custom_env, agent, n_episodes, enable_models_saving, load_checkpoint)
 

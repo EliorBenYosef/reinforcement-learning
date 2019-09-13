@@ -378,6 +378,17 @@ def train(custom_env, agent, n_episodes,
           enable_models_saving, load_checkpoint, ep_batch_num=1,
           visualize=False, record=False):
 
+    episode_index = -1
+    if load_checkpoint:
+        try:
+            agent.load_models()
+            print('...Loading episode_index...')
+            episode_index = utils.pickle_load('episode_index')
+        except (ValueError, tf.OpError):
+            print('...No models to load...')
+        except FileNotFoundError:
+            print('...No episode_index to load...')
+
     env = custom_env.env
 
     if record:
@@ -385,14 +396,6 @@ def train(custom_env, agent, n_episodes,
             env, 'recordings/PG/', force=True,
             video_callable=lambda episode_id: episode_id == 0 or episode_id == (n_episodes - 1)
         )
-
-    episode_index = -1
-    if load_checkpoint:
-        try:
-            print('...Loading episode_index...')
-            episode_index = utils.pickle_load('episode_index')
-        except FileNotFoundError:
-            print('...No episode_index to load...')
 
     print('\n', 'Game Started', '\n')
 
@@ -477,13 +480,6 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
     custom_env.env.seed(28)
 
     agent = Agent(custom_env, fc_layers_dims, alpha, optimizer_type=optimizer_type, lib_type=lib_type)
-
-    if load_checkpoint:
-        try:
-            agent.load_models()
-        except (ValueError, tf.OpError):
-            print('...No models to load...')
-            load_checkpoint = False
 
     scores_history = train(custom_env, agent, n_episodes, enable_models_saving, load_checkpoint, ep_batch_num)
 

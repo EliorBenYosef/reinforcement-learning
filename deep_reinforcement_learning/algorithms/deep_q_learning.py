@@ -521,9 +521,27 @@ def load_up_agent_memory_with_random_gameplay(custom_env, agent, n_episodes=None
     print('\n', "Done with random gameplay. Game on.", '\n')
 
 
-def train(custom_env, agent, n_episodes,
+def train(custom_env, agent, n_episodes, perform_random_gameplay,
           enable_models_saving, load_checkpoint, save_checkpoint=10,
           visualize=False, record=False):
+
+    best_score_episode_index = -1
+    if load_checkpoint:
+        try:
+            agent.load_models()
+            print('...Loading best_score_data...')
+            best_score_data = utils.pickle_load('best_score_data')
+            best_score = best_score_data[0]
+            best_score_episode_index = best_score_data[1]
+        except (ValueError, tf.OpError):
+            print('...No models to load...')
+        except FileNotFoundError:
+            print('...No best_score_data to load...')
+
+    if perform_random_gameplay:
+        # the agent's memory is originally initialized with zeros (which is perfectly acceptable).
+        # however, we can overwrite these zeros with actual gameplay sampled from the environment.
+        load_up_agent_memory_with_random_gameplay(custom_env, agent)
 
     env = custom_env.env
 
@@ -532,16 +550,6 @@ def train(custom_env, agent, n_episodes,
             env, 'recordings/DQL/', force=True,
             video_callable=lambda episode_id: episode_id == 0 or episode_id == (n_episodes - 1)
         )
-
-    best_score_episode_index = -1
-    if load_checkpoint:
-        try:
-            print('...Loading best_score_data...')
-            best_score_data = utils.pickle_load('best_score_data')
-            best_score = best_score_data[0]
-            best_score_episode_index = best_score_data[1]
-        except FileNotFoundError:
-            print('...No best_score_data to load...')
 
     print('\n', 'Game Started', '\n')
 
@@ -631,19 +639,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
         double_dql=double_dql, tau=tau, lib_type=lib_type
     )
 
-    if load_checkpoint:
-        try:
-            agent.load_models()
-        except (ValueError, tf.OpError):
-            print('...No models to load...')
-            load_checkpoint = False
-
-    if perform_random_gameplay:
-        # the agent's memory is originally initialized with zeros (which is perfectly acceptable).
-        # however, we can overwrite these zeros with actual gameplay sampled from the environment.
-        load_up_agent_memory_with_random_gameplay(custom_env, agent)
-
-    scores_history = train(custom_env, agent, n_episodes, enable_models_saving, load_checkpoint)
+    scores_history = train(custom_env, agent, n_episodes, perform_random_gameplay, enable_models_saving, load_checkpoint)
 
     utils.plot_running_average(
         custom_env.name, scores_history, window=custom_env.window, show=False,
@@ -706,13 +702,7 @@ def command_line_play(lib_type=utils.LIBRARY_TF, enable_models_saving=False, loa
         double_dql=False, tau=None, lib_type=lib_type
     )
 
-    if enable_models_saving and load_checkpoint:
-        agent.load_models()
-
-    if perform_random_gameplay:
-        load_up_agent_memory_with_random_gameplay(custom_env, agent)
-
-    scores_history = train(custom_env, agent, args.n_episodes, enable_models_saving)
+    scores_history = train(custom_env, agent, args.n_episodes, perform_random_gameplay, enable_models_saving, load_checkpoint)
 
     utils.plot_running_average(
         custom_env.name, scores_history, window=custom_env.window, show=False,
@@ -812,13 +802,9 @@ def perform_grid_search(lib_type=utils.LIBRARY_TF, enable_models_saving=False, l
                                                 double_dql=False, tau=None, lib_type=lib_type
                                             )
 
-                                            if enable_models_saving and load_checkpoint:
-                                                agent.load_models()
-
-                                            if perform_random_gameplay:
-                                                load_up_agent_memory_with_random_gameplay(custom_env, agent)
-
-                                            scores_history = train(custom_env, agent, n_episodes, enable_models_saving)
+                                            scores_history = train(
+                                                custom_env, agent, n_episodes, perform_random_gameplay,
+                                                enable_models_saving, load_checkpoint)
                                             scores_histories.append(scores_history)
                                             labels.append('[%d,%d]' % (fc1_dim, fc2_dim))
 
