@@ -453,23 +453,25 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
     if env_type == 0:
         # custom_env = Envs.Box2D.LunarLander()
         custom_env = Envs.ClassicControl.CartPole()
+        fc_layers_dims = [64, 64] if lib_type == utils.LIBRARY_TF else [128, 128]
         optimizer_type = utils.OPTIMIZER_Adam
         alpha = 0.0005 if lib_type == utils.LIBRARY_TF else 0.001
-        fc_layers_dims = [64, 64] if lib_type == utils.LIBRARY_TF else [128, 128]
         ep_batch_num = 1  # REINFORCE algorithm (MC PG)
         n_episodes = 2500  # supposed to be enough for good results in PG
+
     elif env_type == 1:
         custom_env = Envs.Atari.Breakout()
+        fc_layers_dims = [256]
         optimizer_type = utils.OPTIMIZER_RMSprop  # utils.OPTIMIZER_SGD
         alpha = 0.00025
-        fc_layers_dims = [256]
         ep_batch_num = 1  # REINFORCE algorithm (MC PG)
         n_episodes = 200  # start with 200, then 5000 ?
+
     else:
         custom_env = Envs.Atari.SpaceInvaders()
+        fc_layers_dims = [256]
         optimizer_type = utils.OPTIMIZER_RMSprop  # utils.OPTIMIZER_SGD
         alpha = 0.001  # 0.003
-        fc_layers_dims = [256]
         ep_batch_num = 10
         n_episodes = 1000
 

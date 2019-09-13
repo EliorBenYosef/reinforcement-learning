@@ -546,16 +546,16 @@ def play(env_type, lib_type=utils.LIBRARY_TORCH, enable_models_saving=False, loa
     elif env_type == 1:
         # custom_env = Envs.Box2D.LunarLander()
         custom_env = Envs.ClassicControl.Pendulum()
-        optimizer_type = utils.OPTIMIZER_Adam
         fc_layers_dims = (2048, 512)
+        optimizer_type = utils.OPTIMIZER_Adam
         alpha = 0.00001
         beta = None
         n_episodes = 2000
 
     else:
         custom_env = Envs.ClassicControl.MountainCarContinuous()
-        optimizer_type = utils.OPTIMIZER_Adam
         fc_layers_dims = (256, 256)
+        optimizer_type = utils.OPTIMIZER_Adam
         alpha = 0.000005
         beta = 0.00001
         n_episodes = 100  # longer than 100 --> instability (because the value function estimation is unstable)
