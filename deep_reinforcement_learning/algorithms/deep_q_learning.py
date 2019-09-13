@@ -754,10 +754,9 @@ def perform_grid_search(lib_type=utils.LIBRARY_TF, enable_models_saving=False, l
 
     ###########################################
 
+    counter = 0
     scores_histories = []
     labels = []
-
-    counter = 0
 
     for optimizer in optimizer_list:
         for alpha in alpha_list:

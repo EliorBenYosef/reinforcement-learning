@@ -62,6 +62,31 @@ of both: running average of episode scores, and accumulated scores.
   * CartPole
   * Acrobot
 
+### Algorithms Performance Examples
+
+#### AI agent before and after training
+
+**Mountain Car**
+
+<p float="left">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/tabular_methods/performance/mountain-car_untrained.gif" width="400">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/tabular_methods/performance/mountain-car_trained.gif" width="400">
+</p>
+
+**Cart Pole**
+
+<p float="left">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/tabular_methods/performance/cart-pole_untrained.gif" width="400">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/tabular_methods/performance/cart-pole_trained.gif" width="400">
+</p>
+
+**Acrobot**
+
+<p float="left">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/tabular_methods/performance/acrobot_untrained.gif" width="400">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/tabular_methods/performance/acrobot_trained.gif" width="400">
+</p>
+
 ## 2. Deep Reinforcement Learning
 
 ### How to use
@@ -104,27 +129,12 @@ Deep Q-learning, Policy Gradient | Deep Deterministic Policy Gradient
 **Observation Vector Input Type** | CartPole, LunarLander | Pendulum, MountainCarContinuous, LunarLanderContinuous, BipedalWalker
 **Stacked Frames Input Type** | Breakout, SpaceInvaders |
 
-## AI agent before and after training
+### Algorithms Performance Examples
 
-### Mountain Car
-
-<p float="left">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/samples/mountain-car_untrained.gif" width="400">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/samples/mountain-car_trained.gif" width="400">
-</p>
-
-### Cart Pole
+#### DQL
 
 <p float="left">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/samples/cart-pole_untrained.gif" width="400">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/samples/cart-pole_trained.gif" width="400">
-</p>
-
-### Acrobot
-
-<p float="left">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/samples/acrobot_untrained.gif" width="400">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/samples/acrobot_trained.gif" width="400">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/deep_reinforcement_learning/performance/cart-pole-v1_dql.png" width="500">
 </p>
 
 ## Dependencies
