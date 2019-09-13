@@ -617,8 +617,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
     )
 
 
-
-def autotune_hyperparams(lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_checkpoint=False,
+def command_line_play(lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_checkpoint=False,
                          perform_random_gameplay=False):
 
     # argparse is a built-in module for python that allows us to parse command-line options.
@@ -799,5 +798,5 @@ def perform_grid_search(lib_type=utils.LIBRARY_TF, enable_models_saving=False, l
 
 if __name__ == '__main__':
     # play(0, lib_type=utils.LIBRARY_TF)         # CartPole (0), Breakout (1), SpaceInvaders (2)
-    # autotune_hyperparams()
+    # command_line_play()
     perform_grid_search()
