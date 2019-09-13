@@ -4,19 +4,21 @@ This is a **modular** implementation, meaning: you can plug-and-play **almost an
 
 Table of contents:
 
-1. [Tabular Methods](https://github.com/EliorBenYosef/reinforcement-learning#1-tabular-methods)
-   * [How to use](https://github.com/EliorBenYosef/reinforcement-learning#how-to-use)
-   * [Implemented Algorithms](https://github.com/EliorBenYosef/reinforcement-learning#implemented-algorithms-rl_tabularpy)
-   * [Implemented Environments](https://github.com/EliorBenYosef/reinforcement-learning#implemented-environments-envs_dsspy)
-   * [Algorithms Performance Examples](https://github.com/EliorBenYosef/reinforcement-learning#algorithms-performance-examples)
+[Tabular Methods](https://github.com/EliorBenYosef/reinforcement-learning#tabular-methods)
+* [How to use](https://github.com/EliorBenYosef/reinforcement-learning#how-to-use)
+* [Implemented Algorithms](https://github.com/EliorBenYosef/reinforcement-learning#implemented-algorithms-rl_tabularpy)
+* [Implemented Environments](https://github.com/EliorBenYosef/reinforcement-learning#implemented-environments-envs_dsspy)
+* [Algorithms Performance Examples](https://github.com/EliorBenYosef/reinforcement-learning#algorithms-performance-examples)
 
-2. [Deep Reinforcement Learning](https://github.com/EliorBenYosef/reinforcement-learning#2-deep-reinforcement-learning) 
-   * [How to use](https://github.com/EliorBenYosef/reinforcement-learning#how-to-use-1)
-   * [Implemented Algorithms](https://github.com/EliorBenYosef/reinforcement-learning#implemented-algorithms)
-   * [Implemented Environments](https://github.com/EliorBenYosef/reinforcement-learning#implemented-environments-envspy)
-   * [Algorithms Performance Examples](https://github.com/EliorBenYosef/reinforcement-learning#algorithms-performance-examples-1)
+[Deep Reinforcement Learning](https://github.com/EliorBenYosef/reinforcement-learning#deep-reinforcement-learning) 
+* [How to use](https://github.com/EliorBenYosef/reinforcement-learning#how-to-use-1)
+* [Implemented Algorithms](https://github.com/EliorBenYosef/reinforcement-learning#implemented-algorithms)
+* [Implemented Environments](https://github.com/EliorBenYosef/reinforcement-learning#implemented-environments-envspy)
+* [Algorithms Performance Examples](https://github.com/EliorBenYosef/reinforcement-learning#algorithms-performance-examples-1)
 
-## 1. Tabular Methods
+[Dependencies](https://github.com/EliorBenYosef/reinforcement-learning#dependencies) 
+
+## Tabular Methods
 
 ### How to use
 
@@ -99,7 +101,7 @@ of both: running average of episode scores, and accumulated scores.
   <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/tabular_methods/performance/cart-pole-v0-accumulated-scores-test.png" width="410">
 </p>
 
-## 2. Deep Reinforcement Learning
+## Deep Reinforcement Learning
 
 ### How to use
 
