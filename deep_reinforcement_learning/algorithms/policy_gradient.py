@@ -380,16 +380,19 @@ def train(custom_env, agent, n_episodes,
           enable_models_saving, load_checkpoint, ep_batch_num=1,
           visualize=False, record=False):
 
+    scores_history = []
     episode_index = -1
     if load_checkpoint:
         try:
             agent.load_models()
             print('...Loading episode_index...')
             episode_index = utils.pickle_load('episode_index', agent.chkpt_dir)
+            print('...Loading scores_history...')
+            scores_history = utils.pickle_load('scores_history', agent.chkpt_dir)
         except (ValueError, tf.OpError):
             print('...No models to load...')
         except FileNotFoundError:
-            print('...No episode_index to load...')
+            print('...No data to load...')
 
     env = custom_env.env
 
@@ -400,8 +403,6 @@ def train(custom_env, agent, n_episodes,
         )
 
     print('\n', 'Game Started', '\n')
-
-    scores_history = []
 
     for i in range(episode_index + 1, n_episodes):
         done = False
@@ -425,14 +426,15 @@ def train(custom_env, agent, n_episodes,
             if visualize and i == n_episodes - 1:
                 env.render()
 
+        scores_history.append(ep_score)
+
         if (i + 1) % ep_batch_num == 0:
             agent.learn()
             if enable_models_saving:
                 episode_index = i
                 utils.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
+                utils.pickle_save(scores_history, 'scores_history', agent.chkpt_dir)
                 agent.save_models()
-
-        scores_history.append(ep_score)
 
         avg_num = custom_env.window
         if ep_batch_num > avg_num:

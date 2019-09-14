@@ -526,16 +526,19 @@ def train(custom_env, agent, n_episodes, perform_random_gameplay,
           enable_models_saving, load_checkpoint, save_checkpoint=10,
           visualize=False, record=False):
 
+    scores_history = []
     episode_index = -1
     if load_checkpoint:
         try:
             agent.load_models()
             print('...Loading episode_index...')
             episode_index = utils.pickle_load('episode_index', agent.chkpt_dir)
+            print('...Loading scores_history...')
+            scores_history = utils.pickle_load('scores_history', agent.chkpt_dir)
         except (ValueError, tf.OpError):
             print('...No models to load...')
         except FileNotFoundError:
-            print('...No episode_index to load...')
+            print('...No data to load...')
 
     if perform_random_gameplay:
         # the agent's memory is originally initialized with zeros (which is perfectly acceptable).
@@ -551,8 +554,6 @@ def train(custom_env, agent, n_episodes, perform_random_gameplay,
         )
 
     print('\n', 'Game Started', '\n')
-
-    scores_history = []
 
     for i in range(episode_index + 1, n_episodes):
         done = False
@@ -577,12 +578,13 @@ def train(custom_env, agent, n_episodes, perform_random_gameplay,
             if visualize and i == n_episodes - 1:
                 env.render()
 
+        scores_history.append(ep_score)
+
         if enable_models_saving and (i + 1) % save_checkpoint == 0:
             episode_index = i
             utils.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
+            utils.pickle_save(scores_history, 'scores_history', agent.chkpt_dir)
             agent.save_models()
-
-        scores_history.append(ep_score)
 
         utils.print_training_progress(i, ep_score, scores_history, custom_env.window, agent.EPS)
 
