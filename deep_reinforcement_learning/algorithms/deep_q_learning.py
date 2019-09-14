@@ -524,18 +524,16 @@ def train(custom_env, agent, n_episodes, perform_random_gameplay,
           enable_models_saving, load_checkpoint, save_checkpoint=10,
           visualize=False, record=False):
 
-    best_score_episode_index = -1
+    episode_index = -1
     if load_checkpoint:
         try:
             agent.load_models()
-            print('...Loading best_score_data...')
-            best_score_data = utils.pickle_load('best_score_data')
-            best_score = best_score_data[0]
-            best_score_episode_index = best_score_data[1]
+            print('...Loading episode_index...')
+            episode_index = utils.pickle_load('episode_index')
         except (ValueError, tf.OpError):
             print('...No models to load...')
         except FileNotFoundError:
-            print('...No best_score_data to load...')
+            print('...No episode_index to load...')
 
     if perform_random_gameplay:
         # the agent's memory is originally initialized with zeros (which is perfectly acceptable).
@@ -554,7 +552,7 @@ def train(custom_env, agent, n_episodes, perform_random_gameplay,
 
     scores_history = []
 
-    for i in range(best_score_episode_index + 1, n_episodes):
+    for i in range(episode_index + 1, n_episodes):
         done = False
         ep_score = 0
 
@@ -577,17 +575,14 @@ def train(custom_env, agent, n_episodes, perform_random_gameplay,
             if visualize and i == n_episodes - 1:
                 env.render()
 
-        # if enable_models_saving and (i + 1) % save_checkpoint == 0:
-        if enable_models_saving and ('best_score' not in locals() or ep_score > best_score):
-            best_score = ep_score
-            best_score_episode_index = i
-            utils.pickle_save([best_score, best_score_episode_index], 'best_score_data')
+        if enable_models_saving and (i + 1) % save_checkpoint == 0:
+            episode_index = i
+            utils.pickle_save(episode_index, 'episode_index')
             agent.save_models()
 
         scores_history.append(ep_score)
 
         utils.print_training_progress(i, ep_score, scores_history, custom_env.window, agent.EPS)
-        print('Best - Episode: %d, Score: %d' % (best_score_episode_index + 1, best_score))
 
         if visualize and i == n_episodes - 1:
             env.close()
