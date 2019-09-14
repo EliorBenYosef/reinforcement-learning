@@ -71,6 +71,9 @@ def command_line_play(lib_type=utils.LIBRARY_TF,
     custom_env = Envs.ClassicControl.CartPole()
     custom_env.env.seed(28)
 
+    if lib_type == utils.LIBRARY_TF:
+        utils.tf_set_device()
+
     agent = Agent(
         custom_env, [args.fc1_dim, args.fc2_dim], args.n_episodes,
         args.alpha, optimizer_type=optimizer, gamma=args.gamma,

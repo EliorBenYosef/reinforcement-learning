@@ -632,6 +632,9 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
 
     custom_env.env.seed(28)
 
+    if lib_type == utils.LIBRARY_TF:
+        utils.tf_set_device()
+
     agent = Agent(
         custom_env, fc_layers_dims, n_episodes, alpha, optimizer_type,
         double_dql=double_dql, tau=tau, lib_type=lib_type

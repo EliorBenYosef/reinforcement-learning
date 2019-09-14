@@ -485,6 +485,9 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
 
     custom_env.env.seed(28)
 
+    if lib_type == utils.LIBRARY_TF:
+        utils.tf_set_device()
+
     agent = Agent(custom_env, fc_layers_dims, alpha, optimizer_type=optimizer_type, lib_type=lib_type)
 
     scores_history = train(custom_env, agent, n_episodes, enable_models_saving, load_checkpoint, ep_batch_num)

@@ -19,6 +19,10 @@ def perform_grid_search(lib_type=utils.LIBRARY_TF, enable_models_saving=False, l
 
     custom_env = Envs.ClassicControl.CartPole()
     custom_env.env.seed(28)
+
+    if lib_type == utils.LIBRARY_TF:
+        utils.tf_set_device()
+
     n_episodes = 3000
 
     # double_dql = False
