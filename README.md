@@ -162,10 +162,9 @@ Deep Q-learning, Policy Gradient | Deep Deterministic Policy Gradient
 
 ### Algorithms Performance Examples
 
-#### DQL
+#### [Grid Search](../master/deep_reinforcement_learning/grid_search.py)
 
-performance of [Grid Search](../master/deep_reinforcement_learning/grid_search.py)
-on first & second FC layers' sizes (number of nodes \ neurons):
+Performance of DQL Grid Search on first & second FC layers' sizes (number of nodes \ neurons):
 
 <p float="left">
   <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/deep_reinforcement_learning/performance/cart-pole-v1_dql.png" width="500">
