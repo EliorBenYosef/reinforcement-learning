@@ -31,7 +31,7 @@ from deep_reinforcement_learning.replay_buffer import ReplayBuffer
 
 class DQN(object):
 
-    def __init__(self, custom_env, fc_layers_dims, optimizer_type, alpha):
+    def __init__(self, custom_env, fc_layers_dims, optimizer_type, alpha, chkpt_dir):
         self.input_type = custom_env.input_type
 
         self.input_dims = custom_env.input_dims
@@ -41,7 +41,7 @@ class DQN(object):
         self.optimizer_type = optimizer_type
         self.ALPHA = alpha
 
-        self.chkpt_dir = 'tmp/' + custom_env.file_name + '/DQL/NNs'
+        self.chkpt_dir = chkpt_dir
 
     def create_dqn_tensorflow(self, name):
         return DQN.DQN_TensorFlow(self, name)
@@ -373,6 +373,8 @@ class Agent(object):
 
         self.learn_step_counter = 0
 
+        self.chkpt_dir = 'tmp/' + custom_env.file_name + '/DQL/NNs/'
+
         self.policy_dqn = self.init_network(custom_env, 'policy')
 
         if double_dql:
@@ -383,7 +385,7 @@ class Agent(object):
             self.tau = None
 
     def init_network(self, custom_env, name):
-        dqn_base = DQN(custom_env, self.fc_layers_dims, self.optimizer_type, self.ALPHA)
+        dqn_base = DQN(custom_env, self.fc_layers_dims, self.optimizer_type, self.ALPHA, self.chkpt_dir)
 
         if self.lib_type == utils.LIBRARY_TF:
             dqn = dqn_base.create_dqn_tensorflow(name='q_' + name)
@@ -529,7 +531,7 @@ def train(custom_env, agent, n_episodes, perform_random_gameplay,
         try:
             agent.load_models()
             print('...Loading episode_index...')
-            episode_index = utils.pickle_load('episode_index')
+            episode_index = utils.pickle_load('episode_index', agent.chkpt_dir)
         except (ValueError, tf.OpError):
             print('...No models to load...')
         except FileNotFoundError:
@@ -577,7 +579,7 @@ def train(custom_env, agent, n_episodes, perform_random_gameplay,
 
         if enable_models_saving and (i + 1) % save_checkpoint == 0:
             episode_index = i
-            utils.pickle_save(episode_index, 'episode_index')
+            utils.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
             agent.save_models()
 
         scores_history.append(ep_score)

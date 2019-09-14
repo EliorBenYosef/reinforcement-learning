@@ -30,7 +30,7 @@ from deep_reinforcement_learning.envs import Envs
 
 class DNN(object):
 
-    def __init__(self, custom_env, fc_layers_dims, optimizer_type, alpha):
+    def __init__(self, custom_env, fc_layers_dims, optimizer_type, alpha, chkpt_dir):
         self.input_type = custom_env.input_type
 
         self.input_dims = custom_env.input_dims
@@ -40,7 +40,7 @@ class DNN(object):
         self.optimizer_type = optimizer_type
         self.ALPHA = alpha
 
-        self.chkpt_dir = 'tmp/' + custom_env.file_name + '/PG/NNs'
+        self.chkpt_dir = chkpt_dir
 
     def create_dnn_tensorflow(self, name):
         return DNN.DNN_TensorFlow(self, name)
@@ -320,10 +320,12 @@ class Agent(object):
 
         self.memory = Memory(custom_env, lib_type)
 
+        self.chkpt_dir = 'tmp/' + custom_env.file_name + '/PG/NNs/'
+
         self.policy_dnn = self.init_network(custom_env)
 
     def init_network(self, custom_env):
-        dnn_base = DNN(custom_env, self.fc_layers_dims, self.optimizer_type, self.ALPHA)
+        dnn_base = DNN(custom_env, self.fc_layers_dims, self.optimizer_type, self.ALPHA, self.chkpt_dir)
 
         if self.lib_type == utils.LIBRARY_TF:
             dnn = dnn_base.create_dnn_tensorflow(name='q_policy')
@@ -383,7 +385,7 @@ def train(custom_env, agent, n_episodes,
         try:
             agent.load_models()
             print('...Loading episode_index...')
-            episode_index = utils.pickle_load('episode_index')
+            episode_index = utils.pickle_load('episode_index', agent.chkpt_dir)
         except (ValueError, tf.OpError):
             print('...No models to load...')
         except FileNotFoundError:
@@ -427,7 +429,7 @@ def train(custom_env, agent, n_episodes,
             agent.learn()
             if enable_models_saving:
                 episode_index = i
-                utils.pickle_save(episode_index, 'episode_index')
+                utils.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
                 agent.save_models()
 
         scores_history.append(ep_score)

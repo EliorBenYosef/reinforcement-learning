@@ -438,13 +438,17 @@ class Agent(object):
         self.ALPHA = lr_actor
         self.BETA = lr_critic if lr_critic is not None else lr_actor
 
-        chkpt_dir = 'tmp/' + custom_env.file_name + '/AC/NNs/'
+        self.chkpt_dir = 'tmp/' + custom_env.file_name + '/AC/NNs/'
+
         network_type = NETWORK_TYPE_SEPARATE if lr_critic is not None else NETWORK_TYPE_SHARED
         if lib_type == utils.LIBRARY_TF:
-            self.ac = AC.AC_TF(custom_env, fc_layers_dims, optimizer_type, lr_actor, lr_critic, chkpt_dir, network_type,
-                                  device_type)
+            self.ac = AC.AC_TF(custom_env, fc_layers_dims,
+                               optimizer_type, lr_actor, lr_critic,
+                               self.chkpt_dir, network_type, device_type)
         else:
-            self.ac = AC.AC_Torch(custom_env, fc_layers_dims, optimizer_type, lr_actor, lr_critic, chkpt_dir, network_type)
+            self.ac = AC.AC_Torch(custom_env, fc_layers_dims,
+                                  optimizer_type, lr_actor, lr_critic,
+                                  self.chkpt_dir, network_type)
 
     def choose_action(self, s):
         return self.ac.choose_action(s)
@@ -468,7 +472,7 @@ def train(custom_env, agent, n_episodes,
         try:
             agent.load_models()
             print('...Loading episode_index...')
-            episode_index = utils.pickle_load('episode_index')
+            episode_index = utils.pickle_load('episode_index', agent.chkpt_dir)
         except (ValueError, tf.OpError):
             print('...No models to load...')
         except FileNotFoundError:
@@ -510,7 +514,7 @@ def train(custom_env, agent, n_episodes,
 
         if enable_models_saving and (i + 1) % save_checkpoint == 0:
             episode_index = i
-            utils.pickle_save(episode_index, 'episode_index')
+            utils.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
             agent.save_models()
 
         scores_history.append(ep_score)

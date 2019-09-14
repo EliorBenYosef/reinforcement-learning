@@ -142,7 +142,6 @@ def print_average_score(total_scores, ratio=10):
 
 
 def print_training_progress(i, ep_score, scores_history, avg_num, trailing=True, eps=None):
-    print('')
     print('episode: %d ;' % (i + 1), 'score: %d' % ep_score)  # score: %.2f
 
     eps_string = ''
@@ -162,6 +161,8 @@ def print_training_progress(i, ep_score, scores_history, avg_num, trailing=True,
         print('episodes: %d - %d ;' % (i + 2 - avg_num, i + 1),
               'average score %.3f ;' % avg_score,
               eps_string)
+
+    print('')
 
 
 ##############################################
@@ -454,14 +455,14 @@ def watch_trained_agent_play(custom_env_object, Q, action_space_size, episodes=3
 
 ##############################################
 
-def pickle_load(file_name):
-    with open(file_name + '.pkl', 'rb') as file:  # .pickle  # rb = read binary
+def pickle_load(file_name, directory=''):
+    with open(directory + file_name + '.pkl', 'rb') as file:  # .pickle  # rb = read binary
         var = pickle.load(file)  # var == [X_train, y_train]
     return var
 
 
-def pickle_save(var, file_name):
-    with open(file_name + '.pkl', 'wb') as file:  # .pickle  # wb = write binary
+def pickle_save(var, file_name, directory=''):
+    with open(directory + file_name + '.pkl', 'wb') as file:  # .pickle  # wb = write binary
         pickle.dump(var, file)  # var == [X_train, y_train]
 
 

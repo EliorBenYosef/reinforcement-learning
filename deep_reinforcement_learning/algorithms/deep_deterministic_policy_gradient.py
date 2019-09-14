@@ -603,12 +603,16 @@ class Agent(object):
         )
         self.memory = ReplayBuffer(custom_env, self.memory_size, lib_type, is_discrete_action_space=False)
 
-        chkpt_dir = 'tmp/' + custom_env.file_name + '/DDPG/NNs/'
+        self.chkpt_dir = 'tmp/' + custom_env.file_name + '/DDPG/NNs/'
+
         if lib_type == utils.LIBRARY_TF:
-            self.ac = AC.AC_TF(custom_env, fc_layers_dims, optimizer_type, lr_actor, lr_critic, tau, chkpt_dir,
-                                    device_type)
+            self.ac = AC.AC_TF(custom_env, fc_layers_dims,
+                               optimizer_type, lr_actor, lr_critic,
+                               tau, self.chkpt_dir, device_type)
         else:
-            self.ac = AC.AC_Torch(custom_env, fc_layers_dims, optimizer_type, lr_actor, lr_critic, tau, chkpt_dir)
+            self.ac = AC.AC_Torch(custom_env, fc_layers_dims,
+                                  optimizer_type, lr_actor, lr_critic,
+                                  tau, self.chkpt_dir)
 
     def store_transition(self, s, a, r, s_, is_terminal):
         self.memory.store_transition(s, a, r, s_, is_terminal)
@@ -647,7 +651,7 @@ def train(custom_env, agent, n_episodes,
         try:
             agent.load_models()
             print('...Loading episode_index...')
-            episode_index = utils.pickle_load('episode_index')
+            episode_index = utils.pickle_load('episode_index', agent.chkpt_dir)
         except (ValueError, tf.OpError):
             print('...No models to load...')
         except FileNotFoundError:
@@ -692,7 +696,7 @@ def train(custom_env, agent, n_episodes,
 
         if enable_models_saving and (i + 1) % save_checkpoint == 0:
             episode_index = i
-            utils.pickle_save(episode_index, 'episode_index')
+            utils.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
             agent.save_models()
 
         scores_history.append(ep_score)
