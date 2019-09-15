@@ -148,7 +148,7 @@ def print_training_progress(i, ep_score, scores_history, avg_num, trailing=True,
     if eps:
         eps_string = 'epsilon %.3f' % eps  # %.4f
 
-    if trailing and i >= avg_num:
+    if trailing and (i + 1) >= avg_num:
         # gives you the running avg of the last 'avg_num' episodes, every episode:
         avg_score = np.mean(scores_history[-avg_num:])
         print('trailing %d episodes ;' % avg_num,
@@ -208,7 +208,7 @@ def decrement_eps(eps_current, eps_min, eps_dec, eps_dec_type, eps_max=None, t=N
 
 ##############################################
 
-def get_plot_file_name(env_file_name, agent, beta=None, eps=False, memory=False):
+def get_plot_file_name(env_file_name, agent, beta=None, eps=False, replay_buffer=False):
     # options:
     #   .replace('.', 'p')
     #   .split('.')[1]
@@ -233,21 +233,21 @@ def get_plot_file_name(env_file_name, agent, beta=None, eps=False, memory=False)
     else:  # agent.optimizer_type == OPTIMIZER_SGD
         optimizer = 'sgd_'
     alpha = 'alpha-' + str(agent.ALPHA).replace('.', 'p') + '_'
-    beta = 'beta-' + str(beta).replace('.', 'p') if beta else '' + '_'
+    beta = ('beta-' + str(beta).replace('.', 'p') + '_') if beta is not None else ''
 
     if eps:
         eps_max = 'max-' + str(agent.eps_max).replace('.', 'p') + '_'
         eps_min = 'min-' + str(agent.eps_min).replace('.', 'p') + '_'
         eps_dec = 'dec-' + str(agent.eps_dec).replace('.', 'p') + '_'
 
-    if memory:
+    if replay_buffer:
         memory_size = 'size-' + str(agent.memory_size)
         memory_batch_size = 'batch-' + str(agent.memory_batch_size)
 
     plot_file_name = env_file_name + '_' + gamma + fc_layers_dims + 'OPT_' + optimizer + alpha + beta
     if eps:
         plot_file_name += 'EPS_' + eps_max + eps_min + eps_dec
-    if memory:
+    if replay_buffer:
         plot_file_name += 'MEM_' + memory_size + memory_batch_size
 
     return plot_file_name
