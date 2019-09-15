@@ -63,24 +63,22 @@ class AlgorithmsTesting:
                                                            eps_max=frozen_lake_env.EPS_MIN)
         frozen_lake_policy, frozen_lake_scores, frozen_lake_accumulated_scores = \
             frozen_lake_model.perform_MC_non_exploring_starts_control(print_info=print_q_table_and_policy)
-        utils.plot_running_average(method_name + ' - ' + frozen_lake_env.name, frozen_lake_scores,
+        utils.plot_running_average(frozen_lake_env.name, method_name, frozen_lake_scores,
                                    window=episodes//100, show=True)
-        utils.plot_accumulated_scores(method_name + ' - ' + frozen_lake_env.name, frozen_lake_accumulated_scores,
-                                      show=True)
+        utils.plot_accumulated_scores(frozen_lake_env.name, method_name, frozen_lake_accumulated_scores, show=True)
         frozen_lake_scores, frozen_lake_accumulated_scores = utils.test_policy(frozen_lake_env, frozen_lake_policy)
-        utils.plot_running_average(method_name + ' - ' + frozen_lake_env.name, frozen_lake_scores,
+        utils.plot_running_average(frozen_lake_env.name, method_name, frozen_lake_scores,
                                    window=episodes//100, show=True)
-        utils.plot_accumulated_scores(method_name + ' - ' + frozen_lake_env.name, frozen_lake_accumulated_scores,
-                                      show=True)
+        utils.plot_accumulated_scores(frozen_lake_env.name, method_name, frozen_lake_accumulated_scores, show=True)
 
         # Blackjack:
         blackjack_env = Envs_DSS.Blackjack()
         blackjack_model = TabularMethods.MonteCarloModel(blackjack_env, episodes=episodes, eps_max=0.05, eps_dec=1e-7)
         blackjack_policy, _, blackjack_accumulated_scores = \
             blackjack_model.perform_MC_non_exploring_starts_control(print_info=print_q_table_and_policy)
-        utils.plot_accumulated_scores(method_name + ' - ' + blackjack_env.name, blackjack_accumulated_scores, show=True)
+        utils.plot_accumulated_scores(blackjack_env.name, method_name, blackjack_accumulated_scores, show=True)
         blackjack_accumulated_scores = utils.test_policy(blackjack_env, blackjack_policy)
-        utils.plot_accumulated_scores(method_name + ' - ' + blackjack_env.name, blackjack_accumulated_scores, show=True)
+        utils.plot_accumulated_scores(blackjack_env.name, method_name, blackjack_accumulated_scores, show=True)
 
     @staticmethod
     def test_off_policy_mc_control(episodes, print_q_table_and_policy):
@@ -92,24 +90,22 @@ class AlgorithmsTesting:
                                                            eps_max=frozen_lake_env.EPS_MIN)
         frozen_lake_policy, frozen_lake_scores, frozen_lake_accumulated_scores = \
             frozen_lake_model.perform_off_policy_MC_control(print_info=print_q_table_and_policy)
-        utils.plot_running_average(method_name + ' - ' + frozen_lake_env.name, frozen_lake_scores,
+        utils.plot_running_average(frozen_lake_env.name, method_name, frozen_lake_scores,
                                    window=episodes//100, show=True)
-        utils.plot_accumulated_scores(method_name + ' - ' + frozen_lake_env.name, frozen_lake_accumulated_scores,
-                                      show=True)
+        utils.plot_accumulated_scores(frozen_lake_env.name, method_name, frozen_lake_accumulated_scores, show=True)
         frozen_lake_scores, frozen_lake_accumulated_scores = utils.test_policy(frozen_lake_env, frozen_lake_policy)
-        utils.plot_running_average(method_name + ' - ' + frozen_lake_env.name, frozen_lake_scores,
+        utils.plot_running_average(frozen_lake_env.name, method_name, frozen_lake_scores,
                                    window=episodes//100, show=True)
-        utils.plot_accumulated_scores(method_name + ' - ' + frozen_lake_env.name, frozen_lake_accumulated_scores,
-                                      show=True)
+        utils.plot_accumulated_scores(frozen_lake_env.name, method_name, frozen_lake_accumulated_scores, show=True)
 
         # Blackjack:
         blackjack_env = Envs_DSS.Blackjack()
         blackjack_model = TabularMethods.MonteCarloModel(blackjack_env, episodes=episodes, eps_max=0.05, eps_dec=1e-7)
         blackjack_policy, _, blackjack_accumulated_scores = \
             blackjack_model.perform_off_policy_MC_control(print_info=print_q_table_and_policy)
-        utils.plot_accumulated_scores(method_name + ' - ' + blackjack_env.name, blackjack_accumulated_scores, show=True)
+        utils.plot_accumulated_scores(blackjack_env.name, method_name, blackjack_accumulated_scores, show=True)
         blackjack_accumulated_scores = utils.test_policy(blackjack_env, blackjack_policy)
-        utils.plot_accumulated_scores(method_name + ' - ' + blackjack_env.name, blackjack_accumulated_scores, show=True)
+        utils.plot_accumulated_scores(blackjack_env.name, method_name, blackjack_accumulated_scores, show=True)
 
     @staticmethod
     def test_sarsa():
@@ -119,33 +115,33 @@ class AlgorithmsTesting:
         taxi_env = Envs_DSS.Taxi()
         taxi_model = TabularMethods.GeneralModel(taxi_env, episodes=10000, alpha=0.4)
         taxi_Q_table, taxi_scores = taxi_model.perform_sarsa()
-        utils.plot_running_average(method_name + ' - ' + taxi_env.name, taxi_scores, show=True)
+        utils.plot_running_average(taxi_env.name, method_name, taxi_scores, show=True)
         taxi_scores = utils.test_q_table(taxi_env, taxi_Q_table)
-        utils.plot_running_average(method_name + ' - ' + taxi_env.name, taxi_scores, show=True)
+        utils.plot_running_average(taxi_env.name, method_name, taxi_scores, show=True)
 
         # Mountain Car:
         mountain_car_env = Envs_DSS.MountainCar()
         mountain_car_model = TabularMethods.GeneralModel(mountain_car_env, episodes=50000)
         mountain_car_Q_table, mountain_car_scores = mountain_car_model.perform_sarsa()
-        utils.plot_running_average(method_name + ' - ' + mountain_car_env.name, mountain_car_scores, show=True)
+        utils.plot_running_average(mountain_car_env.name, method_name, mountain_car_scores, show=True)
         mountain_car_scores = utils.test_q_table(mountain_car_env, mountain_car_Q_table)
-        utils.plot_running_average(method_name + ' - ' + mountain_car_env.name, mountain_car_scores, show=True)
+        utils.plot_running_average(mountain_car_env.name, method_name, mountain_car_scores, show=True)
 
         # Cart Pole (Solved):
         cart_pole_env = Envs_DSS.CartPole()
         cart_pole_model = TabularMethods.GeneralModel(cart_pole_env, episodes=50000)
         cart_pole_Q_table, cart_pole_scores = cart_pole_model.perform_sarsa()
-        utils.plot_running_average(method_name + ' - ' + cart_pole_env.name, cart_pole_scores, show=True)
+        utils.plot_running_average(cart_pole_env.name, method_name, cart_pole_scores, show=True)
         cart_pole_scores = utils.test_q_table(cart_pole_env, cart_pole_Q_table)
-        utils.plot_running_average(method_name + ' - ' + cart_pole_env.name, cart_pole_scores, show=True)
+        utils.plot_running_average(cart_pole_env.name, method_name, cart_pole_scores, show=True)
 
         # Acrobot:
         acrobot_env = Envs_DSS.Acrobot()
         acrobot_model = TabularMethods.GeneralModel(acrobot_env, episodes=50000)
         acrobot_Q_table, acrobot_scores = acrobot_model.perform_sarsa()
-        utils.plot_running_average(method_name + ' - ' + acrobot_env.name, acrobot_scores, show=True)
+        utils.plot_running_average(acrobot_env.name, method_name, acrobot_scores, show=True)
         acrobot_scores = utils.test_q_table(acrobot_env, acrobot_Q_table)
-        utils.plot_running_average(method_name + ' - ' + acrobot_env.name, acrobot_scores, show=True)
+        utils.plot_running_average(acrobot_env.name, method_name, acrobot_scores, show=True)
 
     @staticmethod
     def test_expected_sarsa():
@@ -155,33 +151,33 @@ class AlgorithmsTesting:
         taxi_env = Envs_DSS.Taxi()
         taxi_model = TabularMethods.GeneralModel(taxi_env, episodes=10000, alpha=0.4)
         taxi_Q_table, taxi_scores = taxi_model.perform_expected_sarsa()
-        utils.plot_running_average(method_name + ' - ' + taxi_env.name, taxi_scores, show=True)
+        utils.plot_running_average(taxi_env.name, method_name, taxi_scores, show=True)
         taxi_scores = utils.test_q_table(taxi_env, taxi_Q_table)
-        utils.plot_running_average(method_name + ' - ' + taxi_env.name, taxi_scores, show=True)
+        utils.plot_running_average(taxi_env.name, method_name, taxi_scores, show=True)
 
         # Mountain Car:
         mountain_car_env = Envs_DSS.MountainCar()
         mountain_car_model = TabularMethods.GeneralModel(mountain_car_env, episodes=50000)
         mountain_car_Q_table, mountain_car_scores = mountain_car_model.perform_expected_sarsa()
-        utils.plot_running_average(method_name + ' - ' + mountain_car_env.name, mountain_car_scores, show=True)
+        utils.plot_running_average(mountain_car_env.name, method_name, mountain_car_scores, show=True)
         mountain_car_scores = utils.test_q_table(mountain_car_env, mountain_car_Q_table)
-        utils.plot_running_average(method_name + ' - ' + mountain_car_env.name, mountain_car_scores, show=True)
+        utils.plot_running_average(mountain_car_env.name, method_name, mountain_car_scores, show=True)
 
         # Cart Pole (Solved):
         cart_pole_env = Envs_DSS.CartPole()
         cart_pole_model = TabularMethods.GeneralModel(cart_pole_env, episodes=50000)
         cart_pole_Q_table, cart_pole_scores = cart_pole_model.perform_expected_sarsa()
-        utils.plot_running_average(method_name + ' - ' + cart_pole_env.name, cart_pole_scores, show=True)
+        utils.plot_running_average(cart_pole_env.name, method_name, cart_pole_scores, show=True)
         cart_pole_scores = utils.test_q_table(cart_pole_env, cart_pole_Q_table)
-        utils.plot_running_average(method_name + ' - ' + cart_pole_env.name, cart_pole_scores, show=True)
+        utils.plot_running_average(cart_pole_env.name, method_name, cart_pole_scores, show=True)
 
         # Acrobot:
         acrobot_env = Envs_DSS.Acrobot()
         acrobot_model = TabularMethods.GeneralModel(acrobot_env, episodes=50000)
         acrobot_Q_table, acrobot_scores = acrobot_model.perform_expected_sarsa()
-        utils.plot_running_average(method_name + ' - ' + acrobot_env.name, acrobot_scores, show=True)
+        utils.plot_running_average(acrobot_env.name, method_name, acrobot_scores, show=True)
         acrobot_scores = utils.test_q_table(acrobot_env, acrobot_Q_table)
-        utils.plot_running_average(method_name + ' - ' + acrobot_env.name, acrobot_scores, show=True)
+        utils.plot_running_average(acrobot_env.name, method_name, acrobot_scores, show=True)
 
     @staticmethod
     def test_q_learning():
@@ -191,25 +187,25 @@ class AlgorithmsTesting:
         taxi_env = Envs_DSS.Taxi()
         taxi_model = TabularMethods.GeneralModel(taxi_env, episodes=10000, alpha=0.4)
         taxi_Q_table, taxi_scores = taxi_model.perform_q_learning()
-        utils.plot_running_average(method_name + ' - ' + taxi_env.name, taxi_scores, show=True)
+        utils.plot_running_average(taxi_env.name, method_name, taxi_scores, show=True)
         taxi_scores = utils.test_q_table(taxi_env, taxi_Q_table)
-        utils.plot_running_average(method_name + ' - ' + taxi_env.name, taxi_scores, show=True)
+        utils.plot_running_average(taxi_env.name, method_name, taxi_scores, show=True)
 
         # Mountain Car:
         mountain_car_env = Envs_DSS.MountainCar()
         mountain_car_model = TabularMethods.GeneralModel(mountain_car_env, episodes=50000)
         mountain_car_Q_table, mountain_car_scores = mountain_car_model.perform_q_learning()
-        utils.plot_running_average(method_name + ' - ' + mountain_car_env.name, mountain_car_scores, show=True)
+        utils.plot_running_average(mountain_car_env.name, method_name, mountain_car_scores, show=True)
         mountain_car_scores = utils.test_q_table(mountain_car_env, mountain_car_Q_table)
-        utils.plot_running_average(method_name + ' - ' + mountain_car_env.name, mountain_car_scores, show=True)
+        utils.plot_running_average(mountain_car_env.name, method_name, mountain_car_scores, show=True)
 
         # Cart Pole:
         cart_pole_env = Envs_DSS.CartPole()
         cart_pole_model = TabularMethods.GeneralModel(cart_pole_env, episodes=50000)
         cart_pole_Q_table, cart_pole_scores = cart_pole_model.perform_q_learning()
-        utils.plot_running_average(method_name + ' - ' + cart_pole_env.name, cart_pole_scores, show=True)
+        utils.plot_running_average(cart_pole_env.name, method_name, cart_pole_scores, show=True)
         cart_pole_scores = utils.test_q_table(cart_pole_env, cart_pole_Q_table)
-        utils.plot_running_average(method_name + ' - ' + cart_pole_env.name, cart_pole_scores, show=True)
+        utils.plot_running_average(cart_pole_env.name, method_name, cart_pole_scores, show=True)
 
     @staticmethod
     def test_double_q_learning():
@@ -219,36 +215,36 @@ class AlgorithmsTesting:
         taxi_env = Envs_DSS.Taxi()
         taxi_model = TabularMethods.GeneralModel(taxi_env, episodes=10000, alpha=0.4)
         taxi_Q1_table, taxi_Q2_table, taxi_scores = taxi_model.perform_double_q_learning()
-        utils.plot_running_average(method_name + ' - ' + taxi_env.name, taxi_scores, show=True)
+        utils.plot_running_average(taxi_env.name + ' - ' + method_name, taxi_scores, show=True)
         taxi_Q1_scores = utils.test_q_table(taxi_env, taxi_Q1_table)
         taxi_Q2_scores = utils.test_q_table(taxi_env, taxi_Q2_table)
         scores_list = [taxi_Q1_scores, taxi_Q2_scores]
         labels = ['Q1', 'Q2']
-        utils.plot_running_average_comparison(method_name + ' - ' + taxi_env.name, scores_list, labels, show=True)
+        utils.plot_running_average_comparison(taxi_env.name + ' - ' + method_name, scores_list, labels, show=True)
 
         # Mountain Car:
         mountain_car_env = Envs_DSS.MountainCar()
         mountain_car_model = TabularMethods.GeneralModel(mountain_car_env, episodes=50000)
         mountain_car_Q1_table, mountain_car_Q2_table, mountain_car_scores = \
             mountain_car_model.perform_double_q_learning()
-        utils.plot_running_average(method_name + ' - ' + mountain_car_env.name, mountain_car_scores, show=True)
+        utils.plot_running_average(mountain_car_env.name + ' - ' + method_name, mountain_car_scores, show=True)
         mountain_car_Q1_scores = utils.test_q_table(mountain_car_env, mountain_car_Q1_table)
         mountain_car_Q2_scores = utils.test_q_table(mountain_car_env, mountain_car_Q2_table)
         scores_list = [mountain_car_Q1_scores, mountain_car_Q2_scores]
         labels = ['Q1', 'Q2']
-        utils.plot_running_average_comparison(method_name + ' - ' + mountain_car_env.name, scores_list, labels, show=True)
+        utils.plot_running_average_comparison(mountain_car_env.name + ' - ' + method_name, scores_list, labels, show=True)
 
         # Cart Pole:
         cart_pole_env = Envs_DSS.CartPole()
         cart_pole_model = TabularMethods.GeneralModel(cart_pole_env, episodes=50000)
         cart_pole_Q1_table, cart_pole_Q2_table, cart_pole_scores = \
             cart_pole_model.perform_double_q_learning()
-        utils.plot_running_average(method_name + ' - ' + cart_pole_env.name, cart_pole_scores, show=True)
+        utils.plot_running_average(cart_pole_env.name + ' - ' + method_name, cart_pole_scores, show=True)
         cart_pole_Q1_scores = utils.test_q_table(cart_pole_env, cart_pole_Q1_table)
         cart_pole_Q2_scores = utils.test_q_table(cart_pole_env, cart_pole_Q2_table)
         scores_list = [cart_pole_Q1_scores, cart_pole_Q2_scores]
         labels = ['Q1', 'Q2']
-        utils.plot_running_average_comparison(method_name + ' - ' + cart_pole_env.name, scores_list, labels, show=True)
+        utils.plot_running_average_comparison(cart_pole_env.name + ' - ' + method_name, scores_list, labels, show=True)
 
 
 class EnvironmentsTesting:

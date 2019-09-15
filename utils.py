@@ -59,8 +59,8 @@ def get_running_avg(scores, window):
     return x, running_avg
 
 
-def plot_running_average(main_title, scores, window=100, show=False, file_name=None):
-    plt.title(main_title + (' - Score' if window == 0 else ' - Running Score Avg. (%d)' % window))
+def plot_running_average(env_name, method_name, scores, window=100, show=False, file_name=None):
+    plt.title(env_name + ' - ' + method_name + (' - Score' if window == 0 else ' - Running Score Avg. (%d)' % window))
     plt.ylabel('Score')
     plt.xlabel('Episode')
     plt.plot(*get_running_avg(scores, window))
@@ -71,8 +71,8 @@ def plot_running_average(main_title, scores, window=100, show=False, file_name=N
     plt.close()
 
 
-def plot_accumulated_scores(main_title, scores, show=False, file_name=None):
-    plt.title(main_title + ' - Accumulated Score')
+def plot_accumulated_scores(env_name, method_name, scores, show=False, file_name=None):
+    plt.title(env_name + ' - ' + method_name + ' - Accumulated Score')
     plt.ylabel('Accumulated Score')
     plt.xlabel('Episode')
     x = [i + 1 for i in range(len(scores))]

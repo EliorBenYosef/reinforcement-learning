@@ -68,6 +68,7 @@ def command_line_play(lib_type=utils.LIBRARY_TF,
 
     #####################################
 
+    method_name = 'AC'
     custom_env = Envs.ClassicControl.CartPole()
     custom_env.env.seed(28)
 
@@ -86,7 +87,7 @@ def command_line_play(lib_type=utils.LIBRARY_TF,
                            enable_models_saving, load_checkpoint)
 
     utils.plot_running_average(
-        custom_env.name, scores_history, window=custom_env.window, show=False,
+        custom_env.name, method_name, scores_history, window=custom_env.window, show=False,
         file_name=utils.get_plot_file_name(custom_env.file_name, agent, replay_buffer=True, eps=True)
     )
 
