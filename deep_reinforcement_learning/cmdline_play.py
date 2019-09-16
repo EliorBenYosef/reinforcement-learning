@@ -14,6 +14,8 @@ from deep_reinforcement_learning.algorithms.deep_q_learning import Agent, train
 # from deep_reinforcement_learning.algorithms.deep_deterministic_policy_gradient import Agent, train
 
 
+# https://docs.python.org/2/library/argparse.html#adding-arguments
+
 def command_line_play():
 
     # argparse is a built-in module for python that allows us to parse command-line options.

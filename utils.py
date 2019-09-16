@@ -277,7 +277,7 @@ def get_file_name(env_file_name, agent, episodes, method_name):
 
     ############################
 
-    episodes = 'N-' + episodes  # n_episodes
+    episodes = 'N-' + str(episodes)  # n_episodes
 
     plot_file_name = env + gamma + fc_layers_dims + \
                      optimizer + alpha + beta + \
