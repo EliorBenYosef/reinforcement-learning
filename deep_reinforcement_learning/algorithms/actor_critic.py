@@ -438,7 +438,8 @@ class Agent(object):
         self.ALPHA = lr_actor
         self.BETA = lr_critic if lr_critic is not None else lr_actor
 
-        self.chkpt_dir = 'tmp/' + custom_env.file_name + '/AC/NNs/'
+        sub_dir = utils.get_file_name(None, self, self.BETA) + '/'
+        self.chkpt_dir = 'tmp/' + custom_env.file_name + '/AC/' + sub_dir
 
         network_type = NETWORK_TYPE_SEPARATE if lr_critic is not None else NETWORK_TYPE_SHARED
         if lib_type == utils.LIBRARY_TF:
@@ -576,7 +577,8 @@ def play(env_type, lib_type=utils.LIBRARY_TORCH, enable_models_saving=False, loa
 
     utils.plot_running_average(
         custom_env.name, 'AC', scores_history, window=custom_env.window, show=False,
-        file_name=utils.get_plot_file_name(custom_env.file_name, agent, beta=agent.BETA)
+        file_name=utils.get_file_name(custom_env.file_name, agent, beta=agent.BETA),
+        directory=agent.chkpt_dir if enable_models_saving else None
     )
 
 

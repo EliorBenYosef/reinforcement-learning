@@ -88,7 +88,8 @@ def command_line_play(lib_type=utils.LIBRARY_TF,
 
     utils.plot_running_average(
         custom_env.name, method_name, scores_history, window=custom_env.window, show=False,
-        file_name=utils.get_plot_file_name(custom_env.file_name, agent, replay_buffer=True, eps=True)
+        file_name=utils.get_file_name(custom_env.file_name, agent, replay_buffer=True, eps=True),
+        directory=agent.chkpt_dir if enable_models_saving else None
     )
 
 

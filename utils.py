@@ -59,32 +59,33 @@ def get_running_avg(scores, window):
     return x, running_avg
 
 
-def plot_running_average(env_name, method_name, scores, window=100, show=False, file_name=None):
+def plot_running_average(env_name, method_name, scores, window=100, show=False, file_name=None, directory=''):
     plt.title(env_name + ' - ' + method_name + (' - Score' if window == 0 else ' - Running Score Avg. (%d)' % window))
     plt.ylabel('Score')
     plt.xlabel('Episode')
     plt.plot(*get_running_avg(scores, window))
     if file_name:
-        plt.savefig(file_name + '.png')
+        plt.savefig(directory + file_name + '.png')
     if show:
         plt.show()
     plt.close()
 
 
-def plot_accumulated_scores(env_name, method_name, scores, show=False, file_name=None):
+def plot_accumulated_scores(env_name, method_name, scores, show=False, file_name=None, directory=''):
     plt.title(env_name + ' - ' + method_name + ' - Accumulated Score')
     plt.ylabel('Accumulated Score')
     plt.xlabel('Episode')
     x = [i + 1 for i in range(len(scores))]
     plt.plot(x, scores)
     if file_name:
-        plt.savefig(file_name + '.png')
+        plt.savefig(directory + file_name + '.png')
     if show:
         plt.show()
     plt.close()
 
 
-def plot_running_average_comparison(main_title, scores_list, labels=None, window=100, show=False, file_name=None):
+def plot_running_average_comparison(main_title, scores_list, labels=None, window=100, show=False,
+                                    file_name=None, directory=''):
     plt.figure(figsize=(8.5, 4.5))
     plt.title(main_title + (' - Score' if window == 0 else ' - Running Score Avg. (%d)' % window))
     plt.ylabel('Score')
@@ -99,13 +100,14 @@ def plot_running_average_comparison(main_title, scores_list, labels=None, window
         plt.legend(labels, bbox_to_anchor=(1.04, 0.5), loc="center left", borderaxespad=0)
         plt.subplots_adjust(right=0.7)
     if file_name:
-        plt.savefig(file_name + '.png')
+        plt.savefig(directory + file_name + '.png')
     if show:
         plt.show()
     plt.close()
 
 
-def plot_accumulated_scores_comparison(main_title, scores_list, labels=None, show=False, file_name=None):
+def plot_accumulated_scores_comparison(main_title, scores_list, labels=None, show=False,
+                                       file_name=None, directory=''):
     plt.figure(figsize=(8.5, 4.5))
     plt.title(main_title + ' - Accumulated Score')
     plt.ylabel('Accumulated Score')
@@ -121,7 +123,7 @@ def plot_accumulated_scores_comparison(main_title, scores_list, labels=None, sho
         plt.legend(labels, bbox_to_anchor=(1.04, 0.5), loc="center left", borderaxespad=0)
         plt.subplots_adjust(right=0.7)
     if file_name:
-        plt.savefig(file_name + '.png')
+        plt.savefig(directory + file_name + '.png')
     if show:
         plt.show()
     plt.close()
@@ -208,10 +210,15 @@ def decrement_eps(eps_current, eps_min, eps_dec, eps_dec_type, eps_max=None, t=N
 
 ##############################################
 
-def get_plot_file_name(env_file_name, agent, beta=None, eps=False, replay_buffer=False):
+def get_file_name(env_file_name, agent, beta=None, eps=False, replay_buffer=False):
     # options:
     #   .replace('.', 'p')
     #   .split('.')[1]
+
+    if env_file_name is not None:
+        env = env_file_name + '_'
+    else:
+        env = ''
 
     gamma = 'GAMMA-' + str(agent.GAMMA).replace('.', 'p') + '_'
 
@@ -244,7 +251,7 @@ def get_plot_file_name(env_file_name, agent, beta=None, eps=False, replay_buffer
         memory_size = 'size-' + str(agent.memory_size)
         memory_batch_size = 'batch-' + str(agent.memory_batch_size)
 
-    plot_file_name = env_file_name + '_' + gamma + fc_layers_dims + 'OPT_' + optimizer + alpha + beta
+    plot_file_name = env + gamma + fc_layers_dims + 'OPT_' + optimizer + alpha + beta
     if eps:
         plot_file_name += 'EPS_' + eps_max + eps_min + eps_dec
     if replay_buffer:

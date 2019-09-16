@@ -320,7 +320,8 @@ class Agent(object):
 
         self.memory = Memory(custom_env, lib_type)
 
-        self.chkpt_dir = 'tmp/' + custom_env.file_name + '/PG/NNs/'
+        sub_dir = utils.get_file_name(None, self) + '/'
+        self.chkpt_dir = 'tmp/' + custom_env.file_name + '/PG/' + sub_dir
 
         self.policy_dnn = self.init_network(custom_env)
 
@@ -494,7 +495,8 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
 
     utils.plot_running_average(
         custom_env.name, 'PG', scores_history, window=custom_env.window, show=False,
-        file_name=utils.get_plot_file_name(custom_env.file_name, agent)
+        file_name=utils.get_file_name(custom_env.file_name, agent),
+        directory=agent.chkpt_dir if enable_models_saving else None
     )
 
 
