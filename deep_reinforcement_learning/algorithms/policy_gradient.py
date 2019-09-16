@@ -306,10 +306,13 @@ class Memory(object):
 
 class Agent(object):
 
-    def __init__(self, custom_env, fc_layers_dims, alpha, optimizer_type=utils.OPTIMIZER_Adam, lib_type=utils.LIBRARY_TF):
+    def __init__(self, custom_env, fc_layers_dims, ep_batch_num,
+                 alpha, optimizer_type=utils.OPTIMIZER_Adam, lib_type=utils.LIBRARY_TF):
 
         self.GAMMA = custom_env.GAMMA
         self.fc_layers_dims = fc_layers_dims
+
+        self.ep_batch_num = ep_batch_num
 
         self.optimizer_type = optimizer_type
         self.ALPHA = alpha
@@ -490,13 +493,13 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
     if lib_type == utils.LIBRARY_TF:
         utils.tf_set_device()
 
-    agent = Agent(custom_env, fc_layers_dims, alpha, optimizer_type=optimizer_type, lib_type=lib_type)
+    agent = Agent(custom_env, fc_layers_dims, ep_batch_num, alpha, optimizer_type=optimizer_type, lib_type=lib_type)
 
     scores_history = train(custom_env, agent, n_episodes, enable_models_saving, load_checkpoint, ep_batch_num)
 
     utils.plot_running_average(
         custom_env.name, 'PG', scores_history, window=custom_env.window, show=False,
-        file_name=utils.get_file_name(custom_env.file_name, agent),
+        file_name=utils.get_file_name(custom_env.file_name, agent, n_episodes, 'PG'),
         directory=agent.chkpt_dir if enable_models_saving else None
     )
 

@@ -769,7 +769,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
 
     utils.plot_running_average(
         custom_env.name, 'DDPG', scores_history, window=custom_env.window, show=False,
-        file_name=utils.get_file_name(custom_env.file_name, agent, beta=agent.BETA, replay_buffer=True),
+        file_name=utils.get_file_name(custom_env.file_name, agent, n_episodes, 'DDPG'),
         directory=agent.chkpt_dir if enable_models_saving else None
     )
 

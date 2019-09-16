@@ -578,7 +578,7 @@ def play(env_type, lib_type=utils.LIBRARY_TORCH, enable_models_saving=False, loa
 
     utils.plot_running_average(
         custom_env.name, 'AC', scores_history, window=custom_env.window, show=False,
-        file_name=utils.get_file_name(custom_env.file_name, agent, beta=agent.BETA),
+        file_name=utils.get_file_name(custom_env.file_name, agent, n_episodes, 'AC'),
         directory=agent.chkpt_dir if enable_models_saving else None
     )
 

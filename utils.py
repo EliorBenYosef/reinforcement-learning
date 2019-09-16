@@ -210,7 +210,7 @@ def decrement_eps(eps_current, eps_min, eps_dec, eps_dec_type, eps_max=None, t=N
 
 ##############################################
 
-def get_file_name(env_file_name, agent, beta=None, eps=False, replay_buffer=False):
+def get_file_name(env_file_name, agent, episodes, method_name):
     # options:
     #   .replace('.', 'p')
     #   .split('.')[1]
@@ -220,7 +220,9 @@ def get_file_name(env_file_name, agent, beta=None, eps=False, replay_buffer=Fals
     else:
         env = ''
 
-    gamma = 'GAMMA-' + str(agent.GAMMA).replace('.', 'p') + '_'
+    ############################
+
+    gamma = 'G' + str(agent.GAMMA).replace('.', 'p') + '_'  # 'GAMMA-'
 
     fc_layers_dims = 'FC-'
     for i, fc_layer_dims in enumerate(agent.fc_layers_dims):
@@ -229,33 +231,57 @@ def get_file_name(env_file_name, agent, beta=None, eps=False, replay_buffer=Fals
         fc_layers_dims += str(fc_layer_dims)
     fc_layers_dims += '_'
 
-    if agent.optimizer_type == OPTIMIZER_Adam:
-        optimizer = 'adam_'
-    elif agent.optimizer_type == OPTIMIZER_RMSprop:
-        optimizer = 'rmsprop_'
-    elif agent.optimizer_type == OPTIMIZER_Adadelta:
-        optimizer = 'adadelta_'
-    elif agent.optimizer_type == OPTIMIZER_Adagrad:
-        optimizer = 'adagrad_'
-    else:  # agent.optimizer_type == OPTIMIZER_SGD
-        optimizer = 'sgd_'
-    alpha = 'alpha-' + str(agent.ALPHA).replace('.', 'p') + '_'
-    beta = ('beta-' + str(beta).replace('.', 'p') + '_') if beta is not None else ''
+    ############################
 
-    if eps:
+    optimizer = 'OPT_'
+    if agent.optimizer_type == OPTIMIZER_Adam:
+        optimizer += 'adam_'
+    elif agent.optimizer_type == OPTIMIZER_RMSprop:
+        optimizer += 'rms_'  # 'rmsprop_'
+    elif agent.optimizer_type == OPTIMIZER_Adadelta:
+        optimizer += 'adad_'  # 'adadelta_'
+    elif agent.optimizer_type == OPTIMIZER_Adagrad:
+        optimizer += 'adag_'  # 'adagrad_'
+    else:  # agent.optimizer_type == OPTIMIZER_SGD
+        optimizer += 'sgd_'
+    alpha = 'a-' + str(agent.ALPHA).replace('.', 'p') + '_'  # 'alpha-'
+
+    if method_name == 'AC' or method_name == 'DDPG':
+        beta = 'b-' + str(agent.BETA).replace('.', 'p') + '_'  # 'beta-'
+    else:
+        beta = ''
+
+    ############################
+
+    if method_name == 'DQL':
         eps_max = 'max-' + str(agent.eps_max).replace('.', 'p') + '_'
         eps_min = 'min-' + str(agent.eps_min).replace('.', 'p') + '_'
         eps_dec = 'dec-' + str(agent.eps_dec).replace('.', 'p') + '_'
+        eps = 'EPS_' + eps_max + eps_min + eps_dec
+    else:
+        eps = ''
 
-    if replay_buffer:
+    ############################
+
+    if method_name == 'DQL' or method_name == 'DDPG':
         memory_size = 'size-' + str(agent.memory_size)
         memory_batch_size = 'batch-' + str(agent.memory_batch_size)
+        replay_buffer = 'MEM_' + memory_size + memory_batch_size
+    else:
+        replay_buffer = ''
 
-    plot_file_name = env + gamma + fc_layers_dims + 'OPT_' + optimizer + alpha + beta
-    if eps:
-        plot_file_name += 'EPS_' + eps_max + eps_min + eps_dec
-    if replay_buffer:
-        plot_file_name += 'MEM_' + memory_size + memory_batch_size
+    if method_name == 'PG':
+        ep_batch_num = 'PG-ep-batch-' + str(agent.ep_batch_num) + '_'
+    else:
+        ep_batch_num = ''
+
+    ############################
+
+    episodes = 'N-' + episodes  # n_episodes
+
+    plot_file_name = env + gamma + fc_layers_dims + \
+                     optimizer + alpha + beta + \
+                     eps + replay_buffer + ep_batch_num + episodes
 
     return plot_file_name
 
