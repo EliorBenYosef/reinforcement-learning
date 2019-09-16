@@ -320,7 +320,8 @@ class Agent(object):
 
         self.memory = Memory(custom_env, lib_type)
 
-        sub_dir = utils.get_file_name(None, self) + '/'
+        # sub_dir = utils.get_file_name(None, self) + '/'
+        sub_dir = ''
         self.chkpt_dir = 'tmp/' + custom_env.file_name + '/PG/' + sub_dir
 
         self.policy_dnn = self.init_network(custom_env)

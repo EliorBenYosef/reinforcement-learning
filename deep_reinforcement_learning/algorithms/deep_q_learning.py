@@ -373,7 +373,8 @@ class Agent(object):
 
         self.learn_step_counter = 0
 
-        sub_dir = utils.get_file_name(None, self, eps=True, replay_buffer=True) + '/'
+        # sub_dir = utils.get_file_name(None, self, eps=True, replay_buffer=True) + '/'
+        sub_dir = ''
         self.chkpt_dir = 'tmp/' + custom_env.file_name + '/DQL/' + sub_dir
 
         self.policy_dqn = self.init_network(custom_env, 'policy')

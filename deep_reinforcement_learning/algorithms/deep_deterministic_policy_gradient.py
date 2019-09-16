@@ -603,7 +603,8 @@ class Agent(object):
         )
         self.memory = ReplayBuffer(custom_env, self.memory_size, lib_type, is_discrete_action_space=False)
 
-        sub_dir = utils.get_file_name(None, self, self.BETA, replay_buffer=True) + '/'
+        # sub_dir = utils.get_file_name(None, self, self.BETA, replay_buffer=True) + '/'
+        sub_dir = ''
         self.chkpt_dir = 'tmp/' + custom_env.file_name + '/DDPG/' + sub_dir
 
         if lib_type == utils.LIBRARY_TF:

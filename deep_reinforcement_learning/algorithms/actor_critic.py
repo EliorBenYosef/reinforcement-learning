@@ -438,7 +438,8 @@ class Agent(object):
         self.ALPHA = lr_actor
         self.BETA = lr_critic if lr_critic is not None else lr_actor
 
-        sub_dir = utils.get_file_name(None, self, self.BETA) + '/'
+        # sub_dir = utils.get_file_name(None, self, self.BETA) + '/'
+        sub_dir = ''
         self.chkpt_dir = 'tmp/' + custom_env.file_name + '/AC/' + sub_dir
 
         network_type = NETWORK_TYPE_SEPARATE if lr_critic is not None else NETWORK_TYPE_SHARED
