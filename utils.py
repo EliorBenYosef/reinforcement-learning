@@ -387,22 +387,24 @@ def get_policy_from_q_table(states, Q, action_space_size):
     return policy
 
 
-def test_q_table(custom_env_object, Q, episodes=1000):
+##############################################
+
+def test_method(custom_env_object, episodes, choose_action):
     env = custom_env_object.env
-    action_space_size = env.action_space.n
 
     total_scores = np.zeros(episodes)
     total_accumulated_scores = np.zeros(episodes)
     accumulated_score = 0
     eval = custom_env_object.get_evaluation_tuple()
     for i in range(episodes):
+        print('\n', 'Starting Episode %d' % i, '\n')
         done = False
         ep_steps = 0
         ep_score = 0
         observation = env.reset()
         s = custom_env_object.get_state(observation)
         while not done:
-            a = get_max_action_from_q_table(Q, s, action_space_size)
+            a = choose_action(s)
             observation_, reward, done, info = env.step(a)
             eval = custom_env_object.update_evaluation_tuple(i + 1, reward, done, eval)
             ep_steps += 1
@@ -412,41 +414,29 @@ def test_q_table(custom_env_object, Q, episodes=1000):
             observation, s = observation_, s_
         total_scores[i] = ep_score
         total_accumulated_scores[i] = accumulated_score
+    print('\n', 'Game Ended', '\n')
     custom_env_object.analyze_evaluation_tuple(eval, episodes)
     return total_scores, total_accumulated_scores
+
+
+def test_q_table(custom_env_object, Q, episodes=1000):
+    test_method(custom_env_object, episodes,
+                lambda s: get_max_action_from_q_table(Q, s, custom_env_object.env.action_space.n))
 
 
 def test_policy(custom_env_object, policy, episodes=1000):
-    env = custom_env_object.env
-
-    total_scores = np.zeros(episodes)
-    total_accumulated_scores = np.zeros(episodes)
-    accumulated_score = 0
-    eval = custom_env_object.get_evaluation_tuple()
-    for i in range(episodes):
-        done = False
-        ep_steps = 0
-        ep_score = 0
-        observation = env.reset()
-        s = custom_env_object.get_state(observation)
-        while not done:
-            a = policy[s]
-            observation_, reward, done, info = env.step(a)
-            eval = custom_env_object.update_evaluation_tuple(i + 1, reward, done, eval)
-            ep_steps += 1
-            ep_score += reward
-            accumulated_score += reward
-            s_ = custom_env_object.get_state(observation_)
-            observation, s = observation_, s_
-        total_scores[i] = ep_score
-        total_accumulated_scores[i] = accumulated_score
-    custom_env_object.analyze_evaluation_tuple(eval, episodes)
-    return total_scores, total_accumulated_scores
+    test_method(custom_env_object, episodes,
+                lambda s: policy[s])
 
 
-def watch_trained_agent_play(custom_env_object, Q, action_space_size, episodes=3, is_toy_text=False):
-    # playing the best action from each state according to the Q-table
+def test_trained_agent(custom_env_object, agent, episodes=1000):
+    test_method(custom_env_object, episodes,
+                lambda s: agent.choose_action(s))
 
+
+##############################################
+
+def watch_method(custom_env_object, episodes, choose_action, is_toy_text=False):
     env = custom_env_object.env
 
     for i in range(episodes):
@@ -465,7 +455,7 @@ def watch_trained_agent_play(custom_env_object, Q, action_space_size, episodes=3
             time.sleep(0.3)
 
         while not done:
-            a = get_max_action_from_q_table(Q, s, action_space_size)
+            a = choose_action(s)
             observation_, reward, done, info = env.step(a)
             ep_steps += 1
             ep_score += reward
@@ -485,6 +475,20 @@ def watch_trained_agent_play(custom_env_object, Q, action_space_size, episodes=3
 
     env.close()
 
+
+def watch_q_table(custom_env_object, Q, episodes=3):
+    watch_method(custom_env_object, episodes,
+                 lambda s: get_max_action_from_q_table(Q, s, custom_env_object.env.action_space.n))
+
+
+def watch_policy(custom_env_object, policy, episodes=3):
+    watch_method(custom_env_object, episodes,
+                 lambda s: policy[s])
+
+
+def watch_trained_agent(custom_env_object, agent, episodes=3):
+    watch_method(custom_env_object, episodes,
+                 lambda s: agent.choose_action(s))
 
 ##############################################
 
