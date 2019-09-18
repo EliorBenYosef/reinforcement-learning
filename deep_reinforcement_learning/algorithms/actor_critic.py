@@ -62,18 +62,18 @@ class DNN(object):
                 self.a_log_probs = tf.placeholder(tf.float32, shape=[None, 1], name='a_log_probs')
                 self.a = tf.placeholder(tf.int32, shape=[None, 1], name='a')
 
-                fc1_activated = tf.layers.dense(inputs=self.s, units=self.fc_layers_dims[0],
-                                                activation='relu')
-                fc2_activated = tf.layers.dense(inputs=fc1_activated, units=self.fc_layers_dims[1],
-                                                activation='relu')
+                fc1_ac = tf.layers.dense(inputs=self.s, units=self.fc_layers_dims[0],
+                                         activation='relu')
+                fc2_ac = tf.layers.dense(inputs=fc1_ac, units=self.fc_layers_dims[1],
+                                         activation='relu')
 
                 if self.network_type == NETWORK_TYPE_SEPARATE:  # build_A_or_C_network
-                    self.fc3 = tf.layers.dense(inputs=fc2_activated, units=self.n_outputs if self.is_actor else 1)
+                    self.fc3 = tf.layers.dense(inputs=fc2_ac, units=self.n_outputs if self.is_actor else 1)
                     loss = self.get_actor_loss() if self.is_actor else self.get_critic_loss()
 
                 else:  # self.network_type == NETWORK_TYPE_SHARED  # build_A_and_C_network
-                    self.fc3 = tf.layers.dense(inputs=fc2_activated, units=self.n_outputs)  # Actor layer
-                    self.v = tf.layers.dense(inputs=fc2_activated, units=1)  # Critic layer
+                    self.fc3 = tf.layers.dense(inputs=fc2_ac, units=self.n_outputs)  # Actor layer
+                    self.v = tf.layers.dense(inputs=fc2_ac, units=1)  # Critic layer
                     loss = self.get_actor_loss() + self.get_critic_loss()
 
                 if self.optimizer_type == utils.OPTIMIZER_SGD:

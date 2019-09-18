@@ -96,17 +96,17 @@ class DNN:
                                           kernel_initializer=random_uniform(-f1, f1),
                                           bias_initializer=random_uniform(-f1, f1))
                     fc1_bn = tf.layers.batch_normalization(fc1)
-                    fc1_bn_activated = tf.nn.relu(fc1_bn)
+                    fc1_bn_ac = tf.nn.relu(fc1_bn)
 
                     f2 = 1. / np.sqrt(self.ac.fc_layers_dims[1])
-                    fc2 = tf.layers.dense(inputs=fc1_bn_activated, units=self.ac.fc_layers_dims[1],
+                    fc2 = tf.layers.dense(inputs=fc1_bn_ac, units=self.ac.fc_layers_dims[1],
                                           kernel_initializer=random_uniform(-f2, f2),
                                           bias_initializer=random_uniform(-f2, f2))
                     fc2_bn = tf.layers.batch_normalization(fc2)
-                    fc2_bn_activated = tf.nn.relu(fc2_bn)
+                    fc2_bn_ac = tf.nn.relu(fc2_bn)
 
                     f3 = 0.003
-                    mu = tf.layers.dense(inputs=fc2_bn_activated, units=self.ac.n_actions,
+                    mu = tf.layers.dense(inputs=fc2_bn_ac, units=self.ac.n_actions,
                                          activation='tanh',
                                          kernel_initializer=random_uniform(-f3, f3),
                                          bias_initializer=random_uniform(-f3, f3))
@@ -159,22 +159,22 @@ class DNN:
                                           kernel_initializer=random_uniform(-f1, f1),
                                           bias_initializer=random_uniform(-f1, f1))
                     fc1_bn = tf.layers.batch_normalization(fc1)
-                    fc1_bn_activated = tf.nn.relu(fc1_bn)
+                    fc1_bn_ac = tf.nn.relu(fc1_bn)
 
                     f2 = 1. / np.sqrt(self.ac.fc_layers_dims[1])
-                    fc2 = tf.layers.dense(inputs=fc1_bn_activated, units=self.ac.fc_layers_dims[1],
+                    fc2 = tf.layers.dense(inputs=fc1_bn_ac, units=self.ac.fc_layers_dims[1],
                                           kernel_initializer=random_uniform(-f2, f2),
                                           bias_initializer=random_uniform(-f2, f2))
                     fc2_bn = tf.layers.batch_normalization(fc2)
 
-                    action_in_activated = tf.layers.dense(inputs=self.a, units=self.ac.fc_layers_dims[1],
+                    action_in_ac = tf.layers.dense(inputs=self.a, units=self.ac.fc_layers_dims[1],
                                                           activation='relu')
 
-                    state_actions = tf.add(fc2_bn, action_in_activated)
-                    state_actions_activated = tf.nn.relu(state_actions)
+                    state_actions = tf.add(fc2_bn, action_in_ac)
+                    state_actions_ac = tf.nn.relu(state_actions)
 
                     f3 = 0.003
-                    self.q = tf.layers.dense(inputs=state_actions_activated, units=1,
+                    self.q = tf.layers.dense(inputs=state_actions_ac, units=1,
                                              kernel_initializer=random_uniform(-f3, f3),
                                              bias_initializer=random_uniform(-f3, f3),
                                              kernel_regularizer=tf.keras.regularizers.l2(0.01))

@@ -76,30 +76,30 @@ class DQN(object):
                 self.q_target = tf.placeholder(tf.float32, shape=[None, self.dqn.n_actions], name='q_target')
 
                 if self.dqn.input_type == Envs.INPUT_TYPE_OBSERVATION_VECTOR:
-                    fc1 = tf.layers.dense(inputs=self.s, units=self.dqn.fc_layers_dims[0],
-                                          activation='relu')
-                    fc2 = tf.layers.dense(inputs=fc1, units=self.dqn.fc_layers_dims[1],
-                                          activation='relu')
-                    self.q = tf.layers.dense(inputs=fc2, units=self.dqn.n_actions)
+                    fc1_ac = tf.layers.dense(inputs=self.s, units=self.dqn.fc_layers_dims[0],
+                                             activation='relu')
+                    fc2_ac = tf.layers.dense(inputs=fc1_ac, units=self.dqn.fc_layers_dims[1],
+                                             activation='relu')
+                    self.q = tf.layers.dense(inputs=fc2_ac, units=self.dqn.n_actions)
 
                 else:  # self.input_type == Envs.INPUT_TYPE_STACKED_FRAMES
                     conv1 = tf.layers.conv2d(inputs=self.s, filters=32,
                                              kernel_size=(8, 8), strides=4, name='conv1',
                                              kernel_initializer=tf.variance_scaling_initializer(scale=2))
-                    conv1_activated = tf.nn.relu(conv1)
-                    conv2 = tf.layers.conv2d(inputs=conv1_activated, filters=64,
+                    conv1_ac = tf.nn.relu(conv1)
+                    conv2 = tf.layers.conv2d(inputs=conv1_ac, filters=64,
                                              kernel_size=(4, 4), strides=2, name='conv2',
                                              kernel_initializer=tf.variance_scaling_initializer(scale=2))
-                    conv2_activated = tf.nn.relu(conv2)
-                    conv3 = tf.layers.conv2d(inputs=conv2_activated, filters=128,
+                    conv2_ac = tf.nn.relu(conv2)
+                    conv3 = tf.layers.conv2d(inputs=conv2_ac, filters=128,
                                              kernel_size=(3, 3), strides=1, name='conv3',
                                              kernel_initializer=tf.variance_scaling_initializer(scale=2))
-                    conv3_activated = tf.nn.relu(conv3)
-                    flat = tf.layers.flatten(conv3_activated)
-                    fc1 = tf.layers.dense(inputs=flat, units=self.dqn.fc_layers_dims[0],
-                                          activation='relu',
-                                          kernel_initializer=tf.variance_scaling_initializer(scale=2))
-                    self.q = tf.layers.dense(inputs=fc1, units=self.dqn.n_actions,
+                    conv3_ac = tf.nn.relu(conv3)
+                    flat = tf.layers.flatten(conv3_ac)
+                    fc1_ac = tf.layers.dense(inputs=flat, units=self.dqn.fc_layers_dims[0],
+                                             activation='relu',
+                                             kernel_initializer=tf.variance_scaling_initializer(scale=2))
+                    self.q = tf.layers.dense(inputs=fc1_ac, units=self.dqn.n_actions,
                                              kernel_initializer=tf.variance_scaling_initializer(scale=2))
                     # self.q = tf.reduce_sum(tf.multiply(self.Q_values, self.actions))  # the actual Q value for each action
 
@@ -212,19 +212,19 @@ class DQN(object):
 
             if self.dqn.input_type == Envs.INPUT_TYPE_OBSERVATION_VECTOR:
 
-                fc1_activated = F.relu(self.fc1(input))
-                fc2_activated = F.relu(self.fc2(fc1_activated))
-                actions_q_values = self.fc3(fc2_activated)
+                fc1_ac = F.relu(self.fc1(input))
+                fc2_ac = F.relu(self.fc2(fc1_ac))
+                actions_q_values = self.fc3(fc2_ac)
 
             else:  # self.input_type == Envs.INPUT_TYPE_STACKED_FRAMES
 
                 input = input.view(-1, self.in_channels, *self.relevant_screen_size)
-                conv1_activated = F.relu(self.conv1(input))
-                conv2_activated = F.relu(self.conv2(conv1_activated))
-                conv3_activated = F.relu(self.conv3(conv2_activated))
-                flat = conv3_activated.view(-1, self.flat_dims).to(self.device)
-                fc1_activated = F.relu(self.fc1(flat))
-                actions_q_values = self.fc2(fc1_activated)
+                conv1_ac = F.relu(self.conv1(input))
+                conv2_ac = F.relu(self.conv2(conv1_ac))
+                conv3_ac = F.relu(self.conv3(conv2_ac))
+                flat = conv3_ac.view(-1, self.flat_dims).to(self.device)
+                fc1_ac = F.relu(self.fc1(flat))
+                actions_q_values = self.fc2(fc1_ac)
 
             actions_q_values = actions_q_values.to(self.device)
 
@@ -273,10 +273,10 @@ class DQN(object):
             else:  # self.input_type == Envs.INPUT_TYPE_STACKED_FRAMES
 
                 self.model = models.Sequential([
-                    layers.Conv2D(32, kernel_size=(8, 8), strides=4, activation='relu',
+                    layers.Conv2D(filters=32, kernel_size=(8, 8), strides=4, activation='relu',
                                   input_shape=self.dqn.input_dims),
-                    layers.Conv2D(64, kernel_size=(4, 4), strides=2, activation='relu'),
-                    layers.Conv2D(128, kernel_size=(3, 3), strides=1, activation='relu'),
+                    layers.Conv2D(filters=64, kernel_size=(4, 4), strides=2, activation='relu'),
+                    layers.Conv2D(filters=128, kernel_size=(3, 3), strides=1, activation='relu'),
                     layers.Flatten(),
                     layers.Dense(self.dqn.fc_layers_dims[0], activation='relu'),
                     layers.Dense(self.dqn.n_actions)])
@@ -364,7 +364,7 @@ class Agent(object):
 
         if self.lib_type == utils.LIBRARY_TORCH:
             self.dtype = np.uint8
-        else:  # TF \ Keras
+        else:  # utils.LIBRARY_TF \ utils.LIBRARY_KERAS
             self.dtype = np.int8
 
         self.memory_size = memory_size if memory_size is not None else custom_env.memory_size
@@ -392,7 +392,10 @@ class Agent(object):
         if self.lib_type == utils.LIBRARY_TF:
             dqn = dqn_base.create_dqn_tensorflow(name='q_' + name)
 
-        elif self.lib_type == utils.LIBRARY_TORCH:
+        elif self.lib_type == utils.LIBRARY_KERAS:
+            dqn = dqn_base.create_dqn_keras()
+
+        else:  # self.lib_type == utils.LIBRARY_TORCH:
             if custom_env.input_type == Envs.INPUT_TYPE_STACKED_FRAMES:
                 relevant_screen_size = custom_env.relevant_screen_size
                 image_channels = custom_env.image_channels
@@ -401,9 +404,6 @@ class Agent(object):
                 image_channels = None
 
             dqn = dqn_base.create_dqn_torch(relevant_screen_size, image_channels)
-
-        else:  # self.lib_type == LIBRARY_KERAS
-            dqn = dqn_base.create_dqn_keras()
 
         return dqn
 
@@ -417,7 +417,7 @@ class Agent(object):
         if self.lib_type == utils.LIBRARY_TORCH:
             action_tensor = T.argmax(actions_q_values)
             a_index = action_tensor.item()
-        else:  # TF \ Keras
+        else:  # utils.LIBRARY_TF \ utils.LIBRARY_KERAS
             a_index = np.argmax(actions_q_values)
         a = self.action_space[a_index]
 
@@ -439,10 +439,10 @@ class Agent(object):
     #         a = np.random.choice(self.action_space)
     #     else:
     #         actions_q_values = self.policy_dqn.forward(s)
-    #         if self.lib_type == LIBRARY_TORCH:
+    #         if self.lib_type == utils.LIBRARY_TORCH:
     #             action_tensor = T.argmax(actions_q_values)
     #             a_index = action_tensor.item()
-    #         else:  # TF \ Keras
+    #         else:  # utils.LIBRARY_TF \ utils.LIBRARY_KERAS
     #             a_index = np.argmax(actions_q_values)
     #         a = self.action_space[a_index]
     #
@@ -464,11 +464,11 @@ class Agent(object):
             for t_n_param, p_n_param in zip(target_network_params, policy_network_params):
                 self.policy_dqn.sess.run(tf.assign(t_n_param, p_n_param))
 
-        elif self.lib_type == utils.LIBRARY_TORCH:
-            self.target_dqn.load_state_dict(self.policy_dqn.state_dict())
-
-        else:  # self.lib_type == LIBRARY_KERAS
+        elif self.lib_type == utils.LIBRARY_KERAS:
             self.target_dqn.model.set_weights(self.policy_dqn.model.get_weights())
+
+        else:  # self.lib_type == utils.LIBRARY_TORCH:
+            self.target_dqn.load_state_dict(self.policy_dqn.state_dict())
 
     def learn(self):
         # print('Learning Session')

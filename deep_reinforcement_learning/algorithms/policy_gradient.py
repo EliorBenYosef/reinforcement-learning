@@ -71,13 +71,13 @@ class DNN(object):
                 self.G = tf.placeholder(tf.float32, shape=[None], name='G')
 
                 if self.dnn.input_type == Envs.INPUT_TYPE_OBSERVATION_VECTOR:
-                    fc1_activated = tf.layers.dense(inputs=self.s, units=self.dnn.fc_layers_dims[0],
-                                                    activation='relu',
-                                                    kernel_initializer=tf.contrib.layers.xavier_initializer())
-                    fc2_activated = tf.layers.dense(inputs=fc1_activated, units=self.dnn.fc_layers_dims[1],
-                                                    activation='relu',
-                                                    kernel_initializer=tf.contrib.layers.xavier_initializer())
-                    fc_last = tf.layers.dense(inputs=fc2_activated, units=self.dnn.n_actions,
+                    fc1_ac = tf.layers.dense(inputs=self.s, units=self.dnn.fc_layers_dims[0],
+                                             activation='relu',
+                                             kernel_initializer=tf.contrib.layers.xavier_initializer())
+                    fc2_ac = tf.layers.dense(inputs=fc1_ac, units=self.dnn.fc_layers_dims[1],
+                                             activation='relu',
+                                             kernel_initializer=tf.contrib.layers.xavier_initializer())
+                    fc_last = tf.layers.dense(inputs=fc2_ac, units=self.dnn.n_actions,
                                               activation=None,
                                               kernel_initializer=tf.contrib.layers.xavier_initializer())
 
@@ -86,23 +86,23 @@ class DNN(object):
                                              kernel_size=(8, 8), strides=4, name='conv1',
                                              kernel_initializer=tf.contrib.layers.xavier_initializer())
                     conv1_bn = tf.layers.batch_normalization(inputs=conv1, epsilon=1e-5, name='conv1_bn')
-                    conv1_bn_activated = tf.nn.relu(conv1_bn)
-                    conv2 = tf.layers.conv2d(inputs=conv1_bn_activated, filters=64,
+                    conv1_bn_ac = tf.nn.relu(conv1_bn)
+                    conv2 = tf.layers.conv2d(inputs=conv1_bn_ac, filters=64,
                                              kernel_size=(4, 4), strides=2, name='conv2',
                                              kernel_initializer=tf.contrib.layers.xavier_initializer())
                     conv2_bn = tf.layers.batch_normalization(inputs=conv2, epsilon=1e-5, name='conv2_bn')
-                    conv2_bn_activated = tf.nn.relu(conv2_bn)
-                    conv3 = tf.layers.conv2d(inputs=conv2_bn_activated, filters=128,
+                    conv2_bn_ac = tf.nn.relu(conv2_bn)
+                    conv3 = tf.layers.conv2d(inputs=conv2_bn_ac, filters=128,
                                              kernel_size=(3, 3), strides=1, name='conv3',
                                              kernel_initializer=tf.contrib.layers.xavier_initializer())
                     conv3_bn = tf.layers.batch_normalization(inputs=conv3, epsilon=1e-5, name='conv3_bn')
-                    conv3_bn_activated = tf.nn.relu(conv3_bn)
+                    conv3_bn_ac = tf.nn.relu(conv3_bn)
 
-                    flat = tf.layers.flatten(conv3_bn_activated)
-                    fc1_activated = tf.layers.dense(inputs=flat, units=self.dnn.fc_layers_dims[0],
-                                                    activation='relu',
-                                                    kernel_initializer=tf.contrib.layers.xavier_initializer())
-                    fc_last = tf.layers.dense(inputs=fc1_activated, units=self.dnn.n_actions,
+                    flat = tf.layers.flatten(conv3_bn_ac)
+                    fc1_ac = tf.layers.dense(inputs=flat, units=self.dnn.fc_layers_dims[0],
+                                             activation='relu',
+                                             kernel_initializer=tf.contrib.layers.xavier_initializer())
+                    fc_last = tf.layers.dense(inputs=fc1_ac, units=self.dnn.n_actions,
                                               activation=None,
                                               kernel_initializer=tf.contrib.layers.xavier_initializer())
 
@@ -117,14 +117,14 @@ class DNN(object):
 
                 if self.dnn.optimizer_type == utils.OPTIMIZER_SGD:
                     optimizer = tf.train.MomentumOptimizer(self.dnn.ALPHA, momentum=0.9)  # SGD + momentum
-                    # optimizer = tf.train.GradientDescentOptimizer(self.dqn.ALPHA)  # SGD?
+                    # optimizer = tf.train.GradientDescentOptimizer(self.dnn.ALPHA)  # SGD?
                 elif self.dnn.optimizer_type == utils.OPTIMIZER_Adagrad:
                     optimizer = tf.train.AdagradOptimizer(self.dnn.ALPHA)
                 elif self.dnn.optimizer_type == utils.OPTIMIZER_Adadelta:
                     optimizer = tf.train.AdadeltaOptimizer(self.dnn.ALPHA)
                 elif self.dnn.optimizer_type == utils.OPTIMIZER_RMSprop:
                     optimizer = tf.train.RMSPropOptimizer(self.dnn.ALPHA, decay=0.99, momentum=0.0, epsilon=1e-6)
-                else:  # self.dqn.optimizer_type == utils.OPTIMIZER_Adam
+                else:  # self.dnn.optimizer_type == utils.OPTIMIZER_Adam
                     optimizer = tf.train.AdamOptimizer(self.dnn.ALPHA)
 
                 self.optimize = optimizer.minimize(loss)  # train_op
@@ -176,7 +176,8 @@ class DNN(object):
             elif self.dnn.optimizer_type == utils.OPTIMIZER_Adadelta:
                 self.optimizer = optim_adadelta.Adadelta(self.parameters(), lr=self.dnn.ALPHA)
             elif self.dnn.optimizer_type == utils.OPTIMIZER_RMSprop:
-                self.optimizer = optim_rmsprop.RMSprop(self.parameters(), lr=self.dnn.ALPHA)
+                self.optimizer = optim_rmsprop.RMSprop(self.parameters(), lr=self.dnn.ALPHA,
+                                                       weight_decay=0.99, momentum=0.0, eps=1e-6)
             else:  # self.dnn.optimizer_type == utils.OPTIMIZER_Adam
                 self.optimizer = optim.Adam(self.parameters(), lr=self.dnn.ALPHA)
 
@@ -219,19 +220,19 @@ class DNN(object):
 
             if self.dnn.input_type == Envs.INPUT_TYPE_OBSERVATION_VECTOR:
 
-                fc1_activated = F.relu(self.fc1(input))
-                fc2_activated = F.relu(self.fc2(fc1_activated))
-                fc_last = self.fc3(fc2_activated)
+                fc1_ac = F.relu(self.fc1(input))
+                fc2_ac = F.relu(self.fc2(fc1_ac))
+                fc_last = self.fc3(fc2_ac)
 
             else:  # self.input_type == Envs.INPUT_TYPE_STACKED_FRAMES
 
                 input = input.view(-1, self.in_channels, *self.relevant_screen_size)
-                conv1_activated = F.relu(self.conv1(input))
-                conv2_activated = F.relu(self.conv2(conv1_activated))
-                conv3_activated = F.relu(self.conv3(conv2_activated))
-                flat = conv3_activated.view(-1, self.flat_dims).to(self.device)
-                fc1_activated = F.relu(self.fc1(flat))
-                fc_last = self.fc2(fc1_activated)
+                conv1_ac = F.relu(self.conv1(input))
+                conv2_ac = F.relu(self.conv2(conv1_ac))
+                conv3_ac = F.relu(self.conv3(conv2_ac))
+                flat = conv3_ac.view(-1, self.flat_dims).to(self.device)
+                fc1_ac = F.relu(self.fc1(flat))
+                fc_last = self.fc2(fc1_ac)
 
             actions_probabilities = F.softmax(fc_last).to(self.device)
 
@@ -266,23 +267,23 @@ class DNN(object):
 class Memory(object):
 
     def __init__(self, custom_env, lib_type):
-
         self.n_actions = custom_env.n_actions
         self.action_space = custom_env.action_space
 
         self.lib_type = lib_type
 
-        if self.lib_type == utils.LIBRARY_TF:
+        if self.lib_type == utils.LIBRARY_TORCH:
+            self.memory_a_log_probs = []
+
+        else:  # utils.LIBRARY_TF \ utils.LIBRARY_KERAS
             self.memory_s = []
             self.memory_a_index = []
-        else:  # self.lib_type == LIBRARY_TORCH
-            self.memory_a_log_probs = []
 
         self.memory_r = []
         self.memory_terminal = []
 
     def store_transition(self, s, a, r, is_terminal):
-        if self.lib_type == utils.LIBRARY_TF:
+        if self.lib_type != utils.LIBRARY_TORCH:  # utils.LIBRARY_TF \ utils.LIBRARY_KERAS
             self.memory_s.append(s)
             self.memory_a_index.append(self.action_space.index(a))
 
@@ -294,11 +295,12 @@ class Memory(object):
             self.memory_a_log_probs.append(a_log_probs)
 
     def reset_memory(self):
-        if self.lib_type == utils.LIBRARY_TF:
+        if self.lib_type == utils.LIBRARY_TORCH:
+            self.memory_a_log_probs = []
+
+        else:  # utils.LIBRARY_TF \ utils.LIBRARY_KERAS
             self.memory_s = []
             self.memory_a_index = []
-        else:
-            self.memory_a_log_probs = []
 
         self.memory_r = []
         self.memory_terminal = []
@@ -335,7 +337,7 @@ class Agent(object):
         if self.lib_type == utils.LIBRARY_TF:
             dnn = dnn_base.create_dnn_tensorflow(name='q_policy')
 
-        else:  # self.lib_type == LIBRARY_TORCH
+        else:  # self.lib_type == utils.LIBRARY_TORCH
             if custom_env.input_type == Envs.INPUT_TYPE_STACKED_FRAMES:
                 relevant_screen_size = custom_env.relevant_screen_size
                 image_channels = custom_env.image_channels
@@ -353,11 +355,7 @@ class Agent(object):
     def choose_action(self, s):
         s = s[np.newaxis, :]
 
-        if self.lib_type == utils.LIBRARY_TF:
-            probabilities = self.policy_dnn.get_actions_probabilities(s)
-            a = np.random.choice(self.action_space, p=probabilities)
-
-        else:  # self.lib_type == LIBRARY_TORCH
+        if self.lib_type == utils.LIBRARY_TORCH:
             probabilities = self.policy_dnn.forward(s)
             actions_probs = distributions.Categorical(probabilities)
             action_tensor = actions_probs.sample()
@@ -365,6 +363,10 @@ class Agent(object):
             self.memory.store_a_log_probs(a_log_probs)
             a_index = action_tensor.item()
             a = self.action_space[a_index]
+
+        else:  # utils.LIBRARY_TF \ utils.LIBRARY_KERAS
+            probabilities = self.policy_dnn.get_actions_probabilities(s)
+            a = np.random.choice(self.action_space, p=probabilities)
 
         return a
 
