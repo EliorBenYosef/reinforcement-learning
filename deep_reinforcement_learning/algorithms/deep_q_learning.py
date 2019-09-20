@@ -263,36 +263,39 @@ class DQN(object):
 
             self.h5_file = os.path.join(dqn.chkpt_dir, 'dqn_keras.h5')
 
-            if self.dqn.input_type == Envs.INPUT_TYPE_OBSERVATION_VECTOR:
+            if self.dqn.optimizer_type == utils.OPTIMIZER_SGD:
+                self.optimizer = optimizers.SGD(lr=self.dqn.ALPHA, momentum=0.9)
+            elif self.dqn.optimizer_type == utils.OPTIMIZER_Adagrad:
+                self.optimizer = optimizers.Adagrad(lr=self.dqn.ALPHA)
+            elif self.dqn.optimizer_type == utils.OPTIMIZER_Adadelta:
+                self.optimizer = optimizers.Adadelta(lr=self.dqn.ALPHA)
+            elif self.dqn.optimizer_type == utils.OPTIMIZER_RMSprop:
+                self.optimizer = optimizers.RMSprop(lr=self.dqn.ALPHA)
+            else:  # self.dqn.optimizer_type == utils.OPTIMIZER_Adam
+                self.optimizer = optimizers.Adam(lr=self.dqn.ALPHA)
 
-                self.model = models.Sequential([
+            self.model = self.build_network()
+
+        def build_network(self):
+
+            if self.dqn.input_type == Envs.INPUT_TYPE_OBSERVATION_VECTOR:
+                model = models.Sequential([
                     layers.Dense(self.dqn.fc_layers_dims[0], activation='relu', input_shape=self.dqn.input_dims),
                     layers.Dense(self.dqn.fc_layers_dims[1], activation='relu'),
                     layers.Dense(self.dqn.n_actions)])
 
             else:  # self.input_type == Envs.INPUT_TYPE_STACKED_FRAMES
-
-                self.model = models.Sequential([
-                    layers.Conv2D(filters=32, kernel_size=(8, 8), strides=4, activation='relu',
-                                  input_shape=self.dqn.input_dims),
+                model = models.Sequential([
+                    layers.Conv2D(filters=32, kernel_size=(8, 8), strides=4, activation='relu', input_shape=self.dqn.input_dims),
                     layers.Conv2D(filters=64, kernel_size=(4, 4), strides=2, activation='relu'),
                     layers.Conv2D(filters=128, kernel_size=(3, 3), strides=1, activation='relu'),
                     layers.Flatten(),
                     layers.Dense(self.dqn.fc_layers_dims[0], activation='relu'),
                     layers.Dense(self.dqn.n_actions)])
 
-            if self.dqn.optimizer_type == utils.OPTIMIZER_SGD:
-                optimizer = optimizers.SGD(lr=self.dqn.ALPHA, momentum=0.9)
-            elif self.dqn.optimizer_type == utils.OPTIMIZER_Adagrad:
-                optimizer = optimizers.Adagrad(lr=self.dqn.ALPHA)
-            elif self.dqn.optimizer_type == utils.OPTIMIZER_Adadelta:
-                optimizer = optimizers.Adadelta(lr=self.dqn.ALPHA)
-            elif self.dqn.optimizer_type == utils.OPTIMIZER_RMSprop:
-                optimizer = optimizers.RMSprop(lr=self.dqn.ALPHA)
-            else:  # self.dqn.optimizer_type == utils.OPTIMIZER_Adam
-                optimizer = optimizers.Adam(lr=self.dqn.ALPHA)
+            model.compile(optimizer=self.optimizer, loss='mse')
 
-            self.model.compile(optimizer=optimizer, loss='mse')
+            return model
 
         def forward(self, batch_s):
             q_eval_s = self.model.predict(batch_s)
@@ -608,7 +611,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
         fc_layers_dims = [256, 256]
         double_dql = False
         tau = None
-        n_episodes = 500
+        n_episodes = 500  # 150 - 200 should solve it?
 
     elif env_type == 1:
         custom_env = Envs.Atari.Breakout()

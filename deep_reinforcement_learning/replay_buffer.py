@@ -55,8 +55,9 @@ class ReplayBuffer(object):  # aka 'ReplayMemory'
         if self.is_discrete_action_space:
             # integer action --> one hot encoding of actions:
             #   necessary for multiply the tensor [memory_batch_size, n_actions] with a vector [n_actions]
-            one_hot_actions_indices = np.zeros(self.n_actions)
-            one_hot_actions_indices[self.action_space.index(a)] = 1.0  # self.action_space.index(a) == a_index
+            one_hot_actions_indices = np.zeros(self.n_actions, dtype=self.dtype)
+            a_index = self.action_space.index(a)
+            one_hot_actions_indices[a_index] = 1
             self.memory_a_indices_one_hot[i] = one_hot_actions_indices
         else:
             self.memory_a[i] = a
