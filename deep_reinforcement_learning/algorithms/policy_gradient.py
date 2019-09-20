@@ -54,12 +54,12 @@ class DNN(object):
 
     class DNN_TensorFlow(object):
 
-        def __init__(self, dnn, name, device_type=None):
+        def __init__(self, dnn, name, device_map=None):
             self.dnn = dnn
 
             self.name = name
 
-            self.sess = utils.get_tf_session_according_to_device_type(device_type)
+            self.sess = utils.tf_get_session_according_to_device(device_map)
             self.build_network()
             self.sess.run(tf.global_variables_initializer())
 
@@ -160,7 +160,7 @@ class DNN(object):
 
     class DNN_Torch(nn.Module):
 
-        def __init__(self, dnn, relevant_screen_size, image_channels, device_type='cuda'):
+        def __init__(self, dnn, relevant_screen_size, image_channels, device_str='cuda'):
 
             super(DNN.DNN_Torch, self).__init__()
 
@@ -184,7 +184,7 @@ class DNN(object):
             else:  # self.dnn.optimizer_type == utils.OPTIMIZER_Adam
                 self.optimizer = optim.Adam(self.parameters(), lr=self.dnn.ALPHA)
 
-            self.device = utils.get_torch_device_according_to_device_type(device_type)
+            self.device = utils.torch_get_device_according_to_device_type(device_str)
             self.to(self.device)
 
         def build_network(self):
@@ -593,8 +593,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
 
     custom_env.env.seed(28)
 
-    if lib_type == utils.LIBRARY_TF:
-        utils.tf_set_device()
+    # utils.set_device(lib_type)
 
     agent = Agent(custom_env, fc_layers_dims, ep_batch_num, alpha, optimizer_type=optimizer_type, lib_type=lib_type)
 

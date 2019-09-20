@@ -7,6 +7,9 @@ import pickle
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+from tensorflow.python.client import device_lib
+import keras.backend.tensorflow_backend as keras_tensorflow_backend
+from keras.backend import set_session as keras_set_session
 import torch as T
 
 
@@ -288,29 +291,82 @@ def get_file_name(env_file_name, agent, episodes, method_name):
 
 ##############################################
 
-def tf_set_device():
-    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+def tf_get_local_devices(GPUs_only=False):
+    # # confirm TensorFlow sees the GPU
+    # assert 'GPU' in str(device_lib.list_local_devices())
 
-
-def get_torch_device_according_to_device_type(device_type):
-    # enabling GPU vs CPU:
-    if device_type == 'cpu':
-        device = T.device('cpu')  # default CPU. cpu:0 ?
-    elif device_type == 'cuda:1':
-        device = T.device('cuda:1' if T.cuda.is_available() else 'cuda')  # 2nd\default GPU. cuda:0 ?
+    local_devices = device_lib.list_local_devices()  # local_device_protos
+    # possible properties: name, device_type, memory_limit, incarnation, locality, physical_device_desc.
+    #   name - str with the following structure: '/' + prefix ':' + device_type + ':' + device_type_order_num.
+    #   device_type - CPU \ XLA_CPU \ GPU \ XLA_GPU
+    #   locality (can be empty) - for example: { bus_id: 1 links {} }
+    #   physical_device_desc (optional) - for example:
+    #       "device: 0, name: Tesla K80, pci bus id: 0000:00:04.0, compute capability: 3.7"
+    if GPUs_only:
+        return [dev.name for dev in local_devices if 'GPU' in dev.device_type]
     else:
-        device = T.device('cuda' if T.cuda.is_available() else 'cpu')  # default GPU \ default CPU. :0 ?
-    return device
+        return [dev.name for dev in local_devices]
 
 
-def get_tf_session_according_to_device_type(device_type):
-    if device_type is not None:
-        config = tf.ConfigProto(device_count=device_type)  # {'GPU': 1}
-        sess = tf.Session(config=config)
+def keras_get_available_GPUs():  # To Check if keras(>=2.1.1) is using GPU:
+    # # confirm Keras sees the GPU
+    # assert len(keras_tensorflow_backend._get_available_gpus()) > 0
+
+    return keras_tensorflow_backend._get_available_gpus()
+
+
+def torch_get_current_device_name():  # To Check if keras(>=2.1.1) is using GPU:
+    # confirm PyTorch sees the GPU
+    if T.cuda.is_available() and T.cuda.device_count() > 0:
+        return T.cuda.get_device_name(T.cuda.current_device())
+
+
+##############################################
+
+def set_device(lib_type, device):
+    if lib_type == LIBRARY_TF:
+        tf_set_device(device)                               # GPUs_str:     '0'
+    elif lib_type == LIBRARY_KERAS:
+        keras_set_session_according_to_device(device)       # device_map:   {'GPU': 0}
+
+
+# when trying to run a tensorflow \ keras model on GPU, make sure:
+#   1. the system has a Nvidia GPU (AMD doesn't work yet).
+#   2. the GPU version of tensorflow is installed.
+#   3. CUDA is installed. https://www.tensorflow.org/install
+#   4. tensorflow is running with GPU. use tf_get_local_devices()
+
+def tf_set_device(GPUs_str='0'):                            # e.g.: '0' \ '0,3'
+    # 1. set order of GPU IDs by pci bus IDs:
+    #   -> CUDA device id's are consistent with nvidia-smi's output
+    os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
+    # 2. specify which GPU ID(s) to be used.
+    os.environ['CUDA_VISIBLE_DEVICES'] = GPUs_str
+
+
+def tf_get_session_according_to_device(device_map):         # e.g.: {'GPU': 0} \ {'GPU': 1, 'CPU': 0}
+    if device_map is not None:
+        # enable log device placement to find out which device is used.
+        sess = tf.Session(config=tf.ConfigProto(device_count=device_map, log_device_placement=True))
     else:
         sess = tf.Session()
     return sess
+
+
+def keras_set_session_according_to_device(device_map):      # e.g.: {'GPU': 0} \ {'GPU': 1, 'CPU': 0}
+    # call this function after importing keras if you are working on a machine.
+    keras_set_session(tf_get_session_according_to_device(device_map))
+
+
+def torch_get_device_according_to_device_type(device_str):  # e.g.: 'cpu' \ 'gpu' \ 'cuda:1'
+    # enabling GPU vs CPU:
+    if device_str == 'cpu':
+        device = T.device('cpu')  # default CPU. cpu:0 ?
+    elif device_str == 'cuda:1':
+        device = T.device('cuda:1' if T.cuda.is_available() else 'cuda')  # 2nd\default GPU. cuda:0 ?
+    else:
+        device = T.device('cuda' if T.cuda.is_available() and T.cuda.device_count() > 0 else 'cpu')  # default GPU \ default CPU. :0 ?
+    return device
 
 
 ##############################################

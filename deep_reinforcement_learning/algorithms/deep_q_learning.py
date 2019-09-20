@@ -54,12 +54,12 @@ class DQN(object):
 
     class DQN_TensorFlow(object):
 
-        def __init__(self, dqn, name, device_type=None):
+        def __init__(self, dqn, name, device_map=None):
             self.dqn = dqn
 
             self.name = name
 
-            self.sess = utils.get_tf_session_according_to_device_type(device_type)
+            self.sess = utils.tf_get_session_according_to_device(device_map)
             self.build_network()
             self.sess.run(tf.global_variables_initializer())
 
@@ -148,7 +148,7 @@ class DQN(object):
 
     class DQN_Torch(nn.Module):
 
-        def __init__(self, dqn, relevant_screen_size, image_channels, device_type='cuda'):
+        def __init__(self, dqn, relevant_screen_size, image_channels, device_str='cuda'):
 
             super(DQN.DQN_Torch, self).__init__()
 
@@ -173,7 +173,7 @@ class DQN(object):
 
             self.loss = nn.MSELoss()
 
-            self.device = utils.get_torch_device_according_to_device_type(device_type)
+            self.device = utils.torch_get_device_according_to_device_type(device_str)
             self.to(self.device)
 
         def build_network(self):
@@ -637,8 +637,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
 
     custom_env.env.seed(28)
 
-    if lib_type == utils.LIBRARY_TF:
-        utils.tf_set_device()
+    # utils.set_device(lib_type)
 
     agent = Agent(
         custom_env, fc_layers_dims, n_episodes, alpha, optimizer_type,

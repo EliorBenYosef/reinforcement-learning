@@ -145,7 +145,7 @@ class DNN(object):
     class AC_DNN_Torch(nn.Module):
 
         def __init__(self, custom_env, fc_layers_dims, optimizer_type, lr, name, chkpt_dir, network_type, is_actor=False,
-                     device_type='cuda'):
+                     device_str='cuda'):
             super(DNN.AC_DNN_Torch, self).__init__()
 
             self.network_type = network_type
@@ -171,7 +171,7 @@ class DNN(object):
             else:  # optimizer_type == utils.OPTIMIZER_Adam
                 self.optimizer = optim.Adam(self.parameters(), lr=lr)
 
-            self.device = utils.get_torch_device_according_to_device_type(device_type)
+            self.device = utils.torch_get_device_according_to_device_type(device_str)
             self.to(self.device)
 
         def load_model_file(self):
@@ -214,7 +214,7 @@ class AC(object):
 
     class AC_TF(object):
 
-        def __init__(self, custom_env, fc_layers_dims, optimizer_type, lr_actor, lr_critic, chkpt_dir, network_type, device_type):
+        def __init__(self, custom_env, fc_layers_dims, optimizer_type, lr_actor, lr_critic, chkpt_dir, network_type, device_map):
 
             self.GAMMA = custom_env.GAMMA
 
@@ -225,7 +225,7 @@ class AC(object):
             self.action_space = custom_env.action_space if self.is_discrete_action_space else None
             self.action_boundary = custom_env.action_boundary if not self.is_discrete_action_space else None
 
-            self.sess = utils.get_tf_session_according_to_device_type(device_type)
+            self.sess = utils.tf_get_session_according_to_device(device_map)
 
             self.network_type = network_type
             if self.network_type == NETWORK_TYPE_SEPARATE:
@@ -569,8 +569,7 @@ def play(env_type, lib_type=utils.LIBRARY_TORCH, enable_models_saving=False, loa
 
     custom_env.env.seed(28)
 
-    if lib_type == utils.LIBRARY_TF:
-        utils.tf_set_device()
+    # utils.set_device(lib_type)
 
     agent = Agent(custom_env, fc_layers_dims, optimizer_type, lr_actor=alpha, lr_critic=beta, lib_type=lib_type)
 

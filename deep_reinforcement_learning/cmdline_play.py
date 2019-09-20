@@ -79,8 +79,7 @@ def command_line_play():
     load_checkpoint = False
     perform_random_gameplay = False
 
-    if lib_type == utils.LIBRARY_TF:
-        utils.tf_set_device()
+    # utils.set_device(lib_type)
 
     agent = Agent(
         custom_env, [args.fc1, args.fc2], args.n,
