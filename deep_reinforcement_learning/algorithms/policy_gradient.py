@@ -23,6 +23,7 @@ import torch.optim.adadelta as optim_adadelta
 import keras.models as models
 import keras.layers as layers
 import keras.optimizers as optimizers
+import keras.backend as K
 
 import utils
 from deep_reinforcement_learning.envs import Envs
@@ -47,6 +48,9 @@ class DNN(object):
 
     def create_dnn_torch(self, relevant_screen_size, image_channels):
         return DNN.DNN_Torch(self, relevant_screen_size, image_channels)
+
+    def create_dnn_keras(self):
+        return DNN.DNN_Keras(self)
 
     class DNN_TensorFlow(object):
 
@@ -109,8 +113,7 @@ class DNN(object):
                 self.actions_probabilities = tf.nn.softmax(fc_last, name='actions_probabilities')
 
                 negative_log_probability = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                    logits=fc_last, labels=self.a_index
-                )
+                    labels=self.a_index, logits=fc_last)
                 loss = negative_log_probability * self.G
                 if self.dnn.input_type == Envs.INPUT_TYPE_STACKED_FRAMES:
                     loss = tf.reduce_mean(loss)
@@ -134,7 +137,7 @@ class DNN(object):
 
         def learn_entire_batch(self, memory, GAMMA):
             memory_s = np.array(memory.memory_s)
-            memory_a_index = np.array(memory.memory_a_index)
+            memory_a_indices = np.array(memory.memory_a_indices)
             memory_r = np.array(memory.memory_r)
             memory_terminal = np.array(memory.memory_terminal, dtype=np.int8)
 
@@ -143,7 +146,7 @@ class DNN(object):
             print('Training Started')
             _ = self.sess.run(self.optimize,
                               feed_dict={self.s: memory_s,
-                                         self.a_index: memory_a_index,
+                                         self.a_index: memory_a_indices,
                                          self.G: memory_G})
             print('Training Finished')
 
@@ -248,8 +251,8 @@ class DNN(object):
 
             self.optimizer.zero_grad()
             loss = 0
-            for g, logprob in zip(memory_G, memory_a_log_probs):
-                loss += -g * logprob
+            for G, a_log_prob in zip(memory_G, memory_a_log_probs):
+                loss += -a_log_prob * G
             loss.backward()
             print('Training Started')
             self.optimizer.step()
@@ -262,6 +265,104 @@ class DNN(object):
         def save_model_file(self):
             print("...Saving torch model...")
             T.save(self.state_dict(), self.model_file)
+
+    class DNN_Keras(object):
+
+        def __init__(self, dnn):
+            self.dnn = dnn
+
+            self.h5_file = os.path.join(dnn.chkpt_dir, 'dnn_keras.h5')
+
+            if self.dnn.optimizer_type == utils.OPTIMIZER_SGD:
+                self.optimizer = optimizers.SGD(lr=self.dnn.ALPHA, momentum=0.9)
+            elif self.dnn.optimizer_type == utils.OPTIMIZER_Adagrad:
+                self.optimizer = optimizers.Adagrad(lr=self.dnn.ALPHA)
+            elif self.dnn.optimizer_type == utils.OPTIMIZER_Adadelta:
+                self.optimizer = optimizers.Adadelta(lr=self.dnn.ALPHA)
+            elif self.dnn.optimizer_type == utils.OPTIMIZER_RMSprop:
+                self.optimizer = optimizers.RMSprop(lr=self.dnn.ALPHA, decay=0.99, momentum=0.0, epsilon=1e-6)
+            else:  # self.dnn.optimizer_type == utils.OPTIMIZER_Adam
+                self.optimizer = optimizers.Adam(lr=self.dnn.ALPHA)
+
+            self.model, self.actions_probabilities_model = self.build_networks()
+
+        def build_networks(self):
+
+            s = layers.Input(shape=self.dnn.input_dims, dtype=tf.float32, name='s')
+
+            if self.dnn.input_type == Envs.INPUT_TYPE_OBSERVATION_VECTOR:
+
+                x = layers.Dense(self.dnn.fc_layers_dims[0], activation='relu',
+                                 kernel_initializer=tf.contrib.layers.xavier_initializer())(s)
+                x = layers.Dense(self.dnn.fc_layers_dims[1], activation='relu',
+                                 kernel_initializer=tf.contrib.layers.xavier_initializer())(x)
+
+            else:  # self.input_type == Envs.INPUT_TYPE_STACKED_FRAMES
+
+                x = layers.Conv2D(filters=32, kernel_size=(8, 8), strides=4, name='conv1',
+                                  kernel_initializer=tf.contrib.layers.xavier_initializer())(s),
+                x = layers.BatchNormalization(epsilon=1e-5, name='conv1_bn')(x),
+                x = layers.Activation(activation='relu', name='conv1_bn_ac')(x),
+                x = layers.Conv2D(filters=64, kernel_size=(4, 4), strides=2, name='conv2',
+                                  kernel_initializer=tf.contrib.layers.xavier_initializer())(x),
+                x = layers.BatchNormalization(epsilon=1e-5, name='conv2_bn')(x),
+                x = layers.Activation(activation='relu', name='conv2_bn_ac')(x),
+                x = layers.Conv2D(filters=128, kernel_size=(3, 3), strides=1, name='conv3',
+                                  kernel_initializer=tf.contrib.layers.xavier_initializer())(x),
+                x = layers.BatchNormalization(epsilon=1e-5, name='conv2_bn')(x),
+                x = layers.Activation(activation='relu', name='conv3_bn_ac')(x),
+                x = layers.Flatten()(x),
+                x = layers.Dense(self.dnn.fc_layers_dims[0], activation='relu',
+                                 kernel_initializer=tf.contrib.layers.xavier_initializer())(x)
+
+            actions_probabilities = layers.Dense(self.dnn.n_actions, activation='softmax', name='actions_probabilities',
+                                                 kernel_initializer=tf.contrib.layers.xavier_initializer())(x)
+
+            actions_probabilities_model = models.Model(inputs=s, outputs=actions_probabilities)  # predict_model
+
+            #############################
+
+            G = layers.Input(shape=(1,), dtype=tf.float32, name='G')  # advantages. batch_shape=[None]
+
+            def custom_loss(y_true, y_pred):  # (a_indices_one_hot, intermediate_model.output)
+                out = K.clip(y_pred, 1e-8, 1 - 1e-8)
+                log_lik = y_true * K.log(out)  # log_probability
+                loss = K.sum(-log_lik * G)  # K.mean ?
+                return loss
+
+            model = models.Model(inputs=[s, G], outputs=actions_probabilities)  # policy_model
+            model.compile(optimizer=self.optimizer, loss=custom_loss)
+
+            return model, actions_probabilities_model
+
+        def get_actions_probabilities(self, batch_s):
+            actions_probabilities = self.actions_probabilities_model.predict(batch_s)[0]
+            return actions_probabilities
+
+        def learn_entire_batch(self, memory, GAMMA):
+            memory_s = np.array(memory.memory_s)
+            memory_a_indices = np.array(memory.memory_a_indices)
+            memory_r = np.array(memory.memory_r)
+            memory_terminal = np.array(memory.memory_terminal, dtype=np.int8)
+
+            memory_G = utils.calculate_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA)
+
+            memory_size = len(memory_a_indices)
+            memory_a_indices_one_hot = np.zeros((memory_size, self.dnn.n_actions), dtype=np.int8)
+            memory_a_indices_one_hot[np.arange(memory_size), memory_a_indices] = 1
+
+            print('Training Started')
+            _ = self.model.fit([memory_s, memory_G], memory_a_indices_one_hot, verbose=0)
+            # _ = self.model.train_on_batch([memory_s, memory_G], memory_a_indices_one_hot)
+            print('Training Finished')
+
+        def load_model_file(self):
+            print("...Loading keras h5...")
+            self.model = models.load_model(self.h5_file)
+
+        def save_model_file(self):
+            print("...Saving keras h5...")
+            self.model.save(self.h5_file)
 
 
 class Memory(object):
@@ -277,7 +378,7 @@ class Memory(object):
 
         else:  # utils.LIBRARY_TF \ utils.LIBRARY_KERAS
             self.memory_s = []
-            self.memory_a_index = []
+            self.memory_a_indices = []
 
         self.memory_r = []
         self.memory_terminal = []
@@ -285,7 +386,7 @@ class Memory(object):
     def store_transition(self, s, a, r, is_terminal):
         if self.lib_type != utils.LIBRARY_TORCH:  # utils.LIBRARY_TF \ utils.LIBRARY_KERAS
             self.memory_s.append(s)
-            self.memory_a_index.append(self.action_space.index(a))
+            self.memory_a_indices.append(self.action_space.index(a))
 
         self.memory_r.append(r)
         self.memory_terminal.append(int(is_terminal))
@@ -300,7 +401,7 @@ class Memory(object):
 
         else:  # utils.LIBRARY_TF \ utils.LIBRARY_KERAS
             self.memory_s = []
-            self.memory_a_index = []
+            self.memory_a_indices = []
 
         self.memory_r = []
         self.memory_terminal = []
@@ -336,6 +437,9 @@ class Agent(object):
 
         if self.lib_type == utils.LIBRARY_TF:
             dnn = dnn_base.create_dnn_tensorflow(name='q_policy')
+
+        elif self.lib_type == utils.LIBRARY_KERAS:
+            dnn = dnn_base.create_dnn_keras()
 
         else:  # self.lib_type == utils.LIBRARY_TORCH
             if custom_env.input_type == Envs.INPUT_TYPE_STACKED_FRAMES:
@@ -457,18 +561,15 @@ def train(custom_env, agent, n_episodes,
 
 
 def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_checkpoint=False):
-    if lib_type == utils.LIBRARY_KERAS:
-        print('\n', "Algorithm currently doesn't work with Keras", '\n')
-        return
 
     if env_type == 0:
         # custom_env = Envs.Box2D.LunarLander()
         custom_env = Envs.ClassicControl.CartPole()
-        fc_layers_dims = [64, 64] if lib_type == utils.LIBRARY_TF else [128, 128]
+        fc_layers_dims = [128, 128] if lib_type == utils.LIBRARY_TORCH else [64, 64]
         optimizer_type = utils.OPTIMIZER_Adam
-        alpha = 0.0005 if lib_type == utils.LIBRARY_TF else 0.001
+        alpha = 0.001 if lib_type == utils.LIBRARY_TORCH else 0.0005
         ep_batch_num = 1  # REINFORCE algorithm (MC PG)
-        n_episodes = 2500  # supposed to be enough for good results in PG
+        n_episodes = 2000 if lib_type == utils.LIBRARY_KERAS else 2500  # supposed to be enough for good results in PG
 
     elif env_type == 1:
         custom_env = Envs.Atari.Breakout()
@@ -507,4 +608,4 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
 
 
 if __name__ == '__main__':
-    play(0, lib_type=utils.LIBRARY_TF)          # CartPole (0), Breakout (1), SpaceInvaders (2)
+    play(0, lib_type=utils.LIBRARY_KERAS)          # CartPole (0), Breakout (1), SpaceInvaders (2)
