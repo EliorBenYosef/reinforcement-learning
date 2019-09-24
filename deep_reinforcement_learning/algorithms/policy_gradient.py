@@ -12,6 +12,7 @@ import tensorflow_probability as tfp
 from tensorflow.python import random_uniform_initializer as random_uniform
 
 import torch as T
+import torch.distributions as distributions
 import torch.nn.functional as F
 import torch.optim.rmsprop as T_optim_rmsprop
 import torch.optim.adagrad as T_optim_adagrad
@@ -286,7 +287,7 @@ class DNN(object):
 
         def build_networks(self):
 
-            s = layers.Input(shape=self.dnn.input_dims, dtype=tf.float32, name='s')
+            s = layers.Input(shape=self.dnn.input_dims, dtype='float32', name='s')
 
             if self.dnn.input_type == Envs.INPUT_TYPE_OBSERVATION_VECTOR:
                 x = layers.Dense(self.dnn.fc_layers_dims[0], activation='relu',
@@ -297,18 +298,18 @@ class DNN(object):
             else:  # self.input_type == Envs.INPUT_TYPE_STACKED_FRAMES
 
                 x = layers.Conv2D(filters=32, kernel_size=(8, 8), strides=4, name='conv1',
-                                  kernel_initializer=initializers.glorot_uniform(seed=None))(s),
-                x = layers.BatchNormalization(epsilon=1e-5, name='conv1_bn')(x),
-                x = layers.Activation(activation='relu', name='conv1_bn_ac')(x),
+                                  kernel_initializer=initializers.glorot_uniform(seed=None))(s)
+                x = layers.BatchNormalization(epsilon=1e-5, name='conv1_bn')(x)
+                x = layers.Activation(activation='relu', name='conv1_bn_ac')(x)
                 x = layers.Conv2D(filters=64, kernel_size=(4, 4), strides=2, name='conv2',
-                                  kernel_initializer=initializers.glorot_uniform(seed=None))(x),
-                x = layers.BatchNormalization(epsilon=1e-5, name='conv2_bn')(x),
-                x = layers.Activation(activation='relu', name='conv2_bn_ac')(x),
+                                  kernel_initializer=initializers.glorot_uniform(seed=None))(x)
+                x = layers.BatchNormalization(epsilon=1e-5, name='conv2_bn')(x)
+                x = layers.Activation(activation='relu', name='conv2_bn_ac')(x)
                 x = layers.Conv2D(filters=128, kernel_size=(3, 3), strides=1, name='conv3',
-                                  kernel_initializer=initializers.glorot_uniform(seed=None))(x),
-                x = layers.BatchNormalization(epsilon=1e-5, name='conv2_bn')(x),
-                x = layers.Activation(activation='relu', name='conv3_bn_ac')(x),
-                x = layers.Flatten()(x),
+                                  kernel_initializer=initializers.glorot_uniform(seed=None))(x)
+                x = layers.BatchNormalization(epsilon=1e-5, name='conv3_bn')(x)
+                x = layers.Activation(activation='relu', name='conv3_bn_ac')(x)
+                x = layers.Flatten()(x)
                 x = layers.Dense(self.dnn.fc_layers_dims[0], activation='relu',
                                  kernel_initializer=initializers.glorot_uniform(seed=None))(x)
 
@@ -319,7 +320,7 @@ class DNN(object):
 
             #############################
 
-            G = layers.Input(shape=(1,), dtype=tf.float32, name='G')  # advantages. batch_shape=[None]
+            G = layers.Input(shape=(1,), dtype='float32', name='G')  # advantages. batch_shape=[None]
 
             def custom_loss(y_true, y_pred):  # (a_indices_one_hot, intermediate_model.output)
                 out = K.clip(y_pred, 1e-8, 1 - 1e-8)
@@ -458,7 +459,7 @@ class Agent(object):
 
         if self.lib_type == utils.LIBRARY_TORCH:
             probabilities = self.policy_dnn.forward(s)
-            actions_probs = T.distributions.Categorical(probabilities)
+            actions_probs = distributions.Categorical(probabilities)
             action_tensor = actions_probs.sample()
             a_log_probs = actions_probs.log_prob(action_tensor)
             self.memory.store_a_log_probs(a_log_probs)
@@ -497,7 +498,7 @@ def train(custom_env, agent, n_episodes,
             episode_index = utils.pickle_load('episode_index', agent.chkpt_dir)
             print('...Loading scores_history...')
             scores_history = utils.pickle_load('scores_history_train', agent.chkpt_dir)
-        except (ValueError, tf.OpError):
+        except (ValueError, tf.OpError, OSError):
             print('...No models to load...')
         except FileNotFoundError:
             print('...No data to load...')

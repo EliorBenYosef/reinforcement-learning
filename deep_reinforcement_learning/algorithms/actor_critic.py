@@ -12,6 +12,7 @@ import tensorflow_probability as tfp
 from tensorflow.python import random_uniform_initializer as random_uniform
 
 import torch as T
+import torch.distributions as distributions
 import torch.nn.functional as F
 import torch.optim.rmsprop as T_optim_rmsprop
 import torch.optim.adagrad as T_optim_adagrad
@@ -359,7 +360,7 @@ class AC(object):
 
         def choose_action_discrete(self, pi, device):
             probabilities = F.softmax(pi)
-            actions_probs = T.distributions.Categorical(probabilities)
+            actions_probs = distributions.Categorical(probabilities)
             action_tensor = actions_probs.sample()
             self.a_log_probs = actions_probs.log_prob(action_tensor).to(device)
             a_index = action_tensor.item()
@@ -369,7 +370,7 @@ class AC(object):
         def choose_action_continuous(self, actor_value, device):
             mu, sigma_unactivated = actor_value  # Mean (μ), STD (σ)
             sigma = T.exp(sigma_unactivated)
-            actions_probs = T.distributions.Normal(mu, sigma)
+            actions_probs = distributions.Normal(mu, sigma)
             action_tensor = actions_probs.sample(sample_shape=T.Size([self.n_actions]))
             self.a_log_probs = actions_probs.log_prob(action_tensor).to(device)
             action_tensor = T.tanh(action_tensor)
@@ -475,7 +476,7 @@ def train(custom_env, agent, n_episodes,
             episode_index = utils.pickle_load('episode_index', agent.chkpt_dir)
             print('...Loading scores_history...')
             scores_history = utils.pickle_load('scores_history_train', agent.chkpt_dir)
-        except (ValueError, tf.OpError):
+        except (ValueError, tf.OpError, OSError):
             print('...No models to load...')
         except FileNotFoundError:
             print('...No data to load...')

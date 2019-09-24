@@ -537,7 +537,7 @@ def train(custom_env, agent, n_episodes, perform_random_gameplay,
             episode_index = utils.pickle_load('episode_index', agent.chkpt_dir)
             print('...Loading scores_history...')
             scores_history = utils.pickle_load('scores_history_train', agent.chkpt_dir)
-        except (ValueError, tf.OpError):
+        except (ValueError, tf.OpError, OSError):
             print('...No models to load...')
         except FileNotFoundError:
             print('...No data to load...')
