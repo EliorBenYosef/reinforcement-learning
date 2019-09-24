@@ -12,13 +12,10 @@ import tensorflow_probability as tfp
 from tensorflow.python import random_uniform_initializer as random_uniform
 
 import torch as T
-import torch.distributions as distributions
-import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
-import torch.optim.rmsprop as optim_rmsprop
-import torch.optim.adagrad as optim_adagrad
-import torch.optim.adadelta as optim_adadelta
+import torch.optim.rmsprop as T_optim_rmsprop
+import torch.optim.adagrad as T_optim_adagrad
+import torch.optim.adadelta as T_optim_adadelta
 
 import keras.models as models
 import keras.layers as layers
@@ -146,7 +143,7 @@ class DQN(object):
             print("...Saving tf checkpoint...")
             self.saver.save(self.sess, self.checkpoint_file)
 
-    class DQN_Torch(nn.Module):
+    class DQN_Torch(T.nn.Module):
 
         def __init__(self, dqn, relevant_screen_size, image_channels, device_str='cuda'):
 
@@ -161,26 +158,26 @@ class DQN(object):
             self.build_network()
 
             if self.dqn.optimizer_type == utils.OPTIMIZER_SGD:
-                self.optimizer = optim.SGD(self.parameters(), lr=self.dqn.ALPHA, momentum=0.9)
+                self.optimizer = T.optim.SGD(self.parameters(), lr=self.dqn.ALPHA, momentum=0.9)
             elif self.dqn.optimizer_type == utils.OPTIMIZER_Adagrad:
-                self.optimizer = optim_adagrad.Adagrad(self.parameters(), lr=self.dqn.ALPHA)
+                self.optimizer = T_optim_adagrad.Adagrad(self.parameters(), lr=self.dqn.ALPHA)
             elif self.dqn.optimizer_type == utils.OPTIMIZER_Adadelta:
-                self.optimizer = optim_adadelta.Adadelta(self.parameters(), lr=self.dqn.ALPHA)
+                self.optimizer = T_optim_adadelta.Adadelta(self.parameters(), lr=self.dqn.ALPHA)
             elif self.dqn.optimizer_type == utils.OPTIMIZER_RMSprop:
-                self.optimizer = optim_rmsprop.RMSprop(self.parameters(), lr=self.dqn.ALPHA)
+                self.optimizer = T_optim_rmsprop.RMSprop(self.parameters(), lr=self.dqn.ALPHA)
             else:  # self.dqn.optimizer_type == utils.OPTIMIZER_Adam
-                self.optimizer = optim.Adam(self.parameters(), lr=self.dqn.ALPHA)
+                self.optimizer = T.optim.Adam(self.parameters(), lr=self.dqn.ALPHA)
 
-            self.loss = nn.MSELoss()
+            self.loss = T.nn.MSELoss()
 
             self.device = utils.torch_get_device_according_to_device_type(device_str)
             self.to(self.device)
 
         def build_network(self):
             if self.dqn.input_type == Envs.INPUT_TYPE_OBSERVATION_VECTOR:
-                self.fc1 = nn.Linear(*self.dqn.input_dims, self.dqn.fc_layers_dims[0])
-                self.fc2 = nn.Linear(self.dqn.fc_layers_dims[0], self.dqn.fc_layers_dims[1])
-                self.fc3 = nn.Linear(self.dqn.fc_layers_dims[1], self.dqn.n_actions)
+                self.fc1 = T.nn.Linear(*self.dqn.input_dims, self.dqn.fc_layers_dims[0])
+                self.fc2 = T.nn.Linear(self.dqn.fc_layers_dims[0], self.dqn.fc_layers_dims[1])
+                self.fc3 = T.nn.Linear(self.dqn.fc_layers_dims[1], self.dqn.n_actions)
 
             else:  # self.input_type == Envs.INPUT_TYPE_STACKED_FRAMES
                 frames_stack_size = Envs.Atari.frames_stack_size
@@ -191,11 +188,11 @@ class DQN(object):
                 conv2_fps = 4, 0, 2
                 conv3_fps = 3, 0, 1
 
-                self.conv1 = nn.Conv2d(self.in_channels, conv1_filters, conv1_fps[0],
+                self.conv1 = T.nn.Conv2d(self.in_channels, conv1_filters, conv1_fps[0],
                                        padding=conv1_fps[1], stride=conv1_fps[2])
-                self.conv2 = nn.Conv2d(conv1_filters, conv2_filters, conv2_fps[0],
+                self.conv2 = T.nn.Conv2d(conv1_filters, conv2_filters, conv2_fps[0],
                                        padding=conv2_fps[1], stride=conv2_fps[2])
-                self.conv3 = nn.Conv2d(conv2_filters, conv3_filters, conv3_fps[0],
+                self.conv3 = T.nn.Conv2d(conv2_filters, conv3_filters, conv3_fps[0],
                                        padding=conv3_fps[1], stride=conv3_fps[2])
 
                 i_H, i_W = self.dqn.input_dims[0], self.dqn.input_dims[1]
@@ -204,8 +201,8 @@ class DQN(object):
                 conv3_o_H, conv3_o_W = utils.calc_conv_layer_output_dims(conv2_o_H, conv2_o_W, *conv3_fps)
                 self.flat_dims = conv3_filters * conv3_o_H * conv3_o_W
 
-                self.fc1 = nn.Linear(self.flat_dims, self.dqn.fc_layers_dims[0])
-                self.fc2 = nn.Linear(self.dqn.fc_layers_dims[0], self.dqn.n_actions)
+                self.fc1 = T.nn.Linear(self.flat_dims, self.dqn.fc_layers_dims[0])
+                self.fc2 = T.nn.Linear(self.dqn.fc_layers_dims[0], self.dqn.n_actions)
 
         def forward(self, s):
             input = T.tensor(s, dtype=T.float).to(self.device)
@@ -539,7 +536,7 @@ def train(custom_env, agent, n_episodes, perform_random_gameplay,
             print('...Loading episode_index...')
             episode_index = utils.pickle_load('episode_index', agent.chkpt_dir)
             print('...Loading scores_history...')
-            scores_history = utils.pickle_load('scores_history', agent.chkpt_dir)
+            scores_history = utils.pickle_load('scores_history_train', agent.chkpt_dir)
         except (ValueError, tf.OpError):
             print('...No models to load...')
         except FileNotFoundError:
@@ -588,7 +585,7 @@ def train(custom_env, agent, n_episodes, perform_random_gameplay,
         if enable_models_saving and (i + 1) % save_checkpoint == 0:
             episode_index = i
             utils.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
-            utils.pickle_save(scores_history, 'scores_history', agent.chkpt_dir)
+            utils.pickle_save(scores_history, 'scores_history_train', agent.chkpt_dir)
             agent.save_models()
 
         utils.print_training_progress(i, ep_score, scores_history, custom_env.window, agent.EPS)
@@ -651,6 +648,10 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
         file_name=utils.get_file_name(custom_env.file_name, agent, n_episodes, 'DQL'),
         directory=agent.chkpt_dir if enable_models_saving else None
     )
+
+    scores_history_test = utils.test_trained_agent(custom_env, agent)
+    if enable_models_saving:
+        utils.pickle_save(scores_history_test, 'scores_history_test', agent.chkpt_dir)
 
 
 if __name__ == '__main__':

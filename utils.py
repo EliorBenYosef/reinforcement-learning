@@ -6,10 +6,13 @@ import pickle
 
 import matplotlib.pyplot as plt
 import numpy as np
+
 import tensorflow as tf
 from tensorflow.python.client import device_lib
+
 import keras.backend.tensorflow_backend as keras_tensorflow_backend
 from keras.backend import set_session as keras_set_session
+
 import torch as T
 
 
@@ -453,7 +456,7 @@ def test_method(custom_env_object, episodes, choose_action):
     accumulated_score = 0
     eval = custom_env_object.get_evaluation_tuple()
     for i in range(episodes):
-        print('\n', 'Starting Episode %d' % i, '\n')
+        print('\n', 'Starting Episode %d' % (i + 1), '\n')
         done = False
         ep_steps = 0
         ep_score = 0

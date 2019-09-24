@@ -93,8 +93,9 @@ def perform_grid_search(lib_type=utils.LIBRARY_TF, enable_models_saving=False, l
     ###########################################
 
     counter = 0
-    scores_histories = []
     labels = []
+    scores_histories_train = []
+    scores_histories_test = []
 
     for optimizer in optimizer_list:
         for alpha in alpha_list:
@@ -117,17 +118,28 @@ def perform_grid_search(lib_type=utils.LIBRARY_TF, enable_models_saving=False, l
                                                 double_dql=False, tau=None, lib_type=lib_type
                                             )
 
-                                            scores_history = train(
-                                                custom_env, agent, n_episodes, perform_random_gameplay,
-                                                enable_models_saving, load_checkpoint)
-                                            scores_histories.append(scores_history)
                                             labels.append('[%d,%d]' % (fc1_dim, fc2_dim))
+
+                                            scores_history = train(custom_env, agent, n_episodes,
+                                                                   perform_random_gameplay,
+                                                                   enable_models_saving, load_checkpoint)
+                                            scores_histories_train.append(scores_history)
+
+                                            scores_history_test = utils.test_trained_agent(custom_env, agent)
+                                            if enable_models_saving:
+                                                utils.pickle_save(scores_history_test, 'scores_history_test',
+                                                                  agent.chkpt_dir)
+                                            scores_histories_test.append(scores_history_test)
 
                                             tf.reset_default_graph()
 
     utils.plot_running_average_comparison(
-        custom_env.name, scores_histories, labels, window=custom_env.window, show=False,
-        file_name=custom_env.file_name + '_dql'
+        custom_env.name, scores_histories_train, labels, window=custom_env.window, show=False,
+        file_name=custom_env.file_name + '_dql_train'
+    )
+    utils.plot_running_average_comparison(
+        custom_env.name, scores_histories_test, labels, window=custom_env.window, show=False,
+        file_name=custom_env.file_name + '_dql_test'
     )
 
 

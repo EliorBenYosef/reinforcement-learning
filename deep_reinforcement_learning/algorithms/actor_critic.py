@@ -12,13 +12,10 @@ import tensorflow_probability as tfp
 from tensorflow.python import random_uniform_initializer as random_uniform
 
 import torch as T
-import torch.distributions as distributions
-import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
-import torch.optim.rmsprop as optim_rmsprop
-import torch.optim.adagrad as optim_adagrad
-import torch.optim.adadelta as optim_adadelta
+import torch.optim.rmsprop as T_optim_rmsprop
+import torch.optim.adagrad as T_optim_adagrad
+import torch.optim.adadelta as T_optim_adadelta
 
 import keras.models as models
 import keras.layers as layers
@@ -142,7 +139,7 @@ class DNN(object):
                                      self.a: a})
             print('Training Finished')
 
-    class AC_DNN_Torch(nn.Module):
+    class AC_DNN_Torch(T.nn.Module):
 
         def __init__(self, custom_env, fc_layers_dims, optimizer_type, lr, name, chkpt_dir, network_type, is_actor=False,
                      device_str='cuda'):
@@ -161,15 +158,15 @@ class DNN(object):
             self.build_network()
 
             if optimizer_type == utils.OPTIMIZER_SGD:
-                self.optimizer = optim.SGD(self.parameters(), lr=lr, momentum=0.9)
+                self.optimizer = T.optim.SGD(self.parameters(), lr=lr, momentum=0.9)
             elif self.optimizer_type == utils.OPTIMIZER_Adagrad:
-                self.optimizer = optim_adagrad.Adagrad(self.parameters(), lr=lr)
+                self.optimizer = T_optim_adagrad.Adagrad(self.parameters(), lr=lr)
             elif self.optimizer_type == utils.OPTIMIZER_Adadelta:
-                self.optimizer = optim_adadelta.Adadelta(self.parameters(), lr=lr)
+                self.optimizer = T_optim_adadelta.Adadelta(self.parameters(), lr=lr)
             elif optimizer_type == utils.OPTIMIZER_RMSprop:
-                self.optimizer = optim_rmsprop.RMSprop(self.parameters(), lr=lr)
+                self.optimizer = T_optim_rmsprop.RMSprop(self.parameters(), lr=lr)
             else:  # optimizer_type == utils.OPTIMIZER_Adam
-                self.optimizer = optim.Adam(self.parameters(), lr=lr)
+                self.optimizer = T.optim.Adam(self.parameters(), lr=lr)
 
             self.device = utils.torch_get_device_according_to_device_type(device_str)
             self.to(self.device)
@@ -181,15 +178,15 @@ class DNN(object):
             T.save(self.state_dict(), self.model_file)
 
         def build_network(self):
-            self.fc1 = nn.Linear(*self.input_dims, self.fc_layers_dims[0])
-            self.fc2 = nn.Linear(self.fc_layers_dims[0], self.fc_layers_dims[1])
+            self.fc1 = T.nn.Linear(*self.input_dims, self.fc_layers_dims[0])
+            self.fc2 = T.nn.Linear(self.fc_layers_dims[0], self.fc_layers_dims[1])
 
             if self.network_type == NETWORK_TYPE_SEPARATE:  # build_A_or_C_network
-                self.fc3 = nn.Linear(self.fc_layers_dims[1], self.n_outputs if self.is_actor else 1)
+                self.fc3 = T.nn.Linear(self.fc_layers_dims[1], self.n_outputs if self.is_actor else 1)
 
             else:  # self.network_type == NETWORK_TYPE_SHARED    # build_A_and_C_network
-                self.fc3 = nn.Linear(self.fc_layers_dims[1], self.n_outputs)  # Actor layer
-                self.v = nn.Linear(self.fc_layers_dims[1], 1)  # Critic layer
+                self.fc3 = T.nn.Linear(self.fc_layers_dims[1], self.n_outputs)  # Actor layer
+                self.v = T.nn.Linear(self.fc_layers_dims[1], 1)  # Critic layer
 
         def forward(self, s):
             state_value = T.tensor(s, dtype=T.float).to(self.device)
@@ -362,7 +359,7 @@ class AC(object):
 
         def choose_action_discrete(self, pi, device):
             probabilities = F.softmax(pi)
-            actions_probs = distributions.Categorical(probabilities)
+            actions_probs = T.distributions.Categorical(probabilities)
             action_tensor = actions_probs.sample()
             self.a_log_probs = actions_probs.log_prob(action_tensor).to(device)
             a_index = action_tensor.item()
@@ -372,7 +369,7 @@ class AC(object):
         def choose_action_continuous(self, actor_value, device):
             mu, sigma_unactivated = actor_value  # Mean (μ), STD (σ)
             sigma = T.exp(sigma_unactivated)
-            actions_probs = distributions.Normal(mu, sigma)
+            actions_probs = T.distributions.Normal(mu, sigma)
             action_tensor = actions_probs.sample(sample_shape=T.Size([self.n_actions]))
             self.a_log_probs = actions_probs.log_prob(action_tensor).to(device)
             action_tensor = T.tanh(action_tensor)
@@ -477,7 +474,7 @@ def train(custom_env, agent, n_episodes,
             print('...Loading episode_index...')
             episode_index = utils.pickle_load('episode_index', agent.chkpt_dir)
             print('...Loading scores_history...')
-            scores_history = utils.pickle_load('scores_history', agent.chkpt_dir)
+            scores_history = utils.pickle_load('scores_history_train', agent.chkpt_dir)
         except (ValueError, tf.OpError):
             print('...No models to load...')
         except FileNotFoundError:
@@ -520,7 +517,7 @@ def train(custom_env, agent, n_episodes,
         if enable_models_saving and (i + 1) % save_checkpoint == 0:
             episode_index = i
             utils.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
-            utils.pickle_save(scores_history, 'scores_history', agent.chkpt_dir)
+            utils.pickle_save(scores_history, 'scores_history_train', agent.chkpt_dir)
             agent.save_models()
 
         utils.print_training_progress(i, ep_score, scores_history, custom_env.window)
@@ -580,6 +577,10 @@ def play(env_type, lib_type=utils.LIBRARY_TORCH, enable_models_saving=False, loa
         file_name=utils.get_file_name(custom_env.file_name, agent, n_episodes, 'AC'),
         directory=agent.chkpt_dir if enable_models_saving else None
     )
+
+    scores_history_test = utils.test_trained_agent(custom_env, agent)
+    if enable_models_saving:
+        utils.pickle_save(scores_history_test, 'scores_history_test', agent.chkpt_dir)
 
 
 if __name__ == '__main__':

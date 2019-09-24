@@ -12,13 +12,10 @@ import tensorflow_probability as tfp
 from tensorflow.python import random_uniform_initializer as random_uniform
 
 import torch as T
-import torch.distributions as distributions
-import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
-import torch.optim.rmsprop as optim_rmsprop
-import torch.optim.adagrad as optim_adagrad
-import torch.optim.adadelta as optim_adadelta
+import torch.optim.rmsprop as T_optim_rmsprop
+import torch.optim.adagrad as T_optim_adagrad
+import torch.optim.adadelta as T_optim_adadelta
 
 import keras.models as models
 import keras.layers as layers
@@ -199,7 +196,7 @@ class DNN:
                                         feed_dict={self.s: inputs,
                                                    self.a: actions})
 
-    class AC_DNN_Torch(nn.Module):
+    class AC_DNN_Torch(T.nn.Module):
 
         def __init__(self, custom_env, fc_layers_dims, optimizer_type, lr, name, chkpt_dir, is_actor, device_str='cuda'):
             super(DNN.AC_DNN_Torch, self).__init__()
@@ -221,15 +218,15 @@ class DNN:
             self.build_network()
 
             if optimizer_type == utils.OPTIMIZER_SGD:
-                self.optimizer = optim.SGD(self.parameters(), lr=lr, momentum=0.9)
+                self.optimizer = T.optim.SGD(self.parameters(), lr=lr, momentum=0.9)
             elif optimizer_type == utils.OPTIMIZER_Adagrad:
-                self.optimizer = optim_adagrad.Adagrad(self.parameters(), lr=lr)
+                self.optimizer = T_optim_adagrad.Adagrad(self.parameters(), lr=lr)
             elif optimizer_type == utils.OPTIMIZER_Adadelta:
-                self.optimizer = optim_adadelta.Adadelta(self.parameters(), lr=lr)
+                self.optimizer = T_optim_adadelta.Adadelta(self.parameters(), lr=lr)
             elif optimizer_type == utils.OPTIMIZER_RMSprop:
-                self.optimizer = optim_rmsprop.RMSprop(self.parameters(), lr=lr)
+                self.optimizer = T_optim_rmsprop.RMSprop(self.parameters(), lr=lr)
             else:  # optimizer_type == utils.OPTIMIZER_Adam
-                self.optimizer = optim.Adam(self.parameters(), lr=lr)
+                self.optimizer = T.optim.Adam(self.parameters(), lr=lr)
 
             self.device = utils.torch_get_device_according_to_device_type(device_str)
             self.to(self.device)
@@ -254,21 +251,21 @@ class DNN:
 
         def build_network_actor(self):
             f1 = 1. / np.sqrt(self.fc_layers_dims[0])
-            self.fc1 = nn.Linear(*self.input_dims, self.fc_layers_dims[0])
-            nn.init.uniform_(self.fc1.weight.data, -f1, f1)
-            nn.init.uniform_(self.fc1.bias.data, -f1, f1)
-            self.fc1_bn = nn.LayerNorm(self.fc_layers_dims[0])
+            self.fc1 = T.nn.Linear(*self.input_dims, self.fc_layers_dims[0])
+            T.nn.init.uniform_(self.fc1.weight.data, -f1, f1)
+            T.nn.init.uniform_(self.fc1.bias.data, -f1, f1)
+            self.fc1_bn = T.nn.LayerNorm(self.fc_layers_dims[0])
 
             f2 = 1. / np.sqrt(self.fc_layers_dims[1])
-            self.fc2 = nn.Linear(self.fc_layers_dims[0], self.fc_layers_dims[1])
-            nn.init.uniform_(self.fc2.weight.data, -f2, f2)
-            nn.init.uniform_(self.fc2.bias.data, -f2, f2)
-            self.fc2_bn = nn.LayerNorm(self.fc_layers_dims[1])
+            self.fc2 = T.nn.Linear(self.fc_layers_dims[0], self.fc_layers_dims[1])
+            T.nn.init.uniform_(self.fc2.weight.data, -f2, f2)
+            T.nn.init.uniform_(self.fc2.bias.data, -f2, f2)
+            self.fc2_bn = T.nn.LayerNorm(self.fc_layers_dims[1])
 
             f3 = 0.003
-            self.mu = nn.Linear(self.fc_layers_dims[1], self.n_actions)
-            nn.init.uniform_(self.mu.weight.data, -f3, f3)
-            nn.init.uniform_(self.mu.bias.data, -f3, f3)
+            self.mu = T.nn.Linear(self.fc_layers_dims[1], self.n_actions)
+            T.nn.init.uniform_(self.mu.weight.data, -f3, f3)
+            T.nn.init.uniform_(self.mu.bias.data, -f3, f3)
 
         def forward_actor(self, s):
             state_value = T.tensor(s, dtype=T.float).to(self.device)
@@ -288,23 +285,23 @@ class DNN:
 
         def build_network_critic(self):
             f1 = 1. / np.sqrt(self.fc_layers_dims[0])
-            self.fc1 = nn.Linear(*self.input_dims, self.fc_layers_dims[0])
-            nn.init.uniform_(self.fc1.weight.data, -f1, f1)
-            nn.init.uniform_(self.fc1.bias.data, -f1, f1)
-            self.fc1_bn = nn.LayerNorm(self.fc_layers_dims[0])
+            self.fc1 = T.nn.Linear(*self.input_dims, self.fc_layers_dims[0])
+            T.nn.init.uniform_(self.fc1.weight.data, -f1, f1)
+            T.nn.init.uniform_(self.fc1.bias.data, -f1, f1)
+            self.fc1_bn = T.nn.LayerNorm(self.fc_layers_dims[0])
 
             f2 = 1. / np.sqrt(self.fc_layers_dims[1])
-            self.fc2 = nn.Linear(self.fc_layers_dims[0], self.fc_layers_dims[1])
-            nn.init.uniform_(self.fc2.weight.data, -f2, f2)
-            nn.init.uniform_(self.fc2.bias.data, -f2, f2)
-            self.fc2_bn = nn.LayerNorm(self.fc_layers_dims[1])
+            self.fc2 = T.nn.Linear(self.fc_layers_dims[0], self.fc_layers_dims[1])
+            T.nn.init.uniform_(self.fc2.weight.data, -f2, f2)
+            T.nn.init.uniform_(self.fc2.bias.data, -f2, f2)
+            self.fc2_bn = T.nn.LayerNorm(self.fc_layers_dims[1])
 
-            self.action_in = nn.Linear(self.n_actions, self.fc_layers_dims[1])
+            self.action_in = T.nn.Linear(self.n_actions, self.fc_layers_dims[1])
 
             f3 = 0.003
-            self.q = nn.Linear(self.fc_layers_dims[1], 1)
-            nn.init.uniform_(self.q.weight.data, -f3, f3)
-            nn.init.uniform_(self.q.bias.data, -f3, f3)
+            self.q = T.nn.Linear(self.fc_layers_dims[1], 1)
+            T.nn.init.uniform_(self.q.weight.data, -f3, f3)
+            T.nn.init.uniform_(self.q.bias.data, -f3, f3)
 
             # TODO: add l2 kernel_regularizer of 0.01
 
@@ -656,7 +653,7 @@ def train(custom_env, agent, n_episodes,
             print('...Loading episode_index...')
             episode_index = utils.pickle_load('episode_index', agent.chkpt_dir)
             print('...Loading scores_history...')
-            scores_history = utils.pickle_load('scores_history', agent.chkpt_dir)
+            scores_history = utils.pickle_load('scores_history_train', agent.chkpt_dir)
         except (ValueError, tf.OpError):
             print('...No models to load...')
         except FileNotFoundError:
@@ -702,7 +699,7 @@ def train(custom_env, agent, n_episodes,
         if enable_models_saving and (i + 1) % save_checkpoint == 0:
             episode_index = i
             utils.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
-            utils.pickle_save(scores_history, 'scores_history', agent.chkpt_dir)
+            utils.pickle_save(scores_history, 'scores_history_train', agent.chkpt_dir)
             agent.save_models()
 
         utils.print_training_progress(i, ep_score, scores_history, custom_env.window)
@@ -771,6 +768,10 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
         file_name=utils.get_file_name(custom_env.file_name, agent, n_episodes, 'DDPG'),
         directory=agent.chkpt_dir if enable_models_saving else None
     )
+
+    scores_history_test = utils.test_trained_agent(custom_env, agent)
+    if enable_models_saving:
+        utils.pickle_save(scores_history_test, 'scores_history_test', agent.chkpt_dir)
 
 
 if __name__ == '__main__':

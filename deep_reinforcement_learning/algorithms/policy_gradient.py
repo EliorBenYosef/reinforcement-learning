@@ -12,16 +12,14 @@ import tensorflow_probability as tfp
 from tensorflow.python import random_uniform_initializer as random_uniform
 
 import torch as T
-import torch.distributions as distributions
-import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
-import torch.optim.rmsprop as optim_rmsprop
-import torch.optim.adagrad as optim_adagrad
-import torch.optim.adadelta as optim_adadelta
+import torch.optim.rmsprop as T_optim_rmsprop
+import torch.optim.adagrad as T_optim_adagrad
+import torch.optim.adadelta as T_optim_adadelta
 
 import keras.models as models
 import keras.layers as layers
+import keras.initializers as initializers
 import keras.optimizers as optimizers
 import keras.backend as K
 
@@ -77,38 +75,38 @@ class DNN(object):
                 if self.dnn.input_type == Envs.INPUT_TYPE_OBSERVATION_VECTOR:
                     fc1_ac = tf.layers.dense(inputs=self.s, units=self.dnn.fc_layers_dims[0],
                                              activation='relu',
-                                             kernel_initializer=tf.contrib.layers.xavier_initializer())
+                                             kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
                     fc2_ac = tf.layers.dense(inputs=fc1_ac, units=self.dnn.fc_layers_dims[1],
                                              activation='relu',
-                                             kernel_initializer=tf.contrib.layers.xavier_initializer())
+                                             kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
                     fc_last = tf.layers.dense(inputs=fc2_ac, units=self.dnn.n_actions,
                                               activation=None,
-                                              kernel_initializer=tf.contrib.layers.xavier_initializer())
+                                              kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
 
                 else:  # self.input_type == Envs.INPUT_TYPE_STACKED_FRAMES
                     conv1 = tf.layers.conv2d(inputs=self.s, filters=32,
                                              kernel_size=(8, 8), strides=4, name='conv1',
-                                             kernel_initializer=tf.contrib.layers.xavier_initializer())
+                                             kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
                     conv1_bn = tf.layers.batch_normalization(inputs=conv1, epsilon=1e-5, name='conv1_bn')
                     conv1_bn_ac = tf.nn.relu(conv1_bn)
                     conv2 = tf.layers.conv2d(inputs=conv1_bn_ac, filters=64,
                                              kernel_size=(4, 4), strides=2, name='conv2',
-                                             kernel_initializer=tf.contrib.layers.xavier_initializer())
+                                             kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
                     conv2_bn = tf.layers.batch_normalization(inputs=conv2, epsilon=1e-5, name='conv2_bn')
                     conv2_bn_ac = tf.nn.relu(conv2_bn)
                     conv3 = tf.layers.conv2d(inputs=conv2_bn_ac, filters=128,
                                              kernel_size=(3, 3), strides=1, name='conv3',
-                                             kernel_initializer=tf.contrib.layers.xavier_initializer())
+                                             kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
                     conv3_bn = tf.layers.batch_normalization(inputs=conv3, epsilon=1e-5, name='conv3_bn')
                     conv3_bn_ac = tf.nn.relu(conv3_bn)
 
                     flat = tf.layers.flatten(conv3_bn_ac)
                     fc1_ac = tf.layers.dense(inputs=flat, units=self.dnn.fc_layers_dims[0],
                                              activation='relu',
-                                             kernel_initializer=tf.contrib.layers.xavier_initializer())
+                                             kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
                     fc_last = tf.layers.dense(inputs=fc1_ac, units=self.dnn.n_actions,
                                               activation=None,
-                                              kernel_initializer=tf.contrib.layers.xavier_initializer())
+                                              kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
 
                 self.actions_probabilities = tf.nn.softmax(fc_last, name='actions_probabilities')
 
@@ -158,7 +156,7 @@ class DNN(object):
             print("...Saving tf checkpoint...")
             self.saver.save(self.sess, self.checkpoint_file)
 
-    class DNN_Torch(nn.Module):
+    class DNN_Torch(T.nn.Module):
 
         def __init__(self, dnn, relevant_screen_size, image_channels, device_str='cuda'):
 
@@ -173,25 +171,25 @@ class DNN(object):
             self.build_network()
 
             if self.dnn.optimizer_type == utils.OPTIMIZER_SGD:
-                self.optimizer = optim.SGD(self.parameters(), lr=self.dnn.ALPHA, momentum=0.9)
+                self.optimizer = T.optim.SGD(self.parameters(), lr=self.dnn.ALPHA, momentum=0.9)
             elif self.dnn.optimizer_type == utils.OPTIMIZER_Adagrad:
-                self.optimizer = optim_adagrad.Adagrad(self.parameters(), lr=self.dnn.ALPHA)
+                self.optimizer = T_optim_adagrad.Adagrad(self.parameters(), lr=self.dnn.ALPHA)
             elif self.dnn.optimizer_type == utils.OPTIMIZER_Adadelta:
-                self.optimizer = optim_adadelta.Adadelta(self.parameters(), lr=self.dnn.ALPHA)
+                self.optimizer = T_optim_adadelta.Adadelta(self.parameters(), lr=self.dnn.ALPHA)
             elif self.dnn.optimizer_type == utils.OPTIMIZER_RMSprop:
-                self.optimizer = optim_rmsprop.RMSprop(self.parameters(), lr=self.dnn.ALPHA,
+                self.optimizer = T_optim_rmsprop.RMSprop(self.parameters(), lr=self.dnn.ALPHA,
                                                        weight_decay=0.99, momentum=0.0, eps=1e-6)
             else:  # self.dnn.optimizer_type == utils.OPTIMIZER_Adam
-                self.optimizer = optim.Adam(self.parameters(), lr=self.dnn.ALPHA)
+                self.optimizer = T.optim.Adam(self.parameters(), lr=self.dnn.ALPHA)
 
             self.device = utils.torch_get_device_according_to_device_type(device_str)
             self.to(self.device)
 
         def build_network(self):
             if self.dnn.input_type == Envs.INPUT_TYPE_OBSERVATION_VECTOR:
-                self.fc1 = nn.Linear(*self.dnn.input_dims, self.dnn.fc_layers_dims[0])
-                self.fc2 = nn.Linear(self.dnn.fc_layers_dims[0], self.dnn.fc_layers_dims[1])
-                self.fc3 = nn.Linear(self.dnn.fc_layers_dims[1], self.dnn.n_actions)
+                self.fc1 = T.nn.Linear(*self.dnn.input_dims, self.dnn.fc_layers_dims[0])
+                self.fc2 = T.nn.Linear(self.dnn.fc_layers_dims[0], self.dnn.fc_layers_dims[1])
+                self.fc3 = T.nn.Linear(self.dnn.fc_layers_dims[1], self.dnn.n_actions)
 
             else:  # self.input_type == Envs.INPUT_TYPE_STACKED_FRAMES
                 frames_stack_size = Envs.Atari.frames_stack_size
@@ -202,11 +200,11 @@ class DNN(object):
                 conv2_fps = 4, 0, 2
                 conv3_fps = 3, 0, 1
 
-                self.conv1 = nn.Conv2d(self.in_channels, conv1_filters, conv1_fps[0],
+                self.conv1 = T.nn.Conv2d(self.in_channels, conv1_filters, conv1_fps[0],
                                        padding=conv1_fps[1], stride=conv1_fps[2])
-                self.conv2 = nn.Conv2d(conv1_filters, conv2_filters, conv2_fps[0],
+                self.conv2 = T.nn.Conv2d(conv1_filters, conv2_filters, conv2_fps[0],
                                        padding=conv2_fps[1], stride=conv2_fps[2])
-                self.conv3 = nn.Conv2d(conv2_filters, conv3_filters, conv3_fps[0],
+                self.conv3 = T.nn.Conv2d(conv2_filters, conv3_filters, conv3_fps[0],
                                        padding=conv3_fps[1], stride=conv3_fps[2])
 
                 i_H, i_W = self.dnn.input_dims[0], self.dnn.input_dims[1]
@@ -215,8 +213,8 @@ class DNN(object):
                 conv3_o_H, conv3_o_W = utils.calc_conv_layer_output_dims(conv2_o_H, conv2_o_W, *conv3_fps)
                 self.flat_dims = conv3_filters * conv3_o_H * conv3_o_W
 
-                self.fc1 = nn.Linear(self.flat_dims, self.dnn.fc_layers_dims[0])
-                self.fc2 = nn.Linear(self.dnn.fc_layers_dims[0], self.dnn.n_actions)
+                self.fc1 = T.nn.Linear(self.flat_dims, self.dnn.fc_layers_dims[0])
+                self.fc2 = T.nn.Linear(self.dnn.fc_layers_dims[0], self.dnn.n_actions)
 
         def forward(self, s):
             input = T.tensor(s, dtype=T.float).to(self.device)
@@ -291,32 +289,31 @@ class DNN(object):
             s = layers.Input(shape=self.dnn.input_dims, dtype=tf.float32, name='s')
 
             if self.dnn.input_type == Envs.INPUT_TYPE_OBSERVATION_VECTOR:
-
                 x = layers.Dense(self.dnn.fc_layers_dims[0], activation='relu',
-                                 kernel_initializer=tf.contrib.layers.xavier_initializer())(s)
+                                 kernel_initializer=initializers.glorot_uniform(seed=None))(s)
                 x = layers.Dense(self.dnn.fc_layers_dims[1], activation='relu',
-                                 kernel_initializer=tf.contrib.layers.xavier_initializer())(x)
+                                 kernel_initializer=initializers.glorot_uniform(seed=None))(x)
 
             else:  # self.input_type == Envs.INPUT_TYPE_STACKED_FRAMES
 
                 x = layers.Conv2D(filters=32, kernel_size=(8, 8), strides=4, name='conv1',
-                                  kernel_initializer=tf.contrib.layers.xavier_initializer())(s),
+                                  kernel_initializer=initializers.glorot_uniform(seed=None))(s),
                 x = layers.BatchNormalization(epsilon=1e-5, name='conv1_bn')(x),
                 x = layers.Activation(activation='relu', name='conv1_bn_ac')(x),
                 x = layers.Conv2D(filters=64, kernel_size=(4, 4), strides=2, name='conv2',
-                                  kernel_initializer=tf.contrib.layers.xavier_initializer())(x),
+                                  kernel_initializer=initializers.glorot_uniform(seed=None))(x),
                 x = layers.BatchNormalization(epsilon=1e-5, name='conv2_bn')(x),
                 x = layers.Activation(activation='relu', name='conv2_bn_ac')(x),
                 x = layers.Conv2D(filters=128, kernel_size=(3, 3), strides=1, name='conv3',
-                                  kernel_initializer=tf.contrib.layers.xavier_initializer())(x),
+                                  kernel_initializer=initializers.glorot_uniform(seed=None))(x),
                 x = layers.BatchNormalization(epsilon=1e-5, name='conv2_bn')(x),
                 x = layers.Activation(activation='relu', name='conv3_bn_ac')(x),
                 x = layers.Flatten()(x),
                 x = layers.Dense(self.dnn.fc_layers_dims[0], activation='relu',
-                                 kernel_initializer=tf.contrib.layers.xavier_initializer())(x)
+                                 kernel_initializer=initializers.glorot_uniform(seed=None))(x)
 
             actions_probabilities = layers.Dense(self.dnn.n_actions, activation='softmax', name='actions_probabilities',
-                                                 kernel_initializer=tf.contrib.layers.xavier_initializer())(x)
+                                                 kernel_initializer=initializers.glorot_uniform(seed=None))(x)
 
             actions_probabilities_model = models.Model(inputs=s, outputs=actions_probabilities)  # predict_model
 
@@ -461,7 +458,7 @@ class Agent(object):
 
         if self.lib_type == utils.LIBRARY_TORCH:
             probabilities = self.policy_dnn.forward(s)
-            actions_probs = distributions.Categorical(probabilities)
+            actions_probs = T.distributions.Categorical(probabilities)
             action_tensor = actions_probs.sample()
             a_log_probs = actions_probs.log_prob(action_tensor)
             self.memory.store_a_log_probs(a_log_probs)
@@ -499,7 +496,7 @@ def train(custom_env, agent, n_episodes,
             print('...Loading episode_index...')
             episode_index = utils.pickle_load('episode_index', agent.chkpt_dir)
             print('...Loading scores_history...')
-            scores_history = utils.pickle_load('scores_history', agent.chkpt_dir)
+            scores_history = utils.pickle_load('scores_history_train', agent.chkpt_dir)
         except (ValueError, tf.OpError):
             print('...No models to load...')
         except FileNotFoundError:
@@ -544,7 +541,7 @@ def train(custom_env, agent, n_episodes,
             if enable_models_saving:
                 episode_index = i
                 utils.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
-                utils.pickle_save(scores_history, 'scores_history', agent.chkpt_dir)
+                utils.pickle_save(scores_history, 'scores_history_train', agent.chkpt_dir)
                 agent.save_models()
 
         avg_num = custom_env.window
@@ -604,6 +601,10 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
         file_name=utils.get_file_name(custom_env.file_name, agent, n_episodes, 'PG'),
         directory=agent.chkpt_dir if enable_models_saving else None
     )
+
+    scores_history_test = utils.test_trained_agent(custom_env, agent)
+    if enable_models_saving:
+        utils.pickle_save(scores_history_test, 'scores_history_test', agent.chkpt_dir)
 
 
 if __name__ == '__main__':

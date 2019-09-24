@@ -98,6 +98,10 @@ def command_line_play():
         directory=agent.chkpt_dir if enable_models_saving else None
     )
 
+    scores_history_test = utils.test_trained_agent(custom_env, agent)
+    if enable_models_saving:
+        utils.pickle_save(scores_history_test, 'scores_history_test', agent.chkpt_dir)
+
 
 if __name__ == '__main__':
     command_line_play()
