@@ -14,14 +14,10 @@ from tensorflow.python import random_uniform_initializer as random_uniform
 import torch as T
 import torch.distributions as distributions
 import torch.nn.functional as F
-import torch.optim.rmsprop as T_optim_rmsprop
-import torch.optim.adagrad as T_optim_adagrad
-import torch.optim.adadelta as T_optim_adadelta
 
 import keras.models as models
 import keras.layers as layers
 import keras.initializers as initializers
-import keras.optimizers as optimizers
 import keras.backend as K
 
 import utils
@@ -45,11 +41,11 @@ class DNN(object):
     def create_dnn_tensorflow(self, name):
         return DNN.DNN_TensorFlow(self, name)
 
-    def create_dnn_torch(self, relevant_screen_size, image_channels):
-        return DNN.DNN_Torch(self, relevant_screen_size, image_channels)
-
     def create_dnn_keras(self):
         return DNN.DNN_Keras(self)
+
+    def create_dnn_torch(self, relevant_screen_size, image_channels):
+        return DNN.DNN_Torch(self, relevant_screen_size, image_channels)
 
     class DNN_TensorFlow(object):
 
@@ -117,18 +113,7 @@ class DNN(object):
                 if self.dnn.input_type == Envs.INPUT_TYPE_STACKED_FRAMES:
                     loss = tf.reduce_mean(loss)
 
-                if self.dnn.optimizer_type == utils.OPTIMIZER_SGD:
-                    optimizer = tf.train.MomentumOptimizer(self.dnn.ALPHA, momentum=0.9)  # SGD + momentum
-                    # optimizer = tf.train.GradientDescentOptimizer(self.dnn.ALPHA)  # SGD?
-                elif self.dnn.optimizer_type == utils.OPTIMIZER_Adagrad:
-                    optimizer = tf.train.AdagradOptimizer(self.dnn.ALPHA)
-                elif self.dnn.optimizer_type == utils.OPTIMIZER_Adadelta:
-                    optimizer = tf.train.AdadeltaOptimizer(self.dnn.ALPHA)
-                elif self.dnn.optimizer_type == utils.OPTIMIZER_RMSprop:
-                    optimizer = tf.train.RMSPropOptimizer(self.dnn.ALPHA, decay=0.99, momentum=0.0, epsilon=1e-6)
-                else:  # self.dnn.optimizer_type == utils.OPTIMIZER_Adam
-                    optimizer = tf.train.AdamOptimizer(self.dnn.ALPHA)
-
+                optimizer = utils.Optimizers.tf_get_optimizer(self.dnn.optimizer_type, self.dnn.ALPHA)
                 self.optimize = optimizer.minimize(loss)  # train_op
 
         def get_actions_probabilities(self, batch_s):
@@ -157,6 +142,94 @@ class DNN(object):
             print("...Saving tf checkpoint...")
             self.saver.save(self.sess, self.checkpoint_file)
 
+    class DNN_Keras(object):
+
+        def __init__(self, dnn):
+            self.dnn = dnn
+
+            self.h5_file = os.path.join(dnn.chkpt_dir, 'dnn_keras.h5')
+
+            self.optimizer = utils.Optimizers.keras_get_optimizer(self.dnn.optimizer_type, self.dnn.ALPHA)
+
+            self.model, self.policy = self.build_networks()
+
+        def build_networks(self):
+
+            s = layers.Input(shape=self.dnn.input_dims, dtype='float32', name='s')
+
+            if self.dnn.input_type == Envs.INPUT_TYPE_OBSERVATION_VECTOR:
+                x = layers.Dense(self.dnn.fc_layers_dims[0], activation='relu',
+                                 kernel_initializer=initializers.glorot_uniform(seed=None))(s)
+                x = layers.Dense(self.dnn.fc_layers_dims[1], activation='relu',
+                                 kernel_initializer=initializers.glorot_uniform(seed=None))(x)
+
+            else:  # self.input_type == Envs.INPUT_TYPE_STACKED_FRAMES
+
+                x = layers.Conv2D(filters=32, kernel_size=(8, 8), strides=4, name='conv1',
+                                  kernel_initializer=initializers.glorot_uniform(seed=None))(s)
+                x = layers.BatchNormalization(epsilon=1e-5, name='conv1_bn')(x)
+                x = layers.Activation(activation='relu', name='conv1_bn_ac')(x)
+                x = layers.Conv2D(filters=64, kernel_size=(4, 4), strides=2, name='conv2',
+                                  kernel_initializer=initializers.glorot_uniform(seed=None))(x)
+                x = layers.BatchNormalization(epsilon=1e-5, name='conv2_bn')(x)
+                x = layers.Activation(activation='relu', name='conv2_bn_ac')(x)
+                x = layers.Conv2D(filters=128, kernel_size=(3, 3), strides=1, name='conv3',
+                                  kernel_initializer=initializers.glorot_uniform(seed=None))(x)
+                x = layers.BatchNormalization(epsilon=1e-5, name='conv3_bn')(x)
+                x = layers.Activation(activation='relu', name='conv3_bn_ac')(x)
+                x = layers.Flatten()(x)
+                x = layers.Dense(self.dnn.fc_layers_dims[0], activation='relu',
+                                 kernel_initializer=initializers.glorot_uniform(seed=None))(x)
+
+            actions_probabilities = layers.Dense(self.dnn.n_actions, activation='softmax', name='actions_probabilities',
+                                                 kernel_initializer=initializers.glorot_uniform(seed=None))(x)
+
+            policy = models.Model(inputs=s, outputs=actions_probabilities)
+
+            #############################
+
+            G = layers.Input(shape=(1,), dtype='float32', name='G')  # advantages. batch_shape=[None]
+
+            def custom_loss(y_true, y_pred):  # (a_indices_one_hot, intermediate_model.output)
+                out = K.clip(y_pred, 1e-8, 1 - 1e-8)
+                log_lik = y_true * K.log(out)  # log_probability
+                loss = K.sum(-log_lik * G)  # K.mean ?
+                return loss
+
+            model = models.Model(inputs=[s, G], outputs=actions_probabilities)  # policy_model
+            model.compile(optimizer=self.optimizer, loss=custom_loss)
+
+            return model, policy
+
+        def get_actions_probabilities(self, batch_s):
+            actions_probabilities = self.policy.predict(batch_s)[0]
+            return actions_probabilities
+
+        def learn_entire_batch(self, memory, GAMMA):
+            memory_s = np.array(memory.memory_s)
+            memory_a_indices = np.array(memory.memory_a_indices)
+            memory_r = np.array(memory.memory_r)
+            memory_terminal = np.array(memory.memory_terminal, dtype=np.int8)
+
+            memory_G = utils.Calculator.calculate_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA)
+
+            memory_size = len(memory_a_indices)
+            memory_a_indices_one_hot = np.zeros((memory_size, self.dnn.n_actions), dtype=np.int8)
+            memory_a_indices_one_hot[np.arange(memory_size), memory_a_indices] = 1
+
+            print('Training Started')
+            _ = self.model.fit([memory_s, memory_G], memory_a_indices_one_hot, verbose=0)
+            # _ = self.model.train_on_batch([memory_s, memory_G], memory_a_indices_one_hot)
+            print('Training Finished')
+
+        def load_model_file(self):
+            print("...Loading keras h5...")
+            self.model = models.load_model(self.h5_file)
+
+        def save_model_file(self):
+            print("...Saving keras h5...")
+            self.model.save(self.h5_file)
+
     class DNN_Torch(T.nn.Module):
 
         def __init__(self, dnn, relevant_screen_size, image_channels, device_str='cuda'):
@@ -171,17 +244,8 @@ class DNN(object):
 
             self.build_network()
 
-            if self.dnn.optimizer_type == utils.OPTIMIZER_SGD:
-                self.optimizer = T.optim.SGD(self.parameters(), lr=self.dnn.ALPHA, momentum=0.9)
-            elif self.dnn.optimizer_type == utils.OPTIMIZER_Adagrad:
-                self.optimizer = T_optim_adagrad.Adagrad(self.parameters(), lr=self.dnn.ALPHA)
-            elif self.dnn.optimizer_type == utils.OPTIMIZER_Adadelta:
-                self.optimizer = T_optim_adadelta.Adadelta(self.parameters(), lr=self.dnn.ALPHA)
-            elif self.dnn.optimizer_type == utils.OPTIMIZER_RMSprop:
-                self.optimizer = T_optim_rmsprop.RMSprop(self.parameters(), lr=self.dnn.ALPHA,
-                                                       weight_decay=0.99, momentum=0.0, eps=1e-6)
-            else:  # self.dnn.optimizer_type == utils.OPTIMIZER_Adam
-                self.optimizer = T.optim.Adam(self.parameters(), lr=self.dnn.ALPHA)
+            self.optimizer = utils.Optimizers.torch_get_optimizer(
+                self.dnn.optimizer_type, self.parameters(), self.dnn.ALPHA)
 
             self.device = utils.DeviceSetUtils.torch_get_device_according_to_device_type(device_str)
             self.to(self.device)
@@ -265,103 +329,6 @@ class DNN(object):
             print("...Saving torch model...")
             T.save(self.state_dict(), self.model_file)
 
-    class DNN_Keras(object):
-
-        def __init__(self, dnn):
-            self.dnn = dnn
-
-            self.h5_file = os.path.join(dnn.chkpt_dir, 'dnn_keras.h5')
-
-            if self.dnn.optimizer_type == utils.OPTIMIZER_SGD:
-                self.optimizer = optimizers.SGD(lr=self.dnn.ALPHA, momentum=0.9)
-            elif self.dnn.optimizer_type == utils.OPTIMIZER_Adagrad:
-                self.optimizer = optimizers.Adagrad(lr=self.dnn.ALPHA)
-            elif self.dnn.optimizer_type == utils.OPTIMIZER_Adadelta:
-                self.optimizer = optimizers.Adadelta(lr=self.dnn.ALPHA)
-            elif self.dnn.optimizer_type == utils.OPTIMIZER_RMSprop:
-                self.optimizer = optimizers.RMSprop(lr=self.dnn.ALPHA, decay=0.99, momentum=0.0, epsilon=1e-6)
-            else:  # self.dnn.optimizer_type == utils.OPTIMIZER_Adam
-                self.optimizer = optimizers.Adam(lr=self.dnn.ALPHA)
-
-            self.model, self.actions_probabilities_model = self.build_networks()
-
-        def build_networks(self):
-
-            s = layers.Input(shape=self.dnn.input_dims, dtype='float32', name='s')
-
-            if self.dnn.input_type == Envs.INPUT_TYPE_OBSERVATION_VECTOR:
-                x = layers.Dense(self.dnn.fc_layers_dims[0], activation='relu',
-                                 kernel_initializer=initializers.glorot_uniform(seed=None))(s)
-                x = layers.Dense(self.dnn.fc_layers_dims[1], activation='relu',
-                                 kernel_initializer=initializers.glorot_uniform(seed=None))(x)
-
-            else:  # self.input_type == Envs.INPUT_TYPE_STACKED_FRAMES
-
-                x = layers.Conv2D(filters=32, kernel_size=(8, 8), strides=4, name='conv1',
-                                  kernel_initializer=initializers.glorot_uniform(seed=None))(s)
-                x = layers.BatchNormalization(epsilon=1e-5, name='conv1_bn')(x)
-                x = layers.Activation(activation='relu', name='conv1_bn_ac')(x)
-                x = layers.Conv2D(filters=64, kernel_size=(4, 4), strides=2, name='conv2',
-                                  kernel_initializer=initializers.glorot_uniform(seed=None))(x)
-                x = layers.BatchNormalization(epsilon=1e-5, name='conv2_bn')(x)
-                x = layers.Activation(activation='relu', name='conv2_bn_ac')(x)
-                x = layers.Conv2D(filters=128, kernel_size=(3, 3), strides=1, name='conv3',
-                                  kernel_initializer=initializers.glorot_uniform(seed=None))(x)
-                x = layers.BatchNormalization(epsilon=1e-5, name='conv3_bn')(x)
-                x = layers.Activation(activation='relu', name='conv3_bn_ac')(x)
-                x = layers.Flatten()(x)
-                x = layers.Dense(self.dnn.fc_layers_dims[0], activation='relu',
-                                 kernel_initializer=initializers.glorot_uniform(seed=None))(x)
-
-            actions_probabilities = layers.Dense(self.dnn.n_actions, activation='softmax', name='actions_probabilities',
-                                                 kernel_initializer=initializers.glorot_uniform(seed=None))(x)
-
-            actions_probabilities_model = models.Model(inputs=s, outputs=actions_probabilities)  # predict_model
-
-            #############################
-
-            G = layers.Input(shape=(1,), dtype='float32', name='G')  # advantages. batch_shape=[None]
-
-            def custom_loss(y_true, y_pred):  # (a_indices_one_hot, intermediate_model.output)
-                out = K.clip(y_pred, 1e-8, 1 - 1e-8)
-                log_lik = y_true * K.log(out)  # log_probability
-                loss = K.sum(-log_lik * G)  # K.mean ?
-                return loss
-
-            model = models.Model(inputs=[s, G], outputs=actions_probabilities)  # policy_model
-            model.compile(optimizer=self.optimizer, loss=custom_loss)
-
-            return model, actions_probabilities_model
-
-        def get_actions_probabilities(self, batch_s):
-            actions_probabilities = self.actions_probabilities_model.predict(batch_s)[0]
-            return actions_probabilities
-
-        def learn_entire_batch(self, memory, GAMMA):
-            memory_s = np.array(memory.memory_s)
-            memory_a_indices = np.array(memory.memory_a_indices)
-            memory_r = np.array(memory.memory_r)
-            memory_terminal = np.array(memory.memory_terminal, dtype=np.int8)
-
-            memory_G = utils.Calculator.calculate_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA)
-
-            memory_size = len(memory_a_indices)
-            memory_a_indices_one_hot = np.zeros((memory_size, self.dnn.n_actions), dtype=np.int8)
-            memory_a_indices_one_hot[np.arange(memory_size), memory_a_indices] = 1
-
-            print('Training Started')
-            _ = self.model.fit([memory_s, memory_G], memory_a_indices_one_hot, verbose=0)
-            # _ = self.model.train_on_batch([memory_s, memory_G], memory_a_indices_one_hot)
-            print('Training Finished')
-
-        def load_model_file(self):
-            print("...Loading keras h5...")
-            self.model = models.load_model(self.h5_file)
-
-        def save_model_file(self):
-            print("...Saving keras h5...")
-            self.model.save(self.h5_file)
-
 
 class Memory(object):
 
@@ -408,7 +375,7 @@ class Memory(object):
 class Agent(object):
 
     def __init__(self, custom_env, fc_layers_dims, ep_batch_num,
-                 alpha, optimizer_type=utils.OPTIMIZER_Adam, lib_type=utils.LIBRARY_TF):
+                 alpha, optimizer_type=utils.Optimizers.OPTIMIZER_Adam, lib_type=utils.LIBRARY_TF):
 
         self.GAMMA = custom_env.GAMMA
         self.fc_layers_dims = fc_layers_dims
@@ -564,7 +531,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
         # custom_env = Envs.Box2D.LunarLander()
         custom_env = Envs.ClassicControl.CartPole()
         fc_layers_dims = [128, 128] if lib_type == utils.LIBRARY_TORCH else [64, 64]
-        optimizer_type = utils.OPTIMIZER_Adam
+        optimizer_type = utils.Optimizers.OPTIMIZER_Adam
         alpha = 0.001 if lib_type == utils.LIBRARY_TORCH else 0.0005
         ep_batch_num = 1  # REINFORCE algorithm (MC PG)
         n_episodes = 2000 if lib_type == utils.LIBRARY_KERAS else 2500  # supposed to be enough for good results in PG
@@ -572,7 +539,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
     elif env_type == 1:
         custom_env = Envs.Atari.Breakout()
         fc_layers_dims = [256]
-        optimizer_type = utils.OPTIMIZER_RMSprop  # utils.OPTIMIZER_SGD
+        optimizer_type = utils.Optimizers.OPTIMIZER_RMSprop  # utils.OPTIMIZER_SGD
         alpha = 0.00025
         ep_batch_num = 1  # REINFORCE algorithm (MC PG)
         n_episodes = 200  # start with 200, then 5000 ?

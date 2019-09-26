@@ -4,6 +4,7 @@ from tensorflow import set_random_seed
 set_random_seed(28)
 
 import os
+import sys
 from gym import wrappers
 import numpy as np
 
@@ -14,13 +15,11 @@ from tensorflow.python import random_uniform_initializer as random_uniform
 import torch as T
 import torch.distributions as distributions
 import torch.nn.functional as F
-import torch.optim.rmsprop as T_optim_rmsprop
-import torch.optim.adagrad as T_optim_adagrad
-import torch.optim.adadelta as T_optim_adadelta
 
 import keras.models as models
 import keras.layers as layers
-import keras.optimizers as optimizers
+import keras.initializers as initializers
+import keras.backend as K
 
 import utils
 from deep_reinforcement_learning.envs import Envs
@@ -32,60 +31,66 @@ NETWORK_TYPE_SHARED = 1
 
 class DNN(object):
 
+    def __init__(self, custom_env, fc_layers_dims, optimizer_type, lr, name, network_type, is_actor=False):
+
+        self.name = name
+        self.network_type = network_type
+        self.is_actor = is_actor
+
+        self.input_type = custom_env.input_type
+
+        self.is_discrete_action_space = custom_env.is_discrete_action_space
+
+        self.input_dims = custom_env.input_dims
+        self.fc_layers_dims = fc_layers_dims
+        self.n_outputs = custom_env.n_actions if custom_env.is_discrete_action_space else 2
+
+        self.optimizer_type = optimizer_type
+        self.lr = lr
+
+    def create_dnn_tensorflow(self, sess):
+        return DNN.AC_DNN_TF(self, sess)
+
+    def create_dnn_keras(self, lr_actor, lr_critic, chkpt_dir):
+        return DNN.AC_DNN_Keras(self, lr_actor, lr_critic, chkpt_dir)
+
+    def create_dnn_torch(self, chkpt_dir, device_str='cuda'):
+        return DNN.AC_DNN_Torch(self, chkpt_dir, device_str)
+
     class AC_DNN_TF(object):
 
-        def __init__(self, custom_env, fc_layers_dims, sess, optimizer_type, lr, name, network_type, is_actor=False):
+        def __init__(self, dnn, sess):
 
-            self.network_type = network_type
-            self.is_actor = is_actor
-            self.name = name
-
-            self.input_dims = custom_env.input_dims
-            self.fc_layers_dims = fc_layers_dims
-            self.n_outputs = custom_env.n_actions if custom_env.is_discrete_action_space else 2
-
-            self.optimizer_type = optimizer_type
-            self.lr = lr
+            self.dnn = dnn
 
             self.sess = sess
 
             self.build_network()
 
-            self.params = tf.trainable_variables(scope=self.name)
+            self.params = tf.trainable_variables(scope=self.dnn.name)
 
         def build_network(self):
-            with tf.variable_scope(self.name):
-                self.s = tf.placeholder(tf.float32, shape=[None, *self.input_dims], name='s')
+            with tf.variable_scope(self.dnn.name):
+                self.s = tf.placeholder(tf.float32, shape=[None, *self.dnn.input_dims], name='s')
                 self.td_error = tf.placeholder(tf.float32, shape=[None, 1], name='td_error')
                 self.a_log_probs = tf.placeholder(tf.float32, shape=[None, 1], name='a_log_probs')
                 self.a = tf.placeholder(tf.int32, shape=[None, 1], name='a')
 
-                fc1_ac = tf.layers.dense(inputs=self.s, units=self.fc_layers_dims[0],
+                fc1_ac = tf.layers.dense(inputs=self.s, units=self.dnn.fc_layers_dims[0],
                                          activation='relu')
-                fc2_ac = tf.layers.dense(inputs=fc1_ac, units=self.fc_layers_dims[1],
+                fc2_ac = tf.layers.dense(inputs=fc1_ac, units=self.dnn.fc_layers_dims[1],
                                          activation='relu')
 
-                if self.network_type == NETWORK_TYPE_SEPARATE:  # build_A_or_C_network
-                    self.fc3 = tf.layers.dense(inputs=fc2_ac, units=self.n_outputs if self.is_actor else 1)
-                    loss = self.get_actor_loss() if self.is_actor else self.get_critic_loss()
+                if self.dnn.network_type == NETWORK_TYPE_SEPARATE:  # build_A_or_C_network
+                    self.fc3 = tf.layers.dense(inputs=fc2_ac, units=self.dnn.n_outputs if self.dnn.is_actor else 1)
+                    loss = self.get_actor_loss() if self.dnn.is_actor else self.get_critic_loss()
 
                 else:  # self.network_type == NETWORK_TYPE_SHARED  # build_A_and_C_network
-                    self.fc3 = tf.layers.dense(inputs=fc2_ac, units=self.n_outputs)  # Actor layer
+                    self.fc3 = tf.layers.dense(inputs=fc2_ac, units=self.dnn.n_outputs)  # Actor layer
                     self.v = tf.layers.dense(inputs=fc2_ac, units=1)  # Critic layer
                     loss = self.get_actor_loss() + self.get_critic_loss()
 
-                if self.optimizer_type == utils.OPTIMIZER_SGD:
-                    optimizer = tf.train.MomentumOptimizer(self.lr, momentum=0.9)  # SGD + momentum
-                    # optimizer = tf.train.GradientDescentOptimizer(self.dqn.ALPHA)  # SGD?
-                elif self.optimizer_type == utils.OPTIMIZER_Adagrad:
-                    optimizer = tf.train.AdagradOptimizer(self.lr)
-                elif self.optimizer_type == utils.OPTIMIZER_Adadelta:
-                    optimizer = tf.train.AdadeltaOptimizer(self.lr)
-                elif self.optimizer_type == utils.OPTIMIZER_RMSprop:
-                    optimizer = tf.train.RMSPropOptimizer(self.lr)
-                else:  # self.optimizer_type == utils.OPTIMIZER_Adam
-                    optimizer = tf.train.AdamOptimizer(self.lr)
-
+                optimizer = utils.Optimizers.tf_get_optimizer(self.dnn.optimizer_type, self.dnn.lr)
                 self.optimize = optimizer.minimize(loss)  # train_op
 
         def get_actor_loss(self):
@@ -123,7 +128,7 @@ class DNN(object):
             return critic_loss
 
         def predict(self, s):
-            if self.network_type == NETWORK_TYPE_SEPARATE:
+            if self.dnn.network_type == NETWORK_TYPE_SEPARATE:
                 state_value = self.sess.run(self.fc3, feed_dict={self.s: s})
                 return state_value
 
@@ -140,34 +145,103 @@ class DNN(object):
                                      self.a: a})
             print('Training Finished')
 
+    class AC_DNN_Keras(object):
+
+        def __init__(self, dnn, lr_actor, lr_critic, chkpt_dir):
+
+            self.dnn = dnn
+
+            self.lr_actor = lr_actor
+            self.lr_critic = lr_critic
+
+            self.h5_file_actor = os.path.join(chkpt_dir, 'ac_keras_actor.h5')
+            self.h5_file_critic = os.path.join(chkpt_dir, 'ac_keras_critic.h5')
+
+            self.actor, self.critic, self.policy = self.build_networks()
+
+        def build_networks(self):
+
+            # s = layers.Input(shape=self.dnn.input_dims, dtype='float32', name='s')
+            s = layers.Input(shape=self.dnn.input_dims)
+
+            if self.dnn.input_type == Envs.INPUT_TYPE_OBSERVATION_VECTOR:
+                x = layers.Dense(self.dnn.fc_layers_dims[0], activation='relu')(s)
+                x = layers.Dense(self.dnn.fc_layers_dims[1], activation='relu')(x)
+
+            else:  # self.input_type == Envs.INPUT_TYPE_STACKED_FRAMES
+
+                x = layers.Conv2D(filters=32, kernel_size=(8, 8), strides=4, name='conv1')(s)
+                x = layers.BatchNormalization(epsilon=1e-5, name='conv1_bn')(x)
+                x = layers.Activation(activation='relu', name='conv1_bn_ac')(x)
+                x = layers.Conv2D(filters=64, kernel_size=(4, 4), strides=2, name='conv2')(x)
+                x = layers.BatchNormalization(epsilon=1e-5, name='conv2_bn')(x)
+                x = layers.Activation(activation='relu', name='conv2_bn_ac')(x)
+                x = layers.Conv2D(filters=128, kernel_size=(3, 3), strides=1, name='conv3')(x)
+                x = layers.BatchNormalization(epsilon=1e-5, name='conv3_bn')(x)
+                x = layers.Activation(activation='relu', name='conv3_bn_ac')(x)
+                x = layers.Flatten()(x)
+                x = layers.Dense(self.dnn.fc_layers_dims[0], activation='relu')(x)
+
+            #############################
+
+            critic_value = layers.Dense(1, activation='linear', name='critic_value')(x)
+            critic = models.Model(inputs=s, outputs=critic_value)
+            optimizer_critic = utils.Optimizers.keras_get_optimizer(self.dnn.optimizer_type, self.lr_critic)
+            critic.compile(optimizer_critic, loss='mean_squared_error')
+
+            #############################
+
+            if self.dnn.is_discrete_action_space:
+                actor_value = layers.Dense(self.dnn.n_outputs, activation='softmax', name='actor_value')(x)  # actions_probabilities
+            else:
+                actor_value = layers.Dense(self.dnn.n_outputs, name='actor_value')(x)
+
+            #############
+
+            policy = models.Model(inputs=s, outputs=actor_value)
+
+            #############
+
+            td_error = layers.Input(shape=(1,), dtype='float32', name='td_error')
+
+            def custom_loss(y_true, y_pred):  # (a_indices_one_hot, intermediate_model.output)
+                out = K.clip(y_pred, 1e-8, 1 - 1e-8)
+                log_lik = y_true * K.log(out)  # log_probability
+                loss = K.sum(-log_lik * td_error)  # K.mean ?
+                return loss
+
+            actor = models.Model(inputs=[s, td_error], outputs=actor_value)  # policy_model
+            optimizer_actor = utils.Optimizers.keras_get_optimizer(self.dnn.optimizer_type, self.lr_actor)
+            actor.compile(optimizer_actor, loss=custom_loss)
+
+            return actor, critic, policy
+
+        def predict(self, s):
+            return self.policy.predict(s)
+
+        def load_model_file(self):
+            print("...Loading keras h5...")
+            self.actor = models.load_model(self.h5_file_actor)
+            self.critic = models.load_model(self.h5_file_critic)
+
+        def save_model_file(self):
+            print("...Saving keras h5...")
+            self.actor.save(self.h5_file_actor)
+            self.critic.save(self.h5_file_critic)
+
     class AC_DNN_Torch(T.nn.Module):
 
-        def __init__(self, custom_env, fc_layers_dims, optimizer_type, lr, name, chkpt_dir, network_type, is_actor=False,
-                     device_str='cuda'):
+        def __init__(self, dnn, chkpt_dir, device_str):
             super(DNN.AC_DNN_Torch, self).__init__()
 
-            self.network_type = network_type
-            self.is_actor = is_actor
-            self.name = name
+            self.dnn = dnn
 
-            self.model_file = os.path.join(chkpt_dir, 'ac_torch_' + name)
-
-            self.input_dims = custom_env.input_dims
-            self.fc_layers_dims = fc_layers_dims
-            self.n_outputs = custom_env.n_actions if custom_env.is_discrete_action_space else 2
+            self.model_file = os.path.join(chkpt_dir, 'ac_torch_' + self.dnn.name)
 
             self.build_network()
 
-            if optimizer_type == utils.OPTIMIZER_SGD:
-                self.optimizer = T.optim.SGD(self.parameters(), lr=lr, momentum=0.9)
-            elif self.optimizer_type == utils.OPTIMIZER_Adagrad:
-                self.optimizer = T_optim_adagrad.Adagrad(self.parameters(), lr=lr)
-            elif self.optimizer_type == utils.OPTIMIZER_Adadelta:
-                self.optimizer = T_optim_adadelta.Adadelta(self.parameters(), lr=lr)
-            elif optimizer_type == utils.OPTIMIZER_RMSprop:
-                self.optimizer = T_optim_rmsprop.RMSprop(self.parameters(), lr=lr)
-            else:  # optimizer_type == utils.OPTIMIZER_Adam
-                self.optimizer = T.optim.Adam(self.parameters(), lr=lr)
+            self.optimizer = utils.Optimizers.torch_get_optimizer(
+                self.dnn.optimizer_type, self.parameters(), self.dnn.lr)
 
             self.device = utils.DeviceSetUtils.torch_get_device_according_to_device_type(device_str)
             self.to(self.device)
@@ -210,63 +284,87 @@ class DNN(object):
 
 class AC(object):
 
+    def __init__(self, custom_env, fc_layers_dims, optimizer_type, lr_actor, lr_critic, network_type, chkpt_dir):
+
+        self.GAMMA = custom_env.GAMMA
+
+        self.a_log_probs = None
+
+        self.is_discrete_action_space = custom_env.is_discrete_action_space
+        self.n_actions = custom_env.n_actions
+        self.action_space = custom_env.action_space if self.is_discrete_action_space else None
+        self.action_boundary = custom_env.action_boundary if not self.is_discrete_action_space else None
+
+        self.lr_actor = lr_actor
+        self.lr_critic = lr_critic if lr_critic is not None else lr_actor
+
+        self.network_type = network_type
+
+        if self.network_type == NETWORK_TYPE_SEPARATE:
+            self.actor_base = DNN(
+                custom_env, fc_layers_dims, optimizer_type, lr_actor, 'Actor', NETWORK_TYPE_SEPARATE, is_actor=True)
+            self.critic_base = DNN(
+                custom_env, fc_layers_dims, optimizer_type, lr_critic, 'Critic', NETWORK_TYPE_SEPARATE, is_actor=False)
+        else:  # self.network_type == NETWORK_TYPE_SHARED
+            self.actor_critic_base = DNN(
+                custom_env, fc_layers_dims, optimizer_type, lr_actor, 'ActorCritic', NETWORK_TYPE_SHARED)
+
+        self.chkpt_dir = chkpt_dir
+
+    def create_ac_tensorflow(self, device_map):
+        return AC.AC_TF(self, device_map)
+
+    def create_ac_keras(self):
+        return AC.AC_Keras(self)
+
+    def create_ac_torch(self):
+        return AC.AC_Torch(self)
+
     class AC_TF(object):
 
-        def __init__(self, custom_env, fc_layers_dims, optimizer_type, lr_actor, lr_critic, chkpt_dir, network_type, device_map):
+        def __init__(self, ac, device_map):
 
-            self.GAMMA = custom_env.GAMMA
-
-            # self.a_log_probs = None
-
-            self.is_discrete_action_space = custom_env.is_discrete_action_space
-            self.n_actions = custom_env.n_actions
-            self.action_space = custom_env.action_space if self.is_discrete_action_space else None
-            self.action_boundary = custom_env.action_boundary if not self.is_discrete_action_space else None
+            self.ac = ac
 
             self.sess = utils.DeviceSetUtils.tf_get_session_according_to_device(device_map)
 
-            self.network_type = network_type
-            if self.network_type == NETWORK_TYPE_SEPARATE:
-                self.actor = DNN.AC_DNN_TF(
-                    custom_env, fc_layers_dims, self.sess, optimizer_type, lr_actor, 'Actor', NETWORK_TYPE_SEPARATE, is_actor=True)
-                self.critic = DNN.AC_DNN_TF(
-                    custom_env, fc_layers_dims, self.sess, optimizer_type, lr_critic, 'Critic', NETWORK_TYPE_SEPARATE, is_actor=False)
-
-            else:  # self.network_type == NETWORK_TYPE_SHARED
-                self.actor_critic = DNN.AC_DNN_TF(
-                    custom_env, fc_layers_dims, self.sess, optimizer_type, lr_actor, 'ActorCritic', NETWORK_TYPE_SHARED)
+            if self.ac.network_type == NETWORK_TYPE_SEPARATE:
+                self.actor = self.ac.actor_base.create_dnn_tensorflow(self.sess)
+                self.critic = self.ac.critic_base.create_dnn_tensorflow(self.sess)
+            else:  # self.ac.network_type == NETWORK_TYPE_SHARED
+                self.actor_critic = self.ac.actor_critic_base.create_dnn_tensorflow(self.sess)
 
             self.saver = tf.train.Saver()
-            self.checkpoint_file = os.path.join(chkpt_dir, 'ac_tf.ckpt')
+            self.checkpoint_file = os.path.join(self.ac.chkpt_dir, 'ac_tf.ckpt')
 
             self.sess.run(tf.global_variables_initializer())
 
         def choose_action(self, s):
             s = s[np.newaxis, :]
 
-            if self.network_type == NETWORK_TYPE_SEPARATE:
+            if self.ac.network_type == NETWORK_TYPE_SEPARATE:
                 actor_value = self.actor.predict(s)
-            else:  # self.network_type == NETWORK_TYPE_SHARED
+            else:  # self.ac.network_type == NETWORK_TYPE_SHARED
                 actor_value, _ = self.actor_critic.predict(s)
 
-            if self.is_discrete_action_space:
+            if self.ac.is_discrete_action_space:
                 return self.choose_action_discrete(actor_value)
             else:
                 return self.choose_action_continuous(actor_value)
 
         def choose_action_discrete(self, pi):
             probabilities = tf.nn.softmax(pi)[0]
-            a_index = np.random.choice(self.action_space, p=probabilities)
-            a = self.action_space[a_index]
+            a_index = np.random.choice(self.ac.action_space, p=probabilities)
+            a = self.ac.action_space[a_index]
             return a
 
         def choose_action_continuous(self, actor_value):
             mu, sigma_unactivated = actor_value  # Mean (μ), STD (σ)
             sigma = tf.exp(sigma_unactivated)
             actions_probs = tfp.distributions.Normal(loc=mu, scale=sigma)
-            action_tensor = actions_probs.sample(sample_shape=[self.n_actions])
+            action_tensor = actions_probs.sample(sample_shape=[self.ac.n_actions])
             action_tensor = tf.nn.tanh(action_tensor)
-            action_tensor = tf.multiply(action_tensor, self.action_boundary)
+            action_tensor = tf.multiply(action_tensor, self.ac.action_boundary)
             a = action_tensor.item()
             a = np.array(a).reshape((1,))
             return a
@@ -275,7 +373,7 @@ class AC(object):
         #     probabilities = tf.nn.softmax(pi)[0]
         #     actions_probs = tfp.distributions.Categorical(probs=probabilities)
         #     action_tensor = actions_probs.sample()
-        #     self.a_log_probs = actions_probs.log_prob(action_tensor)
+        #     self.ac.a_log_probs = actions_probs.log_prob(action_tensor)
         #     a_index = action_tensor.item()
         #     a = self.action_space[a_index]
         #     return a
@@ -285,7 +383,7 @@ class AC(object):
         #     sigma = tf.exp(sigma_unactivated)
         #     actions_probs = tfp.distributions.Normal(loc=mu, scale=sigma)
         #     action_tensor = actions_probs.sample(sample_shape=[self.n_actions])
-        #     self.a_log_probs = actions_probs.log_prob(action_tensor)
+        #     self.ac.a_log_probs = actions_probs.log_prob(action_tensor)
         #     action_tensor = tf.nn.tanh(action_tensor)
         #     action_tensor = tf.multiply(action_tensor, self.action_boundary)
         #     a = action_tensor.item()
@@ -295,22 +393,23 @@ class AC(object):
         def learn(self, s, a, r, s_, is_terminal):
             # print('Learning Session')
 
-            if self.network_type == NETWORK_TYPE_SEPARATE:
+            if self.ac.network_type == NETWORK_TYPE_SEPARATE:
                 v = self.critic.predict(s)
                 v_ = self.critic.predict(s_)
-            else:  # self.network_type == NETWORK_TYPE_SHARED
+            else:  # self.ac.network_type == NETWORK_TYPE_SHARED
                 _, v = self.actor_critic.predict(s)
                 _, v_ = self.actor_critic.predict(s_)
 
-            td_error = r + self.GAMMA * v_ * (1 - int(is_terminal)) - v
+            target = r + self.ac.GAMMA * v_ * (1 - int(is_terminal))
+            td_error = target - v
 
-            if self.is_discrete_action_space:
-                a = self.action_space.index(a)
+            if self.ac.is_discrete_action_space:
+                a = self.ac.action_space.index(a)
 
-            if self.network_type == NETWORK_TYPE_SEPARATE:
+            if self.ac.network_type == NETWORK_TYPE_SEPARATE:
                 self.actor.train(s, td_error, a)
                 self.critic.train(s, td_error)
-            else:  # self.network_type == NETWORK_TYPE_SHARED
+            else:  # self.ac.network_type == NETWORK_TYPE_SHARED
                 self.actor_critic.train(s, td_error, a)
 
         def load_model_file(self):
@@ -321,39 +420,94 @@ class AC(object):
             print("...Saving tf checkpoint...")
             self.saver.save(self.sess, self.checkpoint_file)
 
-    class AC_Torch(object):
+    class AC_Keras(object):
 
-        def __init__(self, custom_env, fc_layers_dims, optimizer_type, lr_actor, lr_critic, chkpt_dir, network_type):
+        def __init__(self, ac):
 
-            self.GAMMA = custom_env.GAMMA
+            self.ac = ac
 
-            self.a_log_probs = None
-
-            self.is_discrete_action_space = custom_env.is_discrete_action_space
-            self.n_actions = custom_env.n_actions
-            self.action_space = custom_env.action_space if self.is_discrete_action_space else None
-            self.action_boundary = custom_env.action_boundary if not self.is_discrete_action_space else None
-
-            self.network_type = network_type
-            if self.network_type == NETWORK_TYPE_SEPARATE:
-                self.actor = DNN.AC_DNN_Torch(
-                    custom_env, fc_layers_dims, optimizer_type, lr_actor, 'Actor', chkpt_dir, network_type, is_actor=True)
-                self.critic = DNN.AC_DNN_Torch(
-                    custom_env, fc_layers_dims, optimizer_type, lr_critic, 'Critic', chkpt_dir, network_type, is_actor=False)
-
-            else:  # self.network_type == NETWORK_TYPE_SHARED
-                self.actor_critic = DNN.AC_DNN_Torch(
-                    custom_env, fc_layers_dims, optimizer_type, lr_actor, 'ActorCritic', chkpt_dir, network_type)
+            self.dnn = self.ac.actor_critic_base.create_dnn_keras(self.ac.lr_actor, self.ac.lr_critic, self.ac.chkpt_dir)
 
         def choose_action(self, s):
-            if self.network_type == NETWORK_TYPE_SEPARATE:
+            s = s[np.newaxis, :]
+            actor_value = self.dnn.predict(s)
+            if self.ac.is_discrete_action_space:
+                return self.choose_action_discrete(actor_value[0])
+            else:
+                return self.choose_action_continuous(actor_value)
+
+        def choose_action_discrete(self, probabilities):
+            a_index = np.random.choice(self.ac.action_space, p=probabilities)
+            a = self.ac.action_space[a_index]
+            return a
+
+        def choose_action_continuous(self, actor_value):
+            mu, sigma_unactivated = actor_value  # Mean (μ), STD (σ)
+            sigma = K.exp(sigma_unactivated)
+            actions_probs = tfp.distributions.Normal(loc=mu, scale=sigma)  # K.random_normal(mean=mu, std=sigma)
+            action_tensor = actions_probs.sample(sample_shape=[self.ac.n_actions])
+            action_tensor = K.tanh(action_tensor)
+            action_tensor = tf.multiply(action_tensor, self.ac.action_boundary)
+            a = action_tensor.item()
+            a = np.array(a).reshape((1,))
+            return a
+
+        def learn(self, s, a, r, s_, is_terminal):
+            # print('Learning Session')
+
+            if not self.ac.is_discrete_action_space:
+                sys.exit('Keras currently only works with Discrete action spaces')
+
+            s = s[np.newaxis, :]
+            s_ = s_[np.newaxis, :]
+
+            v = self.dnn.critic.predict(s)
+            v_ = self.dnn.critic.predict(s_)
+
+            target = r + self.ac.GAMMA * v_ * (1 - int(is_terminal))
+            td_error = target - v
+
+            if self.ac.is_discrete_action_space:
+                one_hot_a_indices = np.zeros(self.ac.n_actions, dtype=np.int8)
+                a_index = self.ac.action_space.index(a)
+                one_hot_a_indices[a_index] = 1
+                one_hot_a_indices = one_hot_a_indices[np.newaxis, :]
+            else:
+                pass
+
+            self.dnn.actor.fit([s, td_error], one_hot_a_indices, verbose=0)
+
+            self.dnn.critic.fit(s, target, verbose=0)
+
+        def load_model_file(self):
+            print("...Loading tf checkpoint...")
+            self.dnn.load_model_file()
+
+        def save_model_file(self):
+            print("...Saving tf checkpoint...")
+            self.dnn.save_model_file()
+
+    class AC_Torch(object):
+
+        def __init__(self, ac):
+
+            self.ac = ac
+
+            if self.ac.network_type == NETWORK_TYPE_SEPARATE:
+                self.actor = self.ac.actor_base.create_dnn_torch(self.ac.chkpt_dir)
+                self.critic = self.ac.critic_base.create_dnn_torch(self.ac.chkpt_dir)
+            else:  # self.ac.network_type == NETWORK_TYPE_SHARED
+                self.actor_critic = self.ac.actor_critic_base.create_dnn_torch(self.ac.chkpt_dir)
+
+        def choose_action(self, s):
+            if self.ac.network_type == NETWORK_TYPE_SEPARATE:
                 actor_value = self.actor.forward(s)
                 device = self.actor.device
-            else:  # self.network_type == NETWORK_TYPE_SHARED
+            else:  # self.ac.network_type == NETWORK_TYPE_SHARED
                 actor_value, _ = self.actor_critic.forward(s)
                 device = self.actor_critic.device
 
-            if self.is_discrete_action_space:
+            if self.ac.is_discrete_action_space:
                 return self.choose_action_discrete(actor_value, device)
             else:
                 return self.choose_action_continuous(actor_value, device)
@@ -362,19 +516,19 @@ class AC(object):
             probabilities = F.softmax(pi)
             actions_probs = distributions.Categorical(probabilities)
             action_tensor = actions_probs.sample()
-            self.a_log_probs = actions_probs.log_prob(action_tensor).to(device)
+            self.ac.a_log_probs = actions_probs.log_prob(action_tensor).to(device)
             a_index = action_tensor.item()
-            a = self.action_space[a_index]
+            a = self.ac.action_space[a_index]
             return a
 
         def choose_action_continuous(self, actor_value, device):
             mu, sigma_unactivated = actor_value  # Mean (μ), STD (σ)
             sigma = T.exp(sigma_unactivated)
             actions_probs = distributions.Normal(mu, sigma)
-            action_tensor = actions_probs.sample(sample_shape=T.Size([self.n_actions]))
-            self.a_log_probs = actions_probs.log_prob(action_tensor).to(device)
+            action_tensor = actions_probs.sample(sample_shape=T.Size([self.ac.n_actions]))
+            self.ac.a_log_probs = actions_probs.log_prob(action_tensor).to(device)
             action_tensor = T.tanh(action_tensor)
-            action_tensor = T.mul(action_tensor, self.action_boundary)
+            action_tensor = T.mul(action_tensor, self.ac.action_boundary)
             a = action_tensor.item()
             a = np.array(a).reshape((1,))
             return a
@@ -382,51 +536,52 @@ class AC(object):
         def learn(self, s, a, r, s_, is_terminal):
             # print('Learning Session')
 
-            if self.network_type == NETWORK_TYPE_SEPARATE:
+            if self.ac.network_type == NETWORK_TYPE_SEPARATE:
                 r = T.tensor(r, dtype=T.float).to(self.critic.device)
                 self.actor.optimizer.zero_grad()
                 self.critic.optimizer.zero_grad()
                 v = self.critic.forward(s)
                 v_ = self.critic.forward(s_)
-            else:  # self.network_type == NETWORK_TYPE_SHARED
+            else:  # self.ac.network_type == NETWORK_TYPE_SHARED
                 r = T.tensor(r, dtype=T.float).to(self.actor_critic.device)
                 self.actor_critic.optimizer.zero_grad()
                 _, v = self.actor_critic.forward(s)
                 _, v_ = self.actor_critic.forward(s_)
 
-            td_error = r + self.GAMMA * v_ * (1 - int(is_terminal)) - v
+            target = r + self.ac.GAMMA * v_ * (1 - int(is_terminal))
+            td_error = target - v
 
-            actor_loss = -self.a_log_probs * td_error
+            actor_loss = -self.ac.a_log_probs * td_error
             critic_loss = td_error ** 2
             (actor_loss + critic_loss).backward()
 
-            if self.network_type == NETWORK_TYPE_SEPARATE:
+            if self.ac.network_type == NETWORK_TYPE_SEPARATE:
                 self.actor.optimizer.step()
                 self.critic.optimizer.step()
-            else:  # self.network_type == NETWORK_TYPE_SHARED
+            else:  # self.ac.network_type == NETWORK_TYPE_SHARED
                 self.actor_critic.optimizer.step()
 
         def load_model_file(self):
             print("...Loading torch models...")
-            if self.network_type == NETWORK_TYPE_SEPARATE:
+            if self.ac.network_type == NETWORK_TYPE_SEPARATE:
                 self.actor.load_model_file()
                 self.critic.load_model_file()
-            else:  # self.network_type == NETWORK_TYPE_SHARED
+            else:  # self.ac.network_type == NETWORK_TYPE_SHARED
                 self.actor_critic.load_model_file()
 
         def save_model_file(self):
             print("...Saving torch models...")
-            if self.network_type == NETWORK_TYPE_SEPARATE:
+            if self.ac.network_type == NETWORK_TYPE_SEPARATE:
                 self.actor.save_model_file()
                 self.critic.save_model_file()
-            else:  # self.network_type == NETWORK_TYPE_SHARED
+            else:  # self.ac.network_type == NETWORK_TYPE_SHARED
                 self.actor_critic.save_model_file()
 
 
 class Agent(object):
 
     def __init__(self, custom_env, fc_layers_dims=(400, 300),
-                 optimizer_type=utils.OPTIMIZER_Adam, lr_actor=0.0001, lr_critic=None,
+                 optimizer_type=utils.Optimizers.OPTIMIZER_Adam, lr_actor=0.0001, lr_critic=None,
                  device_type=None, lib_type=utils.LIBRARY_TF):
 
         self.GAMMA = custom_env.GAMMA
@@ -441,14 +596,15 @@ class Agent(object):
         self.chkpt_dir = 'tmp/' + custom_env.file_name + '/AC/' + sub_dir
 
         network_type = NETWORK_TYPE_SEPARATE if lr_critic is not None else NETWORK_TYPE_SHARED
+        ac_base = AC(custom_env, fc_layers_dims, optimizer_type, lr_actor, lr_critic, network_type, self.chkpt_dir)
         if lib_type == utils.LIBRARY_TF:
-            self.ac = AC.AC_TF(custom_env, fc_layers_dims,
-                               optimizer_type, lr_actor, lr_critic,
-                               self.chkpt_dir, network_type, device_type)
+            self.ac = ac_base.create_ac_tensorflow(device_type)
+        elif lib_type == utils.LIBRARY_KERAS:
+            self.ac = AC(
+                custom_env, fc_layers_dims, optimizer_type, lr_actor, lr_critic, NETWORK_TYPE_SHARED, self.chkpt_dir
+            ).create_ac_keras()
         else:
-            self.ac = AC.AC_Torch(custom_env, fc_layers_dims,
-                                  optimizer_type, lr_actor, lr_critic,
-                                  self.chkpt_dir, network_type)
+            self.ac = ac_base.create_ac_torch()
 
     def choose_action(self, s):
         return self.ac.choose_action(s)
@@ -532,14 +688,14 @@ def train(custom_env, agent, n_episodes,
 
 
 def play(env_type, lib_type=utils.LIBRARY_TORCH, enable_models_saving=False, load_checkpoint=False):
-    if lib_type == utils.LIBRARY_KERAS or lib_type == utils.LIBRARY_TF:
-        print('\n', "Algorithm currently doesn't work with Keras or TensorFlow", '\n')
+    if lib_type == utils.LIBRARY_TF:
+        print('\n', "Algorithm currently doesn't work with TensorFlow", '\n')
         return
 
     if env_type == 0:
         custom_env = Envs.ClassicControl.CartPole()
         fc_layers_dims = (32, 32)
-        optimizer_type = utils.OPTIMIZER_Adam
+        optimizer_type = utils.Optimizers.OPTIMIZER_Adam
         alpha = 0.0001  # 0.00001
         beta = 0.0005
         n_episodes = 2500
@@ -547,16 +703,16 @@ def play(env_type, lib_type=utils.LIBRARY_TORCH, enable_models_saving=False, loa
     elif env_type == 1:
         # custom_env = Envs.Box2D.LunarLander()
         custom_env = Envs.ClassicControl.Pendulum()
-        fc_layers_dims = (2048, 512)
-        optimizer_type = utils.OPTIMIZER_Adam
-        alpha = 0.00001
-        beta = None
+        fc_layers_dims = (2048, 512)  # Keras: (1024, 512)
+        optimizer_type = utils.Optimizers.OPTIMIZER_Adam
+        alpha = 0.00001  # Keras: 0.00001
+        beta = None  # Keras: 0.00005
         n_episodes = 2000
 
     else:
         custom_env = Envs.ClassicControl.MountainCarContinuous()
         fc_layers_dims = (256, 256)
-        optimizer_type = utils.OPTIMIZER_Adam
+        optimizer_type = utils.Optimizers.OPTIMIZER_Adam
         alpha = 0.000005
         beta = 0.00001
         n_episodes = 100  # longer than 100 --> instability (because the value function estimation is unstable)
@@ -585,4 +741,4 @@ def play(env_type, lib_type=utils.LIBRARY_TORCH, enable_models_saving=False, loa
 
 
 if __name__ == '__main__':
-    play(0, lib_type=utils.LIBRARY_TORCH)          # CartPole (0), Pendulum (1), MountainCarContinuous (2)
+    play(0, lib_type=utils.LIBRARY_KERAS)          # CartPole (0), Pendulum (1), MountainCarContinuous (2)

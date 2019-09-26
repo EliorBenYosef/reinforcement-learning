@@ -13,13 +13,9 @@ from tensorflow.python import random_uniform_initializer as random_uniform
 
 import torch as T
 import torch.nn.functional as F
-import torch.optim.rmsprop as T_optim_rmsprop
-import torch.optim.adagrad as T_optim_adagrad
-import torch.optim.adadelta as T_optim_adadelta
 
 import keras.models as models
 import keras.layers as layers
-import keras.optimizers as optimizers
 
 import utils
 from deep_reinforcement_learning.envs import Envs
@@ -43,11 +39,11 @@ class DQN(object):
     def create_dqn_tensorflow(self, name):
         return DQN.DQN_TensorFlow(self, name)
 
-    def create_dqn_torch(self, relevant_screen_size, image_channels):
-        return DQN.DQN_Torch(self, relevant_screen_size, image_channels)
-
     def create_dqn_keras(self):
         return DQN.DQN_Keras(self)
+
+    def create_dqn_torch(self, relevant_screen_size, image_channels):
+        return DQN.DQN_Torch(self, relevant_screen_size, image_channels)
 
     class DQN_TensorFlow(object):
 
@@ -102,18 +98,7 @@ class DQN(object):
 
                 self.loss = tf.reduce_mean(tf.square(self.q - self.q_target))  # self.q - self.q_target
 
-                if self.dqn.optimizer_type == utils.OPTIMIZER_SGD:
-                    optimizer = tf.train.MomentumOptimizer(self.dqn.ALPHA, momentum=0.9)  # SGD + momentum
-                    # optimizer = tf.train.GradientDescentOptimizer(self.dqn.ALPHA)  # SGD?
-                elif self.dqn.optimizer_type == utils.OPTIMIZER_Adagrad:
-                    optimizer = tf.train.AdagradOptimizer(self.dqn.ALPHA)
-                elif self.dqn.optimizer_type == utils.OPTIMIZER_Adadelta:
-                    optimizer = tf.train.AdadeltaOptimizer(self.dqn.ALPHA)
-                elif self.dqn.optimizer_type == utils.OPTIMIZER_RMSprop:
-                    optimizer = tf.train.RMSPropOptimizer(self.dqn.ALPHA)
-                else:  # self.dqn.optimizer_type == utils.OPTIMIZER_Adam
-                    optimizer = tf.train.AdamOptimizer(self.dqn.ALPHA)
-
+                optimizer = utils.Optimizers.tf_get_optimizer(self.dqn.optimizer_type, self.dqn.ALPHA)
                 self.optimize = optimizer.minimize(self.loss)  # train_op
 
         def forward(self, batch_s):
@@ -143,6 +128,62 @@ class DQN(object):
             print("...Saving tf checkpoint...")
             self.saver.save(self.sess, self.checkpoint_file)
 
+    class DQN_Keras(object):
+
+        def __init__(self, dqn):
+            self.dqn = dqn
+
+            self.h5_file = os.path.join(dqn.chkpt_dir, 'dqn_keras.h5')
+
+            self.optimizer = utils.Optimizers.keras_get_optimizer(self.dqn.optimizer_type, self.dqn.ALPHA)
+
+            self.model = self.build_network()
+
+        def build_network(self):
+
+            if self.dqn.input_type == Envs.INPUT_TYPE_OBSERVATION_VECTOR:
+                model = models.Sequential([
+                    layers.Dense(self.dqn.fc_layers_dims[0], activation='relu', input_shape=self.dqn.input_dims),
+                    layers.Dense(self.dqn.fc_layers_dims[1], activation='relu'),
+                    layers.Dense(self.dqn.n_actions)])
+
+            else:  # self.input_type == Envs.INPUT_TYPE_STACKED_FRAMES
+                model = models.Sequential([
+                    layers.Conv2D(filters=32, kernel_size=(8, 8), strides=4, activation='relu', input_shape=self.dqn.input_dims),
+                    layers.Conv2D(filters=64, kernel_size=(4, 4), strides=2, activation='relu'),
+                    layers.Conv2D(filters=128, kernel_size=(3, 3), strides=1, activation='relu'),
+                    layers.Flatten(),
+                    layers.Dense(self.dqn.fc_layers_dims[0], activation='relu'),
+                    layers.Dense(self.dqn.n_actions)])
+
+            model.compile(optimizer=self.optimizer, loss='mse')
+
+            return model
+
+        def forward(self, batch_s):
+            q_eval_s = self.model.predict(batch_s)
+            return q_eval_s
+
+        def learn_batch(self, batch_s, batch_a_indices, batch_r, batch_terminal, batch_a_indices_one_hot,
+                        input_type, GAMMA, memory_batch_size, q_eval_s, q_eval_s_):
+
+            q_target = q_eval_s.copy()
+            batch_index = np.arange(memory_batch_size, dtype=np.int32)
+            q_target[batch_index, batch_a_indices] = \
+                batch_r + GAMMA * np.max(q_eval_s_, axis=1) * batch_terminal
+
+            # print('Training Started')
+            _ = self.model.fit(batch_s, q_target, verbose=0)
+            # print('Training Finished')
+
+        def load_model_file(self):
+            print("...Loading keras h5...")
+            self.model = models.load_model(self.h5_file)
+
+        def save_model_file(self):
+            print("...Saving keras h5...")
+            self.model.save(self.h5_file)
+
     class DQN_Torch(T.nn.Module):
 
         def __init__(self, dqn, relevant_screen_size, image_channels, device_str='cuda'):
@@ -157,16 +198,8 @@ class DQN(object):
 
             self.build_network()
 
-            if self.dqn.optimizer_type == utils.OPTIMIZER_SGD:
-                self.optimizer = T.optim.SGD(self.parameters(), lr=self.dqn.ALPHA, momentum=0.9)
-            elif self.dqn.optimizer_type == utils.OPTIMIZER_Adagrad:
-                self.optimizer = T_optim_adagrad.Adagrad(self.parameters(), lr=self.dqn.ALPHA)
-            elif self.dqn.optimizer_type == utils.OPTIMIZER_Adadelta:
-                self.optimizer = T_optim_adadelta.Adadelta(self.parameters(), lr=self.dqn.ALPHA)
-            elif self.dqn.optimizer_type == utils.OPTIMIZER_RMSprop:
-                self.optimizer = T_optim_rmsprop.RMSprop(self.parameters(), lr=self.dqn.ALPHA)
-            else:  # self.dqn.optimizer_type == utils.OPTIMIZER_Adam
-                self.optimizer = T.optim.Adam(self.parameters(), lr=self.dqn.ALPHA)
+            self.optimizer = utils.Optimizers.torch_get_optimizer(
+                self.dqn.optimizer_type, self.parameters(), self.dqn.ALPHA)
 
             self.loss = T.nn.MSELoss()
 
@@ -253,76 +286,11 @@ class DQN(object):
             print("...Saving torch model...")
             T.save(self.state_dict(), self.model_file)
 
-    class DQN_Keras(object):
-
-        def __init__(self, dqn):
-            self.dqn = dqn
-
-            self.h5_file = os.path.join(dqn.chkpt_dir, 'dqn_keras.h5')
-
-            if self.dqn.optimizer_type == utils.OPTIMIZER_SGD:
-                self.optimizer = optimizers.SGD(lr=self.dqn.ALPHA, momentum=0.9)
-            elif self.dqn.optimizer_type == utils.OPTIMIZER_Adagrad:
-                self.optimizer = optimizers.Adagrad(lr=self.dqn.ALPHA)
-            elif self.dqn.optimizer_type == utils.OPTIMIZER_Adadelta:
-                self.optimizer = optimizers.Adadelta(lr=self.dqn.ALPHA)
-            elif self.dqn.optimizer_type == utils.OPTIMIZER_RMSprop:
-                self.optimizer = optimizers.RMSprop(lr=self.dqn.ALPHA)
-            else:  # self.dqn.optimizer_type == utils.OPTIMIZER_Adam
-                self.optimizer = optimizers.Adam(lr=self.dqn.ALPHA)
-
-            self.model = self.build_network()
-
-        def build_network(self):
-
-            if self.dqn.input_type == Envs.INPUT_TYPE_OBSERVATION_VECTOR:
-                model = models.Sequential([
-                    layers.Dense(self.dqn.fc_layers_dims[0], activation='relu', input_shape=self.dqn.input_dims),
-                    layers.Dense(self.dqn.fc_layers_dims[1], activation='relu'),
-                    layers.Dense(self.dqn.n_actions)])
-
-            else:  # self.input_type == Envs.INPUT_TYPE_STACKED_FRAMES
-                model = models.Sequential([
-                    layers.Conv2D(filters=32, kernel_size=(8, 8), strides=4, activation='relu', input_shape=self.dqn.input_dims),
-                    layers.Conv2D(filters=64, kernel_size=(4, 4), strides=2, activation='relu'),
-                    layers.Conv2D(filters=128, kernel_size=(3, 3), strides=1, activation='relu'),
-                    layers.Flatten(),
-                    layers.Dense(self.dqn.fc_layers_dims[0], activation='relu'),
-                    layers.Dense(self.dqn.n_actions)])
-
-            model.compile(optimizer=self.optimizer, loss='mse')
-
-            return model
-
-        def forward(self, batch_s):
-            q_eval_s = self.model.predict(batch_s)
-            return q_eval_s
-
-        def learn_batch(self, batch_s, batch_a_indices, batch_r, batch_terminal, batch_a_indices_one_hot,
-                        input_type, GAMMA, memory_batch_size, q_eval_s, q_eval_s_):
-
-            q_target = q_eval_s.copy()
-            batch_index = np.arange(memory_batch_size, dtype=np.int32)
-            q_target[batch_index, batch_a_indices] = \
-                batch_r + GAMMA * np.max(q_eval_s_, axis=1) * batch_terminal
-
-            # print('Training Started')
-            _ = self.model.fit(batch_s, q_target, verbose=0)
-            # print('Training Finished')
-
-        def load_model_file(self):
-            print("...Loading keras h5...")
-            self.model = models.load_model(self.h5_file)
-
-        def save_model_file(self):
-            print("...Saving keras h5...")
-            self.model.save(self.h5_file)
-
 
 class Agent(object):
 
     def __init__(self, custom_env, fc_layers_dims, episodes,
-                 alpha, optimizer_type=utils.OPTIMIZER_Adam,
+                 alpha, optimizer_type=utils.Optimizers.OPTIMIZER_Adam,
                  gamma=None,
                  eps_max=1.0, eps_min=None, eps_dec=None, eps_dec_type=utils.Calculator.EPS_DEC_LINEAR,
                  memory_size=None, memory_batch_size=None,
@@ -603,7 +571,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
     if env_type == 0:
         # custom_env = Envs.Box2D.LunarLander()
         custom_env = Envs.ClassicControl.CartPole()
-        optimizer_type = utils.OPTIMIZER_Adam
+        optimizer_type = utils.Optimizers.OPTIMIZER_Adam
         alpha = 0.0005  # 0.003 ?
         fc_layers_dims = [256, 256]
         double_dql = False

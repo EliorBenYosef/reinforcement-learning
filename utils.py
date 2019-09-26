@@ -12,20 +12,17 @@ from tensorflow.python.client import device_lib
 
 import keras.backend.tensorflow_backend as keras_tensorflow_backend
 from keras.backend import set_session as keras_set_session
+import keras.optimizers as optimizers
 
 import torch as T
+import torch.optim.rmsprop as T_optim_rmsprop
+import torch.optim.adagrad as T_optim_adagrad
+import torch.optim.adadelta as T_optim_adadelta
 
 
 LIBRARY_TF = 0
-LIBRARY_TORCH = 1
-LIBRARY_KERAS = 2
-
-
-OPTIMIZER_Adam = 0
-OPTIMIZER_RMSprop = 1
-OPTIMIZER_Adadelta = 2
-OPTIMIZER_Adagrad = 3
-OPTIMIZER_SGD = 4
+LIBRARY_KERAS = 1
+LIBRARY_TORCH = 2
 
 
 class Plotter:
@@ -220,15 +217,15 @@ class Printer:
         ############################
 
         optimizer = 'OPT_'
-        if agent.optimizer_type == OPTIMIZER_Adam:
+        if agent.optimizer_type == Optimizers.OPTIMIZER_Adam:
             optimizer += 'adam_'
-        elif agent.optimizer_type == OPTIMIZER_RMSprop:
+        elif agent.optimizer_type == Optimizers.OPTIMIZER_RMSprop:
             optimizer += 'rms_'  # 'rmsprop_'
-        elif agent.optimizer_type == OPTIMIZER_Adadelta:
+        elif agent.optimizer_type == Optimizers.OPTIMIZER_Adadelta:
             optimizer += 'adad_'  # 'adadelta_'
-        elif agent.optimizer_type == OPTIMIZER_Adagrad:
+        elif agent.optimizer_type == Optimizers.OPTIMIZER_Adagrad:
             optimizer += 'adag_'  # 'adagrad_'
-        else:  # agent.optimizer_type == OPTIMIZER_SGD
+        else:  # agent.optimizer_type == Optimizers.OPTIMIZER_SGD
             optimizer += 'sgd_'
         alpha = 'a-' + str(agent.ALPHA).replace('.', 'p') + '_'  # 'alpha-'
 
@@ -352,6 +349,67 @@ class DeviceSetUtils:
         else:
             device = T.device('cuda' if T.cuda.is_available() and T.cuda.device_count() > 0 else 'cpu')  # default GPU \ default CPU. :0 ?
         return device
+
+
+class Optimizers:
+
+    OPTIMIZER_Adam = 0
+    OPTIMIZER_RMSprop = 1
+    OPTIMIZER_Adadelta = 2
+    OPTIMIZER_Adagrad = 3
+    OPTIMIZER_SGD = 4
+
+    @staticmethod
+    def tf_get_optimizer(optimizer_type, lr, momentum=None):  # momentum=0.9
+        if optimizer_type == Optimizers.OPTIMIZER_SGD:
+            if momentum is None:
+                return tf.train.GradientDescentOptimizer(lr)
+            else:
+                return tf.train.MomentumOptimizer(lr, momentum)
+        elif optimizer_type == Optimizers.OPTIMIZER_Adagrad:
+            return tf.train.AdagradOptimizer(lr)
+        elif optimizer_type == Optimizers.OPTIMIZER_Adadelta:
+            return tf.train.AdadeltaOptimizer(lr)
+        elif optimizer_type == Optimizers.OPTIMIZER_RMSprop:
+            if momentum is None:
+                return tf.train.RMSPropOptimizer(lr)
+            else:
+                return tf.train.RMSPropOptimizer(lr, decay=0.99, momentum=momentum, epsilon=1e-6)
+        else:  # optimizer_type == Optimizers.OPTIMIZER_Adam
+            return tf.train.AdamOptimizer(lr)
+
+    @staticmethod
+    def keras_get_optimizer(optimizer_type, lr, momentum=0.9):
+        if optimizer_type == Optimizers.OPTIMIZER_SGD:
+            return optimizers.SGD(lr, momentum)
+        elif optimizer_type == Optimizers.OPTIMIZER_Adagrad:
+            return optimizers.Adagrad(lr)
+        elif optimizer_type == Optimizers.OPTIMIZER_Adadelta:
+            return optimizers.Adadelta(lr)
+        elif optimizer_type == Optimizers.OPTIMIZER_RMSprop:
+            return optimizers.RMSprop(lr)
+            # return optimizers.RMSprop(lr=lr, decay=0.99, momentum=0.0, epsilon=1e-6)
+        else:  # optimizer_type == Optimizers.OPTIMIZER_Adam
+            return optimizers.Adam(lr)
+
+    @staticmethod
+    def torch_get_optimizer(optimizer_type, params, lr, momentum=None):  # momentum=0.9
+        if optimizer_type == Optimizers.OPTIMIZER_SGD:
+            if momentum is None:
+                return T.optim.SGD(params, lr)
+            else:
+                return T.optim.SGD(params, lr, momentum)
+        elif optimizer_type == Optimizers.OPTIMIZER_Adagrad:
+            return T_optim_adagrad.Adagrad(params, lr)
+        elif optimizer_type == Optimizers.OPTIMIZER_Adadelta:
+            return T_optim_adadelta.Adadelta(params, lr)
+        elif optimizer_type == Optimizers.OPTIMIZER_RMSprop:
+            if momentum is None:
+                return T_optim_rmsprop.RMSprop(params, lr)
+            else:
+                return T_optim_rmsprop.RMSprop(params, lr, weight_decay=0.99, momentum=momentum, eps=1e-6)
+        else:  # optimizer_type == Optimizers.OPTIMIZER_Adam
+            return T.optim.Adam(params, lr)
 
 
 class Calculator:

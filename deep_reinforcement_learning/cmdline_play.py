@@ -58,15 +58,15 @@ def command_line_play():
     #####################################
 
     if args.opt == 'sgd':
-        optimizer = utils.OPTIMIZER_SGD
+        optimizer = utils.Optimizers.OPTIMIZER_SGD
     elif args.opt == 'adagrad':
-        optimizer = utils.OPTIMIZER_Adagrad
+        optimizer = utils.Optimizers.OPTIMIZER_Adagrad
     elif args.opt == 'adadelta':
-        optimizer = utils.OPTIMIZER_Adadelta
+        optimizer = utils.Optimizers.OPTIMIZER_Adadelta
     elif args.opt == 'rmsprop':
-        optimizer = utils.OPTIMIZER_RMSprop
+        optimizer = utils.Optimizers.OPTIMIZER_RMSprop
     else:  # args.opt == 'adam'
-        optimizer = utils.OPTIMIZER_Adam
+        optimizer = utils.Optimizers.OPTIMIZER_Adam
 
     #####################################
 

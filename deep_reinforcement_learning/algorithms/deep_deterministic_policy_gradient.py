@@ -13,13 +13,9 @@ from tensorflow.python import random_uniform_initializer as random_uniform
 
 import torch as T
 import torch.nn.functional as F
-import torch.optim.rmsprop as T_optim_rmsprop
-import torch.optim.adagrad as T_optim_adagrad
-import torch.optim.adadelta as T_optim_adadelta
 
 import keras.models as models
 import keras.layers as layers
-import keras.optimizers as optimizers
 
 import utils
 from deep_reinforcement_learning.envs import Envs
@@ -69,18 +65,7 @@ class DNN:
                 self.normalized_mu_gradients = list(
                     map(lambda x: tf.div(x, self.ac.memory_batch_size), self.mu_gradients))
 
-                if self.ac.optimizer_type == utils.OPTIMIZER_SGD:
-                    optimizer = tf.train.MomentumOptimizer(self.ac.lr, momentum=0.9)  # SGD + momentum
-                    # optimizer = tf.train.GradientDescentOptimizer(self.dqn.ALPHA)  # SGD?
-                elif self.ac.optimizer_type == utils.OPTIMIZER_Adagrad:
-                    optimizer = tf.train.AdagradOptimizer(self.ac.lr)
-                elif self.ac.optimizer_type == utils.OPTIMIZER_Adadelta:
-                    optimizer = tf.train.AdadeltaOptimizer(self.ac.lr)
-                elif self.ac.optimizer_type == utils.OPTIMIZER_RMSprop:
-                    optimizer = tf.train.RMSPropOptimizer(self.ac.lr)
-                else:  # self.ac.optimizer_type == utils.OPTIMIZER_Adam
-                    optimizer = tf.train.AdamOptimizer(self.ac.lr)
-
+                optimizer = utils.Optimizers.tf_get_optimizer(self.ac.optimizer_type, self.ac.lr)
                 self.optimize = optimizer.apply_gradients(zip(self.normalized_mu_gradients, self.params))  # train_op
 
             def build_network(self):
@@ -129,18 +114,7 @@ class DNN:
 
                 self.params = tf.trainable_variables(scope=self.ac.name)
 
-                if self.ac.optimizer_type == utils.OPTIMIZER_SGD:
-                    optimizer = tf.train.MomentumOptimizer(self.ac.lr, momentum=0.9)  # SGD + momentum
-                    # optimizer = tf.train.GradientDescentOptimizer(self.dqn.ALPHA)  # SGD?
-                elif self.ac.optimizer_type == utils.OPTIMIZER_Adagrad:
-                    optimizer = tf.train.AdagradOptimizer(self.ac.lr)
-                elif self.ac.optimizer_type == utils.OPTIMIZER_Adadelta:
-                    optimizer = tf.train.AdadeltaOptimizer(self.ac.lr)
-                elif self.ac.optimizer_type == utils.OPTIMIZER_RMSprop:
-                    optimizer = tf.train.RMSPropOptimizer(self.ac.lr)
-                else:  # self.ac.optimizer_type == utils.OPTIMIZER_Adam
-                    optimizer = tf.train.AdamOptimizer(self.ac.lr)
-
+                optimizer = utils.Optimizers.tf_get_optimizer(self.ac.optimizer_type, self.ac.lr)
                 self.optimize = optimizer.minimize(self.loss)  # train_op
 
                 self.action_gradients = tf.gradients(self.q, self.a)  # a list containing an ndarray of ndarrays
@@ -217,16 +191,7 @@ class DNN:
 
             self.build_network()
 
-            if optimizer_type == utils.OPTIMIZER_SGD:
-                self.optimizer = T.optim.SGD(self.parameters(), lr=lr, momentum=0.9)
-            elif optimizer_type == utils.OPTIMIZER_Adagrad:
-                self.optimizer = T_optim_adagrad.Adagrad(self.parameters(), lr=lr)
-            elif optimizer_type == utils.OPTIMIZER_Adadelta:
-                self.optimizer = T_optim_adadelta.Adadelta(self.parameters(), lr=lr)
-            elif optimizer_type == utils.OPTIMIZER_RMSprop:
-                self.optimizer = T_optim_rmsprop.RMSprop(self.parameters(), lr=lr)
-            else:  # optimizer_type == utils.OPTIMIZER_Adam
-                self.optimizer = T.optim.Adam(self.parameters(), lr=lr)
+            self.optimizer = utils.Optimizers.torch_get_optimizer(optimizer_type, self.parameters(), lr)
 
             self.device = utils.DeviceSetUtils.torch_get_device_according_to_device_type(device_str)
             self.to(self.device)
@@ -579,7 +544,7 @@ class OUActionNoise(object):
 class Agent(object):
 
     def __init__(self, custom_env, fc_layers_dims=(400, 300),  # paper
-                 optimizer_type=utils.OPTIMIZER_Adam, lr_actor=0.0001, lr_critic=0.001, tau=0.001,  # paper
+                 optimizer_type=utils.Optimizers.OPTIMIZER_Adam, lr_actor=0.0001, lr_critic=0.001, tau=0.001,  # paper
                  memory_size=None, memory_batch_size=None,
                  device_type=None, lib_type=utils.LIBRARY_TF):
 
@@ -720,7 +685,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
     if env_type == 0:
         custom_env = Envs.ClassicControl.Pendulum()
         fc_layers_dims = (800, 600)
-        optimizer_type = utils.OPTIMIZER_Adam
+        optimizer_type = utils.Optimizers.OPTIMIZER_Adam
         alpha = 0.00005
         beta = 0.0005
         n_episodes = 1000
@@ -728,7 +693,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
     # elif env_type == 1:
     # custom_env = Envs.Box2D.BipedalWalker()
     # fc_layers_dims = (400, 300)
-    # optimizer_type = utils.OPTIMIZER_Adam
+    # optimizer_type = utils.Optimizers.OPTIMIZER_Adam
     # alpha = 0.00005
     # beta = 0.0005
     # n_episodes = 5000
@@ -737,7 +702,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
         # custom_env = Envs.Box2D.LunarLanderContinuous()
         custom_env = Envs.ClassicControl.MountainCarContinuous()
         fc_layers_dims = (400, 300)
-        optimizer_type = utils.OPTIMIZER_Adam
+        optimizer_type = utils.Optimizers.OPTIMIZER_Adam
         alpha = 0.000025
         beta = 0.00025
         n_episodes = 1000
