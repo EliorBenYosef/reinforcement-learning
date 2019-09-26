@@ -48,7 +48,7 @@ def command_line_play():
     parser.add_argument('-eps_max', type=float, default=1.0)
     parser.add_argument('-eps_min', type=float, default=0.01)  # EPS_MIN = None
     parser.add_argument('-eps_dec', type=float, default=0.996)  # (max - min) * 2 / episodes
-    # eps_dec_type = utils.EPS_DEC_LINEAR,
+    # eps_dec_type = utils.Calculator.EPS_DEC_LINEAR,
 
     parser.add_argument('-mem_s', type=int, default=1000000, help='Memory size')
     parser.add_argument('-mem_bs', type=int, default=64, help='Memory batch size')
@@ -79,7 +79,7 @@ def command_line_play():
     load_checkpoint = False
     perform_random_gameplay = False
 
-    # utils.set_device(lib_type)
+    # utils.DeviceSetUtils.set_device(lib_type)
 
     agent = Agent(
         custom_env, [args.fc1, args.fc2], args.n,
@@ -92,15 +92,15 @@ def command_line_play():
     scores_history = train(custom_env, agent, args.n, perform_random_gameplay,
                            enable_models_saving, load_checkpoint)
 
-    utils.plot_running_average(
+    utils.Plotter.plot_running_average(
         custom_env.name, method_name, scores_history, window=custom_env.window, show=False,
-        file_name=utils.get_file_name(custom_env.file_name, agent, args.n, method_name),
+        file_name=utils.Printer.get_file_name(custom_env.file_name, agent, args.n, method_name),
         directory=agent.chkpt_dir if enable_models_saving else None
     )
 
-    scores_history_test = utils.test_trained_agent(custom_env, agent)
+    scores_history_test = utils.Tester.test_trained_agent(custom_env, agent)
     if enable_models_saving:
-        utils.pickle_save(scores_history_test, 'scores_history_test', agent.chkpt_dir)
+        utils.SaverLoader.pickle_save(scores_history_test, 'scores_history_test', agent.chkpt_dir)
 
 
 if __name__ == '__main__':

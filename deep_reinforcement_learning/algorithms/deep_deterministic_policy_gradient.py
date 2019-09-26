@@ -228,7 +228,7 @@ class DNN:
             else:  # optimizer_type == utils.OPTIMIZER_Adam
                 self.optimizer = T.optim.Adam(self.parameters(), lr=lr)
 
-            self.device = utils.torch_get_device_according_to_device_type(device_str)
+            self.device = utils.DeviceSetUtils.torch_get_device_according_to_device_type(device_str)
             self.to(self.device)
 
         def load_model_file(self):
@@ -337,7 +337,7 @@ class AC(object):
             self.GAMMA = 0.99
             self.TAU = tau
 
-            self.sess = utils.tf_get_session_according_to_device(device_map)
+            self.sess = utils.DeviceSetUtils.tf_get_session_according_to_device(device_map)
 
             #############################
 
@@ -600,7 +600,7 @@ class Agent(object):
         )
         self.memory = ReplayBuffer(custom_env, self.memory_size, lib_type, is_discrete_action_space=False)
 
-        # sub_dir = utils.get_file_name(None, self, self.BETA, replay_buffer=True) + '/'
+        # sub_dir = utils.Printer.get_file_name(None, self, self.BETA, replay_buffer=True) + '/'
         sub_dir = ''
         self.chkpt_dir = 'tmp/' + custom_env.file_name + '/DDPG/' + sub_dir
 
@@ -651,9 +651,9 @@ def train(custom_env, agent, n_episodes,
         try:
             agent.load_models()
             print('...Loading episode_index...')
-            episode_index = utils.pickle_load('episode_index', agent.chkpt_dir)
+            episode_index = utils.SaverLoader.pickle_load('episode_index', agent.chkpt_dir)
             print('...Loading scores_history...')
-            scores_history = utils.pickle_load('scores_history_train', agent.chkpt_dir)
+            scores_history = utils.SaverLoader.pickle_load('scores_history_train', agent.chkpt_dir)
         except (ValueError, tf.OpError, OSError):
             print('...No models to load...')
         except FileNotFoundError:
@@ -698,11 +698,11 @@ def train(custom_env, agent, n_episodes,
 
         if enable_models_saving and (i + 1) % save_checkpoint == 0:
             episode_index = i
-            utils.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
-            utils.pickle_save(scores_history, 'scores_history_train', agent.chkpt_dir)
+            utils.SaverLoader.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
+            utils.SaverLoader.pickle_save(scores_history, 'scores_history_train', agent.chkpt_dir)
             agent.save_models()
 
-        utils.print_training_progress(i, ep_score, scores_history, custom_env.window)
+        utils.Printer.print_training_progress(i, ep_score, scores_history, custom_env.window)
 
         if visualize and i == n_episodes - 1:
             env.close()
@@ -754,7 +754,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
 
     custom_env.env.seed(28)
 
-    # utils.set_device(lib_type)
+    # utils.DeviceSetUtils.set_device(lib_type)
 
     agent = Agent(
         custom_env, fc_layers_dims, optimizer_type, alpha, beta, tau,
@@ -763,15 +763,15 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
 
     scores_history = train(custom_env, agent, n_episodes, enable_models_saving, load_checkpoint)
 
-    utils.plot_running_average(
+    utils.Plotter.plot_running_average(
         custom_env.name, 'DDPG', scores_history, window=custom_env.window, show=False,
-        file_name=utils.get_file_name(custom_env.file_name, agent, n_episodes, 'DDPG'),
+        file_name=utils.Printer.get_file_name(custom_env.file_name, agent, n_episodes, 'DDPG'),
         directory=agent.chkpt_dir if enable_models_saving else None
     )
 
-    scores_history_test = utils.test_trained_agent(custom_env, agent)
+    scores_history_test = utils.Tester.test_trained_agent(custom_env, agent)
     if enable_models_saving:
-        utils.pickle_save(scores_history_test, 'scores_history_test', agent.chkpt_dir)
+        utils.SaverLoader.pickle_save(scores_history_test, 'scores_history_test', agent.chkpt_dir)
 
 
 if __name__ == '__main__':

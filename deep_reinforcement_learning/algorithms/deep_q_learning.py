@@ -56,7 +56,7 @@ class DQN(object):
 
             self.name = name
 
-            self.sess = utils.tf_get_session_according_to_device(device_map)
+            self.sess = utils.DeviceSetUtils.tf_get_session_according_to_device(device_map)
             self.build_network()
             self.sess.run(tf.global_variables_initializer())
 
@@ -170,7 +170,7 @@ class DQN(object):
 
             self.loss = T.nn.MSELoss()
 
-            self.device = utils.torch_get_device_according_to_device_type(device_str)
+            self.device = utils.DeviceSetUtils.torch_get_device_according_to_device_type(device_str)
             self.to(self.device)
 
         def build_network(self):
@@ -196,9 +196,9 @@ class DQN(object):
                                        padding=conv3_fps[1], stride=conv3_fps[2])
 
                 i_H, i_W = self.dqn.input_dims[0], self.dqn.input_dims[1]
-                conv1_o_H, conv1_o_W = utils.calc_conv_layer_output_dims(i_H, i_W, *conv1_fps)
-                conv2_o_H, conv2_o_W = utils.calc_conv_layer_output_dims(conv1_o_H, conv1_o_W, *conv2_fps)
-                conv3_o_H, conv3_o_W = utils.calc_conv_layer_output_dims(conv2_o_H, conv2_o_W, *conv3_fps)
+                conv1_o_H, conv1_o_W = utils.Calculator.calc_conv_layer_output_dims(i_H, i_W, *conv1_fps)
+                conv2_o_H, conv2_o_W = utils.Calculator.calc_conv_layer_output_dims(conv1_o_H, conv1_o_W, *conv2_fps)
+                conv3_o_H, conv3_o_W = utils.Calculator.calc_conv_layer_output_dims(conv2_o_H, conv2_o_W, *conv3_fps)
                 self.flat_dims = conv3_filters * conv3_o_H * conv3_o_W
 
                 self.fc1 = T.nn.Linear(self.flat_dims, self.dqn.fc_layers_dims[0])
@@ -324,7 +324,7 @@ class Agent(object):
     def __init__(self, custom_env, fc_layers_dims, episodes,
                  alpha, optimizer_type=utils.OPTIMIZER_Adam,
                  gamma=None,
-                 eps_max=1.0, eps_min=None, eps_dec=None, eps_dec_type=utils.EPS_DEC_LINEAR,
+                 eps_max=1.0, eps_min=None, eps_dec=None, eps_dec_type=utils.Calculator.EPS_DEC_LINEAR,
                  memory_size=None, memory_batch_size=None,
                  pure_exploration_phase=0,
                  double_dql=True, tau=10000,
@@ -373,7 +373,7 @@ class Agent(object):
 
         self.learn_step_counter = 0
 
-        # sub_dir = utils.get_file_name(None, self, eps=True, replay_buffer=True) + '/'
+        # sub_dir = utils.Printer.get_file_name(None, self, eps=True, replay_buffer=True) + '/'
         sub_dir = ''
         self.chkpt_dir = 'tmp/' + custom_env.file_name + '/DQL/' + sub_dir
 
@@ -490,7 +490,7 @@ class Agent(object):
         self.learn_step_counter += 1
 
         if self.learn_step_counter > self.pure_exploration_phase:
-            self.EPS = utils.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
+            self.EPS = utils.Calculator.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
 
     def save_models(self):
         self.policy_dqn.save_model_file()
@@ -534,9 +534,9 @@ def train(custom_env, agent, n_episodes, perform_random_gameplay,
         try:
             agent.load_models()
             print('...Loading episode_index...')
-            episode_index = utils.pickle_load('episode_index', agent.chkpt_dir)
+            episode_index = utils.SaverLoader.pickle_load('episode_index', agent.chkpt_dir)
             print('...Loading scores_history...')
-            scores_history = utils.pickle_load('scores_history_train', agent.chkpt_dir)
+            scores_history = utils.SaverLoader.pickle_load('scores_history_train', agent.chkpt_dir)
         except (ValueError, tf.OpError, OSError):
             print('...No models to load...')
         except FileNotFoundError:
@@ -584,11 +584,11 @@ def train(custom_env, agent, n_episodes, perform_random_gameplay,
 
         if enable_models_saving and (i + 1) % save_checkpoint == 0:
             episode_index = i
-            utils.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
-            utils.pickle_save(scores_history, 'scores_history_train', agent.chkpt_dir)
+            utils.SaverLoader.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
+            utils.SaverLoader.pickle_save(scores_history, 'scores_history_train', agent.chkpt_dir)
             agent.save_models()
 
-        utils.print_training_progress(i, ep_score, scores_history, custom_env.window, agent.EPS)
+        utils.Printer.print_training_progress(i, ep_score, scores_history, custom_env.window, agent.EPS)
 
         if visualize and i == n_episodes - 1:
             env.close()
@@ -634,7 +634,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
 
     custom_env.env.seed(28)
 
-    # utils.set_device(lib_type)
+    # utils.DeviceSetUtils.set_device(lib_type)
 
     agent = Agent(
         custom_env, fc_layers_dims, n_episodes, alpha, optimizer_type,
@@ -643,15 +643,15 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
 
     scores_history = train(custom_env, agent, n_episodes, perform_random_gameplay, enable_models_saving, load_checkpoint)
 
-    utils.plot_running_average(
+    utils.Plotter.plot_running_average(
         custom_env.name, 'DQL', scores_history, window=custom_env.window, show=False,
-        file_name=utils.get_file_name(custom_env.file_name, agent, n_episodes, 'DQL'),
+        file_name=utils.Printer.get_file_name(custom_env.file_name, agent, n_episodes, 'DQL'),
         directory=agent.chkpt_dir if enable_models_saving else None
     )
 
-    scores_history_test = utils.test_trained_agent(custom_env, agent)
+    scores_history_test = utils.Tester.test_trained_agent(custom_env, agent)
     if enable_models_saving:
-        utils.pickle_save(scores_history_test, 'scores_history_test', agent.chkpt_dir)
+        utils.SaverLoader.pickle_save(scores_history_test, 'scores_history_test', agent.chkpt_dir)
 
 
 if __name__ == '__main__':

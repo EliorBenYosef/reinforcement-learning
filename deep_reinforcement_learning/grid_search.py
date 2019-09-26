@@ -20,7 +20,7 @@ def perform_grid_search(lib_type=utils.LIBRARY_TF, enable_models_saving=False, l
     custom_env = Envs.ClassicControl.CartPole()
     custom_env.env.seed(28)
 
-    # utils.set_device(lib_type)
+    # utils.DeviceSetUtils.set_device(lib_type)
 
     n_episodes = 3000
 
@@ -44,7 +44,7 @@ def perform_grid_search(lib_type=utils.LIBRARY_TF, enable_models_saving=False, l
     # eps_max_list = [1.0]
     # eps_min_list = [0.0, 0.01, 0.02, 0.04]
     # eps_dec_list = [0.1, 0.2, 0.3, 0.4]  # (1.0 - min) * 2 / n_episodes  # 0.996
-    # # eps_dec_type = utils.EPS_DEC_LINEAR,
+    # # eps_dec_type = utils.Calculator.EPS_DEC_LINEAR,
     #
     # memory_size_list = [10000, 100000, 1000000]
     # memory_batch_size_list = [8, 16, 32, 64]
@@ -64,7 +64,7 @@ def perform_grid_search(lib_type=utils.LIBRARY_TF, enable_models_saving=False, l
     # eps_max_list = [1.0]
     # eps_min_list = [0.1]
     # eps_dec_list = [1.8 / n_episodes]  # (1.0 - min) * 2 / n_episodes  # 0.996
-    # # eps_dec_type = utils.EPS_DEC_LINEAR,
+    # # eps_dec_type = utils.Calculator.EPS_DEC_LINEAR,
     #
     # memory_size_list = [1000000]
     # memory_batch_size_list = [64]
@@ -85,7 +85,7 @@ def perform_grid_search(lib_type=utils.LIBRARY_TF, enable_models_saving=False, l
     eps_max_list = [1.0]
     eps_min_list = [0.1]
     eps_dec_list = [1.8 / n_episodes]  # (1.0 - min) * 2 / n_episodes  # 0.996
-    # eps_dec_type = utils.EPS_DEC_LINEAR,
+    # eps_dec_type = utils.Calculator.EPS_DEC_LINEAR,
 
     memory_size_list = [1000000]
     memory_batch_size_list = [64]
@@ -125,19 +125,19 @@ def perform_grid_search(lib_type=utils.LIBRARY_TF, enable_models_saving=False, l
                                                                    enable_models_saving, load_checkpoint)
                                             scores_histories_train.append(scores_history)
 
-                                            scores_history_test = utils.test_trained_agent(custom_env, agent)
+                                            scores_history_test = utils.Tester.test_trained_agent(custom_env, agent)
                                             if enable_models_saving:
-                                                utils.pickle_save(scores_history_test, 'scores_history_test',
+                                                utils.SaverLoader.pickle_save(scores_history_test, 'scores_history_test',
                                                                   agent.chkpt_dir)
                                             scores_histories_test.append(scores_history_test)
 
                                             tf.reset_default_graph()
 
-    utils.plot_running_average_comparison(
+    utils.Plotter.plot_running_average_comparison(
         custom_env.name, scores_histories_train, labels, window=custom_env.window, show=False,
         file_name=custom_env.file_name + '_dql_train'
     )
-    utils.plot_running_average_comparison(
+    utils.Plotter.plot_running_average_comparison(
         custom_env.name, scores_histories_test, labels, window=custom_env.window, show=False,
         file_name=custom_env.file_name + '_dql_test'
     )

@@ -58,7 +58,7 @@ class DNN(object):
 
             self.name = name
 
-            self.sess = utils.tf_get_session_according_to_device(device_map)
+            self.sess = utils.DeviceSetUtils.tf_get_session_according_to_device(device_map)
             self.build_network()
             self.sess.run(tf.global_variables_initializer())
 
@@ -140,7 +140,7 @@ class DNN(object):
             memory_r = np.array(memory.memory_r)
             memory_terminal = np.array(memory.memory_terminal, dtype=np.int8)
 
-            memory_G = utils.calculate_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA)
+            memory_G = utils.Calculator.calculate_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA)
 
             print('Training Started')
             _ = self.sess.run(self.optimize,
@@ -183,7 +183,7 @@ class DNN(object):
             else:  # self.dnn.optimizer_type == utils.OPTIMIZER_Adam
                 self.optimizer = T.optim.Adam(self.parameters(), lr=self.dnn.ALPHA)
 
-            self.device = utils.torch_get_device_according_to_device_type(device_str)
+            self.device = utils.DeviceSetUtils.torch_get_device_according_to_device_type(device_str)
             self.to(self.device)
 
         def build_network(self):
@@ -209,9 +209,9 @@ class DNN(object):
                                        padding=conv3_fps[1], stride=conv3_fps[2])
 
                 i_H, i_W = self.dnn.input_dims[0], self.dnn.input_dims[1]
-                conv1_o_H, conv1_o_W = utils.calc_conv_layer_output_dims(i_H, i_W, *conv1_fps)
-                conv2_o_H, conv2_o_W = utils.calc_conv_layer_output_dims(conv1_o_H, conv1_o_W, *conv2_fps)
-                conv3_o_H, conv3_o_W = utils.calc_conv_layer_output_dims(conv2_o_H, conv2_o_W, *conv3_fps)
+                conv1_o_H, conv1_o_W = utils.Calculator.calc_conv_layer_output_dims(i_H, i_W, *conv1_fps)
+                conv2_o_H, conv2_o_W = utils.Calculator.calc_conv_layer_output_dims(conv1_o_H, conv1_o_W, *conv2_fps)
+                conv3_o_H, conv3_o_W = utils.Calculator.calc_conv_layer_output_dims(conv2_o_H, conv2_o_W, *conv3_fps)
                 self.flat_dims = conv3_filters * conv3_o_H * conv3_o_W
 
                 self.fc1 = T.nn.Linear(self.flat_dims, self.dnn.fc_layers_dims[0])
@@ -245,7 +245,7 @@ class DNN(object):
             memory_r = np.array(memory.memory_r)
             memory_terminal = np.array(memory.memory_terminal, dtype=np.uint8)
 
-            memory_G = utils.calculate_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA)
+            memory_G = utils.Calculator.calculate_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA)
             memory_G = T.tensor(memory_G, dtype=T.float).to(self.device)
 
             self.optimizer.zero_grad()
@@ -343,7 +343,7 @@ class DNN(object):
             memory_r = np.array(memory.memory_r)
             memory_terminal = np.array(memory.memory_terminal, dtype=np.int8)
 
-            memory_G = utils.calculate_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA)
+            memory_G = utils.Calculator.calculate_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA)
 
             memory_size = len(memory_a_indices)
             memory_a_indices_one_hot = np.zeros((memory_size, self.dnn.n_actions), dtype=np.int8)
@@ -424,7 +424,7 @@ class Agent(object):
 
         self.memory = Memory(custom_env, lib_type)
 
-        # sub_dir = utils.get_file_name(None, self) + '/'
+        # sub_dir = utils.Printer.get_file_name(None, self) + '/'
         sub_dir = ''
         self.chkpt_dir = 'tmp/' + custom_env.file_name + '/PG/' + sub_dir
 
@@ -495,9 +495,9 @@ def train(custom_env, agent, n_episodes,
         try:
             agent.load_models()
             print('...Loading episode_index...')
-            episode_index = utils.pickle_load('episode_index', agent.chkpt_dir)
+            episode_index = utils.SaverLoader.pickle_load('episode_index', agent.chkpt_dir)
             print('...Loading scores_history...')
-            scores_history = utils.pickle_load('scores_history_train', agent.chkpt_dir)
+            scores_history = utils.SaverLoader.pickle_load('scores_history_train', agent.chkpt_dir)
         except (ValueError, tf.OpError, OSError):
             print('...No models to load...')
         except FileNotFoundError:
@@ -541,14 +541,14 @@ def train(custom_env, agent, n_episodes,
             agent.learn()
             if enable_models_saving:
                 episode_index = i
-                utils.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
-                utils.pickle_save(scores_history, 'scores_history_train', agent.chkpt_dir)
+                utils.SaverLoader.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
+                utils.SaverLoader.pickle_save(scores_history, 'scores_history_train', agent.chkpt_dir)
                 agent.save_models()
 
         avg_num = custom_env.window
         if ep_batch_num > avg_num:
             avg_num = ep_batch_num
-        utils.print_training_progress(i, ep_score, scores_history, avg_num)
+        utils.Printer.print_training_progress(i, ep_score, scores_history, avg_num)
 
         if visualize and i == n_episodes - 1:
             env.close()
@@ -591,21 +591,21 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
 
     custom_env.env.seed(28)
 
-    # utils.set_device(lib_type)
+    # utils.DeviceSetUtils.set_device(lib_type)
 
     agent = Agent(custom_env, fc_layers_dims, ep_batch_num, alpha, optimizer_type=optimizer_type, lib_type=lib_type)
 
     scores_history = train(custom_env, agent, n_episodes, enable_models_saving, load_checkpoint, ep_batch_num)
 
-    utils.plot_running_average(
+    utils.Plotter.plot_running_average(
         custom_env.name, 'PG', scores_history, window=custom_env.window, show=False,
-        file_name=utils.get_file_name(custom_env.file_name, agent, n_episodes, 'PG'),
+        file_name=utils.Printer.get_file_name(custom_env.file_name, agent, n_episodes, 'PG'),
         directory=agent.chkpt_dir if enable_models_saving else None
     )
 
-    scores_history_test = utils.test_trained_agent(custom_env, agent)
+    scores_history_test = utils.Tester.test_trained_agent(custom_env, agent)
     if enable_models_saving:
-        utils.pickle_save(scores_history_test, 'scores_history_test', agent.chkpt_dir)
+        utils.SaverLoader.pickle_save(scores_history_test, 'scores_history_test', agent.chkpt_dir)
 
 
 if __name__ == '__main__':
