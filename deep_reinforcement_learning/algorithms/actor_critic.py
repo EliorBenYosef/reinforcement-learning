@@ -191,22 +191,21 @@ class DNN(object):
 
             #############################
 
-            if self.dnn.is_discrete_action_space:
-                actor_value = layers.Dense(self.dnn.n_outputs, activation='softmax', name='actor_value')(x)  # actions_probabilities
-            else:
-                actor_value = layers.Dense(self.dnn.n_outputs, name='actor_value')(x)
+            activation = 'softmax' if self.dnn.is_discrete_action_space else None  # discrete - actions_probabilities
+            actor_value = layers.Dense(self.dnn.n_outputs, activation=activation, name='actor_value')(x)
 
             #############
 
             policy = models.Model(inputs=s, outputs=actor_value)
+            # we don't need to compile this model, because we won't perform backpropagation on it.
 
             #############
 
             td_error = layers.Input(shape=(1,), dtype='float32', name='td_error')
 
-            def custom_loss(y_true, y_pred):  # (a_indices_one_hot, intermediate_model.output)
-                out = K.clip(y_pred, 1e-8, 1 - 1e-8)
-                log_lik = y_true * K.log(out)  # log_probability
+            def custom_loss(y_true, y_pred):  # (a_indices_one_hot, actor.output)
+                y_pred_clipped = K.clip(y_pred, 1e-8, 1 - 1e-8)  # we set boundaries so we won't take log of 0\1
+                log_lik = y_true * K.log(y_pred_clipped)  # log_probability
                 loss = K.sum(-log_lik * td_error)  # K.mean ?
                 return loss
 
@@ -215,9 +214,6 @@ class DNN(object):
             actor.compile(optimizer_actor, loss=custom_loss)
 
             return actor, critic, policy
-
-        def predict(self, s):
-            return self.policy.predict(s)
 
         def load_model_file(self):
             print("...Loading keras h5...")
@@ -404,8 +400,8 @@ class AC(object):
                 _, v = self.actor_critic.predict(s)
                 _, v_ = self.actor_critic.predict(s_)
 
-            target = r + self.ac.GAMMA * v_ * (1 - int(is_terminal))
-            td_error = target - v
+            v_target = r + self.ac.GAMMA * v_ * (1 - int(is_terminal))
+            td_error = v_target - v
 
             if self.ac.is_discrete_action_space:
                 a = self.ac.action_space.index(a)
@@ -434,7 +430,7 @@ class AC(object):
 
         def choose_action(self, s):
             s = s[np.newaxis, :]
-            actor_value = self.dnn.predict(s)
+            actor_value = self.dnn.policy.predict(s)
             if self.ac.is_discrete_action_space:
                 return self.choose_action_discrete(actor_value[0])
             else:
@@ -468,19 +464,19 @@ class AC(object):
             v = self.dnn.critic.predict(s)
             v_ = self.dnn.critic.predict(s_)
 
-            target = r + self.ac.GAMMA * v_ * (1 - int(is_terminal))
-            td_error = target - v
+            v_target = r + self.ac.GAMMA * v_ * (1 - int(is_terminal))
+            td_error = v_target - v
 
             if self.ac.is_discrete_action_space:
-                one_hot_a_indices = np.zeros(self.ac.n_actions, dtype=np.int8)
+                a_indices_one_hot = np.zeros(self.ac.n_actions, dtype=np.int8)
                 a_index = self.ac.action_space.index(a)
-                one_hot_a_indices[a_index] = 1
-                one_hot_a_indices = one_hot_a_indices[np.newaxis, :]
-                self.dnn.actor.fit([s, td_error], one_hot_a_indices, verbose=0)
+                a_indices_one_hot[a_index] = 1
+                a_indices_one_hot = a_indices_one_hot[np.newaxis, :]
+                self.dnn.actor.fit([s, td_error], a_indices_one_hot, verbose=0)
             else:
                 pass
 
-            self.dnn.critic.fit(s, target, verbose=0)
+            self.dnn.critic.fit(s, v_target, verbose=0)
 
         def load_model_file(self):
             print("...Loading tf checkpoint...")
@@ -551,8 +547,8 @@ class AC(object):
                 _, v = self.actor_critic.forward(s)
                 _, v_ = self.actor_critic.forward(s_)
 
-            target = r + self.ac.GAMMA * v_ * (1 - int(is_terminal))
-            td_error = target - v
+            v_target = r + self.ac.GAMMA * v_ * (1 - int(is_terminal))
+            td_error = v_target - v
 
             actor_loss = -self.ac.a_log_probs * td_error
             critic_loss = td_error ** 2
@@ -693,12 +689,16 @@ def play(env_type, lib_type=utils.LIBRARY_TORCH, enable_models_saving=False, loa
         print('\n', "Algorithm currently doesn't work with TensorFlow", '\n')
         return
 
+    # SHARED vs SEPARATE explanation:
+    #   SHARED is very helpful in more complex environments (like LunarLander)
+    #   you can get away with SEPARATE in less complex environments (like MountainCar)
+
     if env_type == 0:
         custom_env = Envs.ClassicControl.CartPole()
         fc_layers_dims = (32, 32)
         optimizer_type = utils.Optimizers.OPTIMIZER_Adam
         alpha = 0.0001  # 0.00001
-        beta = 0.0005
+        beta = alpha * 5
         n_episodes = 2500
 
     elif env_type == 1:
@@ -706,8 +706,8 @@ def play(env_type, lib_type=utils.LIBRARY_TORCH, enable_models_saving=False, loa
         custom_env = Envs.ClassicControl.Pendulum()
         fc_layers_dims = (2048, 512)  # Keras: (1024, 512)
         optimizer_type = utils.Optimizers.OPTIMIZER_Adam
-        alpha = 0.00001  # Keras: 0.00001
-        beta = None  # Keras: 0.00005
+        alpha = 0.00001
+        beta = alpha * 5 if lib_type == utils.LIBRARY_KERAS else None
         n_episodes = 2000
 
     else:
@@ -715,7 +715,7 @@ def play(env_type, lib_type=utils.LIBRARY_TORCH, enable_models_saving=False, loa
         fc_layers_dims = (256, 256)
         optimizer_type = utils.Optimizers.OPTIMIZER_Adam
         alpha = 0.000005
-        beta = 0.00001
+        beta = alpha * 2
         n_episodes = 100  # longer than 100 --> instability (because the value function estimation is unstable)
 
     if custom_env.input_type != Envs.INPUT_TYPE_OBSERVATION_VECTOR:

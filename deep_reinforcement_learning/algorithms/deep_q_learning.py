@@ -576,11 +576,11 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
         fc_layers_dims = [256, 256]
         double_dql = False
         tau = None
-        n_episodes = 500  # 150 - 200 should solve it?
+        n_episodes = 500  # ~150-200 solves LunarLander
 
     elif env_type == 1:
         custom_env = Envs.Atari.Breakout()
-        optimizer_type = utils.OPTIMIZER_RMSprop  # utils.OPTIMIZER_SGD
+        optimizer_type = utils.Optimizers.OPTIMIZER_RMSprop  # utils.Optimizers.OPTIMIZER_SGD
         alpha = 0.00025
         fc_layers_dims = [1024]
         double_dql = True
@@ -589,7 +589,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
 
     else:
         custom_env = Envs.Atari.SpaceInvaders()
-        optimizer_type = utils.OPTIMIZER_RMSprop  # utils.OPTIMIZER_SGD
+        optimizer_type = utils.Optimizers.OPTIMIZER_RMSprop  # utils.Optimizers.OPTIMIZER_SGD
         alpha = 0.003
         fc_layers_dims = [1024]
         double_dql = True

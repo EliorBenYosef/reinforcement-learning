@@ -34,7 +34,8 @@ def perform_grid_search(lib_type=utils.LIBRARY_TF, enable_models_saving=False, l
     # fc1_dim_list = [64, 128, 256, 512]
     # fc2_dim_list = [64, 128, 256, 512]
     #
-    # optimizer_list = [utils.OPTIMIZER_SGD, utils.OPTIMIZER_Adagrad, utils.OPTIMIZER_Adadelta, utils.OPTIMIZER_RMSprop,
+    # optimizer_list = [utils.Optimizers.OPTIMIZER_SGD, utils.Optimizers.OPTIMIZER_Adagrad,
+    #                   utils.Optimizers.OPTIMIZER_Adadelta, utils.Optimizers.OPTIMIZER_RMSprop,
     #                   utils.Optimizers.OPTIMIZER_Adam]
     # alpha_list = [0.0005, 0.001, 0.002, 0.004]
     # beta_list = [0.0005]  # only for AC & DDPG

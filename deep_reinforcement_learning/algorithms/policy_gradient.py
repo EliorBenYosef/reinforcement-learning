@@ -191,8 +191,8 @@ class DNN(object):
             G = layers.Input(shape=(1,), dtype='float32', name='G')  # advantages. batch_shape=[None]
 
             def custom_loss(y_true, y_pred):  # (a_indices_one_hot, intermediate_model.output)
-                out = K.clip(y_pred, 1e-8, 1 - 1e-8)
-                log_lik = y_true * K.log(out)  # log_probability
+                y_pred_clipped = K.clip(y_pred, 1e-8, 1 - 1e-8)  # we set boundaries so we won't take log of 0\1
+                log_lik = y_true * K.log(y_pred_clipped)  # log_probability
                 loss = K.sum(-log_lik * G)  # K.mean ?
                 return loss
 
@@ -539,7 +539,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
     elif env_type == 1:
         custom_env = Envs.Atari.Breakout()
         fc_layers_dims = [256]
-        optimizer_type = utils.Optimizers.OPTIMIZER_RMSprop  # utils.OPTIMIZER_SGD
+        optimizer_type = utils.Optimizers.OPTIMIZER_RMSprop  # utils.Optimizers.OPTIMIZER_SGD
         alpha = 0.00025
         ep_batch_num = 1  # REINFORCE algorithm (MC PG)
         n_episodes = 200  # start with 200, then 5000 ?
@@ -547,7 +547,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
     else:
         custom_env = Envs.Atari.SpaceInvaders()
         fc_layers_dims = [256]
-        optimizer_type = utils.OPTIMIZER_RMSprop  # utils.OPTIMIZER_SGD
+        optimizer_type = utils.Optimizers.OPTIMIZER_RMSprop  # utils.Optimizers.OPTIMIZER_SGD
         alpha = 0.001  # 0.003
         ep_batch_num = 10
         n_episodes = 1000
