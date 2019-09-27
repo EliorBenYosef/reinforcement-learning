@@ -109,6 +109,7 @@ Simply run the desired algorithm file to perform it on the desired environment:
 `play()` example environments: CartPole (0), Breakout (1), SpaceInvaders (2).
 * [policy_gradient.py](../master/deep_reinforcement_learning/algorithms/policy_gradient.py) - 
 `play()` example environments: CartPole (0), Breakout (1), SpaceInvaders (2).
+  * for the Monte-Carlo PG (REINFORCE) algorithm, set: `ep_batch_num = 1`
 * [actor_critic.py](../master/deep_reinforcement_learning/algorithms/actor_critic.py) - 
 `play()` example environments: CartPole (0), Pendulum (1), MountainCarContinuous (2).
 * [deep_deterministic_policy_gradient.py](../master/deep_reinforcement_learning/algorithms/deep_deterministic_policy_gradient.py) - 
