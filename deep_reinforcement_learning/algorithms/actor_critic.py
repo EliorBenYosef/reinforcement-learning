@@ -292,8 +292,12 @@ class AC(object):
 
         self.is_discrete_action_space = custom_env.is_discrete_action_space
         self.n_actions = custom_env.n_actions
-        self.action_space = custom_env.action_space if self.is_discrete_action_space else None
-        self.action_boundary = custom_env.action_boundary if not self.is_discrete_action_space else None
+        if self.is_discrete_action_space:
+            self.action_space = custom_env.action_space
+            self.action_boundary = None
+        else:
+            self.action_space = None
+            self.action_boundary = custom_env.action_boundary
 
         self.lr_actor = lr_actor
         self.lr_critic = lr_critic if lr_critic is not None else lr_actor
@@ -472,10 +476,9 @@ class AC(object):
                 a_index = self.ac.action_space.index(a)
                 one_hot_a_indices[a_index] = 1
                 one_hot_a_indices = one_hot_a_indices[np.newaxis, :]
+                self.dnn.actor.fit([s, td_error], one_hot_a_indices, verbose=0)
             else:
                 pass
-
-            self.dnn.actor.fit([s, td_error], one_hot_a_indices, verbose=0)
 
             self.dnn.critic.fit(s, target, verbose=0)
 
@@ -595,14 +598,12 @@ class Agent(object):
         sub_dir = ''
         self.chkpt_dir = 'tmp/' + custom_env.file_name + '/AC/' + sub_dir
 
-        network_type = NETWORK_TYPE_SEPARATE if lr_critic is not None else NETWORK_TYPE_SHARED
+        network_type = NETWORK_TYPE_SHARED if (lr_critic is None or lib_type == utils.LIBRARY_KERAS) else NETWORK_TYPE_SEPARATE
         ac_base = AC(custom_env, fc_layers_dims, optimizer_type, lr_actor, lr_critic, network_type, self.chkpt_dir)
         if lib_type == utils.LIBRARY_TF:
             self.ac = ac_base.create_ac_tensorflow(device_type)
         elif lib_type == utils.LIBRARY_KERAS:
-            self.ac = AC(
-                custom_env, fc_layers_dims, optimizer_type, lr_actor, lr_critic, NETWORK_TYPE_SHARED, self.chkpt_dir
-            ).create_ac_keras()
+            self.ac = ac_base.create_ac_keras()
         else:
             self.ac = ac_base.create_ac_torch()
 
