@@ -94,7 +94,7 @@ def command_line_play():
 
     utils.Plotter.plot_running_average(
         custom_env.name, method_name, scores_history, window=custom_env.window, show=False,
-        file_name=utils.Printer.get_file_name(custom_env.file_name, agent, args.n, method_name),
+        file_name=utils.General.get_file_name(custom_env.file_name, agent, args.n, method_name),
         directory=agent.chkpt_dir if enable_models_saving else None
     )
 

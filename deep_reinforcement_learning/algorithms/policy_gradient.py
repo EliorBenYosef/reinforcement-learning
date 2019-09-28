@@ -375,7 +375,8 @@ class Memory(object):
 class Agent(object):
 
     def __init__(self, custom_env, fc_layers_dims, ep_batch_num,
-                 alpha, optimizer_type=utils.Optimizers.OPTIMIZER_Adam, lib_type=utils.LIBRARY_TF):
+                 alpha, optimizer_type=utils.Optimizers.OPTIMIZER_Adam,
+                 lib_type=utils.LIBRARY_TF):
 
         self.GAMMA = custom_env.GAMMA
         self.fc_layers_dims = fc_layers_dims
@@ -391,7 +392,7 @@ class Agent(object):
 
         self.memory = Memory(custom_env, lib_type)
 
-        # sub_dir = utils.Printer.get_file_name(None, self) + '/'
+        # sub_dir = utils.General.get_file_name(None, self) + '/'
         sub_dir = ''
         self.chkpt_dir = 'tmp/' + custom_env.file_name + '/PG/' + sub_dir
 
@@ -566,7 +567,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
 
     utils.Plotter.plot_running_average(
         custom_env.name, 'PG', scores_history, window=custom_env.window, show=False,
-        file_name=utils.Printer.get_file_name(custom_env.file_name, agent, n_episodes, 'PG'),
+        file_name=utils.General.get_file_name(custom_env.file_name, agent, n_episodes, 'PG'),
         directory=agent.chkpt_dir if enable_models_saving else None
     )
 

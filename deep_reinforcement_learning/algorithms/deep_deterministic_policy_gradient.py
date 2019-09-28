@@ -565,7 +565,7 @@ class Agent(object):
         )
         self.memory = ReplayBuffer(custom_env, self.memory_size, lib_type, is_discrete_action_space=False)
 
-        # sub_dir = utils.Printer.get_file_name(None, self, self.BETA, replay_buffer=True) + '/'
+        # sub_dir = utils.General.get_file_name(None, self, self.BETA, replay_buffer=True) + '/'
         sub_dir = ''
         self.chkpt_dir = 'tmp/' + custom_env.file_name + '/DDPG/' + sub_dir
 
@@ -730,7 +730,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
 
     utils.Plotter.plot_running_average(
         custom_env.name, 'DDPG', scores_history, window=custom_env.window, show=False,
-        file_name=utils.Printer.get_file_name(custom_env.file_name, agent, n_episodes, 'DDPG'),
+        file_name=utils.General.get_file_name(custom_env.file_name, agent, n_episodes, 'DDPG'),
         directory=agent.chkpt_dir if enable_models_saving else None
     )
 

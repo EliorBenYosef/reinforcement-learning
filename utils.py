@@ -192,82 +192,6 @@ class Printer:
             a = policy[s]
             print('s', s, 'a', a, ' - ', '%.3f' % Q[s, a])
 
-    @staticmethod
-    def get_file_name(env_file_name, agent, episodes, method_name):
-        # options:
-        #   .replace('.', 'p')
-        #   .split('.')[1]
-
-        if env_file_name is not None:
-            env = env_file_name + '_'
-        else:
-            env = ''
-
-        ############################
-
-        gamma = 'G' + str(agent.GAMMA).replace('.', 'p') + '_'  # 'GAMMA-'
-
-        fc_layers_dims = 'FC-'
-        for i, fc_layer_dims in enumerate(agent.fc_layers_dims):
-            if i:
-                fc_layers_dims += 'x'
-            fc_layers_dims += str(fc_layer_dims)
-        fc_layers_dims += '_'
-
-        ############################
-
-        optimizer = 'OPT_'
-        if agent.optimizer_type == Optimizers.OPTIMIZER_Adam:
-            optimizer += 'adam_'
-        elif agent.optimizer_type == Optimizers.OPTIMIZER_RMSprop:
-            optimizer += 'rms_'  # 'rmsprop_'
-        elif agent.optimizer_type == Optimizers.OPTIMIZER_Adadelta:
-            optimizer += 'adad_'  # 'adadelta_'
-        elif agent.optimizer_type == Optimizers.OPTIMIZER_Adagrad:
-            optimizer += 'adag_'  # 'adagrad_'
-        else:  # agent.optimizer_type == Optimizers.OPTIMIZER_SGD
-            optimizer += 'sgd_'
-        alpha = 'a-' + str(agent.ALPHA).replace('.', 'p') + '_'  # 'alpha-'
-
-        if method_name == 'AC' or method_name == 'DDPG':
-            beta = 'b-' + str(agent.BETA).replace('.', 'p') + '_'  # 'beta-'
-        else:
-            beta = ''
-
-        ############################
-
-        if method_name == 'DQL':
-            eps_max = 'max-' + str(agent.eps_max).replace('.', 'p') + '_'
-            eps_min = 'min-' + str(agent.eps_min).replace('.', 'p') + '_'
-            eps_dec = 'dec-' + str(agent.eps_dec).replace('.', 'p') + '_'
-            eps = 'EPS_' + eps_max + eps_min + eps_dec
-        else:
-            eps = ''
-
-        ############################
-
-        if method_name == 'DQL' or method_name == 'DDPG':
-            memory_size = 'size-' + str(agent.memory_size)
-            memory_batch_size = 'batch-' + str(agent.memory_batch_size)
-            replay_buffer = 'MEM_' + memory_size + memory_batch_size
-        else:
-            replay_buffer = ''
-
-        if method_name == 'PG':
-            ep_batch_num = 'PG-ep-batch-' + str(agent.ep_batch_num) + '_'
-        else:
-            ep_batch_num = ''
-
-        ############################
-
-        episodes = 'N-' + str(episodes)  # n_episodes
-
-        plot_file_name = env + gamma + fc_layers_dims + \
-                         optimizer + alpha + beta + \
-                         eps + replay_buffer + ep_batch_num + episodes
-
-        return plot_file_name
-
 
 class DeviceGetUtils:
 
@@ -305,11 +229,27 @@ class DeviceGetUtils:
 class DeviceSetUtils:
 
     @staticmethod
-    def set_device(lib_type, device):
+    def set_device(lib_type, devices_dict=None):  # {type: bus_id}
+        # it seems that for:
+        #   TF - tf_get_session_according_to_device() alone is enough...
+        #   Keras - tf_set_device() alone is enough...
+        # maybe only one method is enough for either?
+
+        if devices_dict is None:
+            devices_dict = {'GPU': 0}
+            # devices = {'GPU': 0, 'GPU': 1}  # 'CPU': 0
+
+        designated_GPUs_bus_id_str = ''
+        for device_type, device_bus_id in devices_dict.items():
+            if len(designated_GPUs_bus_id_str) > 0:
+                designated_GPUs_bus_id_str += ','
+            designated_GPUs_bus_id_str += str(device_bus_id)
+
         if lib_type == LIBRARY_TF:
-            DeviceSetUtils.tf_set_device(device)                               # GPUs_str:     '0'
+            DeviceSetUtils.tf_set_device(designated_GPUs_bus_id_str)
         elif lib_type == LIBRARY_KERAS:
-            DeviceSetUtils.keras_set_session_according_to_device(device)       # device_map:   {'GPU': 0}
+            DeviceSetUtils.tf_set_device(designated_GPUs_bus_id_str)
+            DeviceSetUtils.keras_set_session_according_to_device(devices_dict)
 
     # when trying to run a tensorflow \ keras model on GPU, make sure:
     #   1. the system has a Nvidia GPU (AMD doesn't work yet).
@@ -318,24 +258,26 @@ class DeviceSetUtils:
     #   4. tensorflow is running with GPU. use tf_get_local_devices()
 
     @staticmethod
-    def tf_set_device(GPUs_str='0'):                            # e.g.: '0' \ '0,3'
-        # 1. set order of GPU IDs by pci bus IDs:
-        #   -> CUDA device id's are consistent with nvidia-smi's output
-        os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
-        # 2. specify which GPU ID(s) to be used.
-        os.environ['CUDA_VISIBLE_DEVICES'] = GPUs_str
+    def tf_set_device(designated_GPUs_bus_id_str):  # can be singular: '0', or multiple: '0,1'
+        os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'  # set GPUs (CUDA devices) IDs' order by pci bus IDs (so it's consistent with nvidia-smi's output).
+        os.environ['CUDA_VISIBLE_DEVICES'] = designated_GPUs_bus_id_str  # specify which GPU ID(s) to be used.
+        os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
     @staticmethod
-    def tf_get_session_according_to_device(device_map):         # e.g.: {'GPU': 0} \ {'GPU': 1, 'CPU': 0}
-        if device_map is not None:
-            # enable log device placement to find out which device is used.
-            sess = tf.Session(config=tf.ConfigProto(device_count=device_map, log_device_placement=True))
+    def tf_get_session_according_to_device(devices_dict):
+        if devices_dict is not None:
+            gpu_options = tf.GPUOptions(allow_growth=True)  # starts with allocating an approximated amount of GPU memory, and expands if necessary
+            # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)  # set the fraction of GPU memory to be allocated
+            config = tf.ConfigProto(device_count=devices_dict, gpu_options=gpu_options, log_device_placement=True)  # log device placement tells which device is used.
+            # config.gpu_options.allow_growth = True
+            # config.gpu_options.per_process_gpu_memory_fraction = 0.5
+            sess = tf.Session(config=config)
         else:
             sess = tf.Session()
         return sess
 
     @staticmethod
-    def keras_set_session_according_to_device(device_map):      # e.g.: {'GPU': 0} \ {'GPU': 1, 'CPU': 0}
+    def keras_set_session_according_to_device(device_map):
         # call this function after importing keras if you are working on a machine.
         keras_set_session(DeviceSetUtils.tf_get_session_according_to_device(device_map))
 
@@ -645,3 +587,80 @@ class General:
             'Local Only -', getattr(env.spec, '_local_only', 'not defined'), '\n',
             'kwargs -', getattr(env.spec, '_kwargs', '')  # kwargs (dict): The kwargs to pass to the environment class
         )
+
+    @staticmethod
+    def get_file_name(env_file_name, agent, episodes, method_name):
+        # options:
+        #   .replace('.', 'p')
+        #   .split('.')[1]
+
+        if env_file_name is not None:
+            env = env_file_name + '_'
+        else:
+            env = ''
+
+        ############################
+
+        gamma = 'G' + str(agent.GAMMA).replace('.', 'p') + '_'  # 'GAMMA-'
+
+        fc_layers_dims = 'FC-'
+        for i, fc_layer_dims in enumerate(agent.fc_layers_dims):
+            if i:
+                fc_layers_dims += 'x'
+            fc_layers_dims += str(fc_layer_dims)
+        fc_layers_dims += '_'
+
+        ############################
+
+        optimizer = 'OPT_'
+        if agent.optimizer_type == Optimizers.OPTIMIZER_Adam:
+            optimizer += 'adam_'
+        elif agent.optimizer_type == Optimizers.OPTIMIZER_RMSprop:
+            optimizer += 'rms_'  # 'rmsprop_'
+        elif agent.optimizer_type == Optimizers.OPTIMIZER_Adadelta:
+            optimizer += 'adad_'  # 'adadelta_'
+        elif agent.optimizer_type == Optimizers.OPTIMIZER_Adagrad:
+            optimizer += 'adag_'  # 'adagrad_'
+        else:  # agent.optimizer_type == Optimizers.OPTIMIZER_SGD
+            optimizer += 'sgd_'
+        alpha = 'a-' + str(agent.ALPHA).replace('.', 'p') + '_'  # 'alpha-'
+
+        if method_name == 'AC' or method_name == 'DDPG':
+            beta = 'b-' + str(agent.BETA).replace('.', 'p') + '_'  # 'beta-'
+        else:
+            beta = ''
+
+        ############################
+
+        if method_name == 'DQL':
+            eps_max = 'max-' + str(agent.eps_max).replace('.', 'p') + '_'
+            eps_min = 'min-' + str(agent.eps_min).replace('.', 'p') + '_'
+            eps_dec = 'dec-' + str(agent.eps_dec).replace('.', 'p') + '_'
+            eps = 'EPS_' + eps_max + eps_min + eps_dec
+        else:
+            eps = ''
+
+        ############################
+
+        if method_name == 'DQL' or method_name == 'DDPG':
+            memory_size = 'size-' + str(agent.memory_size)
+            memory_batch_size = 'batch-' + str(agent.memory_batch_size)
+            replay_buffer = 'MEM_' + memory_size + memory_batch_size
+        else:
+            replay_buffer = ''
+
+        if method_name == 'PG':
+            ep_batch_num = 'PG-ep-batch-' + str(agent.ep_batch_num) + '_'
+        else:
+            ep_batch_num = ''
+
+        ############################
+
+        episodes = 'N-' + str(episodes)  # n_episodes
+
+        plot_file_name = env + gamma + fc_layers_dims + \
+                         optimizer + alpha + beta + \
+                         eps + replay_buffer + ep_batch_num + episodes
+
+        return plot_file_name
+

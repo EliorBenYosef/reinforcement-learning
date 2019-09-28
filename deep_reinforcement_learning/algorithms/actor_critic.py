@@ -590,7 +590,7 @@ class Agent(object):
         self.ALPHA = lr_actor
         self.BETA = lr_critic if lr_critic is not None else lr_actor
 
-        # sub_dir = utils.Printer.get_file_name(None, self, self.BETA) + '/'
+        # sub_dir = utils.General.get_file_name(None, self, self.BETA) + '/'
         sub_dir = ''
         self.chkpt_dir = 'tmp/' + custom_env.file_name + '/AC/' + sub_dir
 
@@ -732,7 +732,7 @@ def play(env_type, lib_type=utils.LIBRARY_TORCH, enable_models_saving=False, loa
 
     utils.Plotter.plot_running_average(
         custom_env.name, 'AC', scores_history, window=custom_env.window, show=False,
-        file_name=utils.Printer.get_file_name(custom_env.file_name, agent, n_episodes, 'AC'),
+        file_name=utils.General.get_file_name(custom_env.file_name, agent, n_episodes, 'AC'),
         directory=agent.chkpt_dir if enable_models_saving else None
     )
 
