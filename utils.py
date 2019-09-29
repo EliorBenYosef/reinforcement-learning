@@ -409,54 +409,54 @@ class ActionChooser:
 class Tester:
 
     @staticmethod
-    def test_method(custom_env_object, episodes, choose_action):
-        env = custom_env_object.env
+    def test_method(custom_env, episodes, choose_action):
+        env = custom_env.env
         print('\n', 'Test Started', '\n')
         start_time = datetime.datetime.now()
         total_scores = np.zeros(episodes)
         total_accumulated_scores = np.zeros(episodes)
         accumulated_score = 0
-        eval = custom_env_object.get_evaluation_tuple()
+        eval = custom_env.get_evaluation_tuple()
         for i in range(episodes):
             done = False
             ep_steps = 0
             ep_score = 0
             observation = env.reset()
-            s = custom_env_object.get_state(observation)
+            s = custom_env.get_state(observation)
             while not done:
                 a = choose_action(s)
                 observation_, reward, done, info = env.step(a)
-                eval = custom_env_object.update_evaluation_tuple(i + 1, reward, done, eval)
+                eval = custom_env.update_evaluation_tuple(i + 1, reward, done, eval)
                 ep_steps += 1
                 ep_score += reward
                 accumulated_score += reward
-                s_ = custom_env_object.get_state(observation_)
+                s_ = custom_env.get_state(observation_)
                 observation, s = observation_, s_
             total_scores[i] = ep_score
             total_accumulated_scores[i] = accumulated_score
-            Printer.print_training_progress(i, ep_score, total_scores, custom_env_object.window)
+            Printer.print_training_progress(i, ep_score, total_scores, custom_env.window)
         end_time = datetime.datetime.now()
         duration = end_time - start_time
         print('\n', 'Test Ended ~~~ Episodes: %d ~~~ Duration: %s' % (episodes, duration), '\n')
-        custom_env_object.analyze_evaluation_tuple(eval, episodes)
+        custom_env.analyze_evaluation_tuple(eval, episodes)
         return total_scores, total_accumulated_scores
 
     @staticmethod
-    def test_q_table(custom_env_object, Q, episodes=1000):
+    def test_q_table(custom_env, Q, episodes=1000):
         return Tester.test_method(
-            custom_env_object, episodes,
-            lambda s: ActionChooser.get_max_action_from_q_table(Q, s, custom_env_object.env.action_space.n)
+            custom_env, episodes,
+            lambda s: ActionChooser.get_max_action_from_q_table(Q, s, custom_env.env.action_space.n)
         )
 
     @staticmethod
-    def test_policy(custom_env_object, policy, episodes=1000):
-        return Tester.test_method(custom_env_object, episodes,
+    def test_policy(custom_env, policy, episodes=1000):
+        return Tester.test_method(custom_env, episodes,
                                   lambda s: policy[s])
 
     @staticmethod
-    def test_trained_agent(custom_env_object, agent, enable_models_saving, episodes=1000):
+    def test_trained_agent(custom_env, agent, enable_models_saving, episodes=1000):
         total_scores, total_accumulated_scores = Tester.test_method(
-            custom_env_object, episodes,
+            custom_env, episodes,
             lambda s: agent.choose_action(s))
         if enable_models_saving:
             SaverLoader.pickle_save(total_scores, 'scores_history_test', agent.chkpt_dir)
@@ -466,15 +466,15 @@ class Tester:
 class Watcher:
 
     @staticmethod
-    def watch_method(custom_env_object, episodes, choose_action, is_toy_text=False):
-        env = custom_env_object.env
+    def watch_method(custom_env, episodes, choose_action, is_toy_text=False):
+        env = custom_env.env
 
         for i in range(episodes):
             done = False
             ep_steps = 0
             ep_score = 0
             observation = env.reset()
-            s = custom_env_object.get_state(observation)
+            s = custom_env.get_state(observation)
 
             if is_toy_text:
                 print('\n*****EPISODE ', i + 1, '*****\n')
@@ -489,7 +489,7 @@ class Watcher:
                 observation_, reward, done, info = env.step(a)
                 ep_steps += 1
                 ep_score += reward
-                s_ = custom_env_object.get_state(observation_)
+                s_ = custom_env.get_state(observation_)
                 observation, s = observation_, s_
 
                 if is_toy_text:
@@ -506,20 +506,20 @@ class Watcher:
         env.close()
 
     @staticmethod
-    def watch_q_table(custom_env_object, Q, episodes=3):
+    def watch_q_table(custom_env, Q, episodes=3):
         Watcher.watch_method(
-            custom_env_object, episodes,
-            lambda s: ActionChooser.get_max_action_from_q_table(Q, s, custom_env_object.env.action_space.n)
+            custom_env, episodes,
+            lambda s: ActionChooser.get_max_action_from_q_table(Q, s, custom_env.env.action_space.n)
         )
 
     @staticmethod
-    def watch_policy(custom_env_object, policy, episodes=3):
-        Watcher.watch_method(custom_env_object, episodes,
+    def watch_policy(custom_env, policy, episodes=3):
+        Watcher.watch_method(custom_env, episodes,
                              lambda s: policy[s])
 
     @staticmethod
-    def watch_trained_agent(custom_env_object, agent, episodes=3):
-        Watcher.watch_method(custom_env_object, episodes,
+    def watch_trained_agent(custom_env, agent, episodes=3):
+        Watcher.watch_method(custom_env, episodes,
                              lambda s: agent.choose_action(s))
 
 

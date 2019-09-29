@@ -100,13 +100,13 @@ class TabularMethods:
 
     class MonteCarloModel:
 
-        def __init__(self, custom_env_object, episodes=50000, alpha=0.1, gamma=None,
+        def __init__(self, custom_env, episodes=50000, alpha=0.1, gamma=None,
                      eps_max=1.0, eps_min=None, eps_dec=None, eps_dec_type=utils.Calculator.EPS_DEC_LINEAR):
 
-            self.custom_env_object = custom_env_object
-            self.env = custom_env_object.env
+            self.custom_env = custom_env
+            self.env = custom_env.env
             self.action_space_size = self.env.action_space.n
-            self.states = custom_env_object.states
+            self.states = custom_env.states
 
             self.episodes = episodes
             self.totalSteps = np.zeros(episodes)
@@ -118,8 +118,8 @@ class TabularMethods:
 
             if gamma is not None:
                 self.GAMMA = gamma
-            elif custom_env_object.GAMMA is not None:
-                self.GAMMA = custom_env_object.GAMMA
+            elif custom_env.GAMMA is not None:
+                self.GAMMA = custom_env.GAMMA
             else:
                 self.GAMMA = 0.9
 
@@ -128,8 +128,8 @@ class TabularMethods:
 
             if eps_min is not None:
                 self.eps_min = eps_min
-            elif custom_env_object.EPS_MIN is not None:
-                self.eps_min = custom_env_object.EPS_MIN
+            elif custom_env.EPS_MIN is not None:
+                self.eps_min = custom_env.EPS_MIN
             else:
                 self.eps_min = 0.0
 
@@ -185,7 +185,7 @@ class TabularMethods:
                 memory = []
                 observation = self.env.reset()
 
-                s = self.custom_env_object.get_state(observation)
+                s = self.custom_env.get_state(observation)
 
                 if visualize and i == self.episodes - 1:
                     self.env.render()
@@ -200,7 +200,7 @@ class TabularMethods:
                     ep_score += reward
                     accumulated_scores += reward
 
-                    s_ = self.custom_env_object.get_state(observation_)
+                    s_ = self.custom_env.get_state(observation_)
 
                     memory.append((s, a, reward))
 
@@ -264,7 +264,7 @@ class TabularMethods:
                 memory = []
                 observation = self.env.reset()
 
-                s = self.custom_env_object.get_state(observation)
+                s = self.custom_env.get_state(observation)
 
                 if visualize and i == self.episodes - 1:
                     self.env.render()
@@ -277,7 +277,7 @@ class TabularMethods:
                     ep_score += reward
                     accumulated_scores += reward
 
-                    s_ = self.custom_env_object.get_state(observation_)
+                    s_ = self.custom_env.get_state(observation_)
 
                     memory.append((s, a, reward))
 
@@ -359,7 +359,7 @@ class TabularMethods:
                 memory = []
                 observation = self.env.reset()
 
-                s = self.custom_env_object.get_state(observation)
+                s = self.custom_env.get_state(observation)
 
                 if visualize and i == self.episodes - 1:
                     self.env.render()
@@ -372,7 +372,7 @@ class TabularMethods:
                     ep_score += reward
                     accumulated_scores += reward
 
-                    s_ = self.custom_env_object.get_state(observation_)
+                    s_ = self.custom_env.get_state(observation_)
 
                     memory.append((s, a, reward))
 
@@ -427,12 +427,12 @@ class TabularMethods:
 
     class TdZeroModel:
 
-        def __init__(self, custom_env_object, episodes=50000, alpha=0.1, gamma=None):
+        def __init__(self, custom_env, episodes=50000, alpha=0.1, gamma=None):
 
-            self.custom_env_object = custom_env_object
-            self.env = custom_env_object.env
+            self.custom_env = custom_env
+            self.env = custom_env.env
             self.action_space_size = self.env.action_space.n
-            self.states = custom_env_object.states
+            self.states = custom_env.states
 
             self.episodes = episodes
             self.totalSteps = np.zeros(episodes)
@@ -443,8 +443,8 @@ class TabularMethods:
 
             if gamma is not None:
                 self.GAMMA = gamma
-            elif custom_env_object.GAMMA is not None:
-                self.GAMMA = custom_env_object.GAMMA
+            elif custom_env.GAMMA is not None:
+                self.GAMMA = custom_env.GAMMA
             else:
                 self.GAMMA = 0.9
 
@@ -468,7 +468,7 @@ class TabularMethods:
 
                 observation = self.env.reset()
 
-                s = self.custom_env_object.get_state(observation)
+                s = self.custom_env.get_state(observation)
 
                 if visualize and i == self.episodes - 1:
                     self.env.render()
@@ -483,7 +483,7 @@ class TabularMethods:
                     ep_score += reward
                     accumulated_scores += reward
 
-                    s_ = self.custom_env_object.get_state(observation_)
+                    s_ = self.custom_env.get_state(observation_)
                     V[s] += self.ALPHA * (reward + self.GAMMA * V[s_] - V[s])
 
                     # option: instead of the (V[s] += ...) line:
@@ -515,13 +515,13 @@ class TabularMethods:
 
     class GeneralModel:
 
-        def __init__(self, custom_env_object, episodes=50000, alpha=0.1, gamma=None,
+        def __init__(self, custom_env, episodes=50000, alpha=0.1, gamma=None,
                      eps_max=1.0, eps_min=None, eps_dec=None, eps_dec_type=utils.Calculator.EPS_DEC_LINEAR):
 
-            self.custom_env_object = custom_env_object
-            self.env = custom_env_object.env
+            self.custom_env = custom_env
+            self.env = custom_env.env
             self.action_space_size = self.env.action_space.n
-            self.states = custom_env_object.states
+            self.states = custom_env.states
 
             self.episodes = episodes
             self.totalSteps = np.zeros(episodes)
@@ -532,8 +532,8 @@ class TabularMethods:
 
             if gamma is not None:
                 self.GAMMA = gamma
-            elif custom_env_object.GAMMA is not None:
-                self.GAMMA = custom_env_object.GAMMA
+            elif custom_env.GAMMA is not None:
+                self.GAMMA = custom_env.GAMMA
             else:
                 self.GAMMA = 0.9
 
@@ -542,8 +542,8 @@ class TabularMethods:
 
             if eps_min is not None:
                 self.eps_min = eps_min
-            elif custom_env_object.EPS_MIN is not None:
-                self.eps_min = custom_env_object.EPS_MIN
+            elif custom_env.EPS_MIN is not None:
+                self.eps_min = custom_env.EPS_MIN
             else:
                 self.eps_min = 0.0
 
@@ -562,7 +562,7 @@ class TabularMethods:
                     video_callable=lambda episode_id: episode_id == 0 or (i + 1) % (self.episodes // 10) == 0
                 )
 
-            Q = TabularMethods.init_q(self.states, self.action_space_size, self.custom_env_object.file_name, pickle)
+            Q = TabularMethods.init_q(self.states, self.action_space_size, self.custom_env.file_name, pickle)
 
             accumulated_scores = 0
 
@@ -575,7 +575,7 @@ class TabularMethods:
 
                 observation = self.env.reset()
 
-                s = self.custom_env_object.get_state(observation)
+                s = self.custom_env.get_state(observation)
                 a = TabularMethods.eps_greedy_q(Q, s, self.action_space_size, self.EPS, self.env)
 
                 if visualize and i == self.episodes - 1:
@@ -587,7 +587,7 @@ class TabularMethods:
                     ep_score += reward
                     accumulated_scores += reward
 
-                    s_ = self.custom_env_object.get_state(observation_)
+                    s_ = self.custom_env.get_state(observation_)
                     a_ = TabularMethods.eps_greedy_q(Q, s_, self.action_space_size, self.EPS, self.env)
                     Q[s, a] += self.ALPHA * (reward + self.GAMMA * Q[s_, a_] - Q[s, a])
 
@@ -611,7 +611,7 @@ class TabularMethods:
             print('\n', 'Game Ended', '\n')
 
             if pickle:
-                utils.SaverLoader.pickle_save(Q, self.custom_env_object.file_name + '-q-table')
+                utils.SaverLoader.pickle_save(Q, self.custom_env.file_name + '-q-table')
 
             return Q, self.totalScores, self.totalAccumulatedScores
 
@@ -622,7 +622,7 @@ class TabularMethods:
                     video_callable=lambda episode_id: episode_id == 0 or episode_id == (self.episodes - 1)
                 )
 
-            Q = TabularMethods.init_q(self.states, self.action_space_size, self.custom_env_object.file_name, pickle)
+            Q = TabularMethods.init_q(self.states, self.action_space_size, self.custom_env.file_name, pickle)
 
             accumulated_scores = 0
 
@@ -635,7 +635,7 @@ class TabularMethods:
 
                 observation = self.env.reset()
 
-                s = self.custom_env_object.get_state(observation)
+                s = self.custom_env.get_state(observation)
 
                 if visualize and i == self.episodes - 1:
                     self.env.render()
@@ -648,7 +648,7 @@ class TabularMethods:
                     ep_score += reward
                     accumulated_scores += reward
 
-                    s_ = self.custom_env_object.get_state(observation_)
+                    s_ = self.custom_env.get_state(observation_)
                     expected_value = np.mean(np.array([Q[s_, a] for a in range(self.action_space_size)]))
                     Q[s, a] += self.ALPHA * (reward + self.GAMMA * expected_value - Q[s, a])
 
@@ -672,7 +672,7 @@ class TabularMethods:
             print('\n', 'Game Ended', '\n')
 
             if pickle:
-                utils.SaverLoader.pickle_save(Q, self.custom_env_object.file_name + '-q-table')
+                utils.SaverLoader.pickle_save(Q, self.custom_env.file_name + '-q-table')
 
             return Q, self.totalScores, self.totalAccumulatedScores
 
@@ -683,7 +683,7 @@ class TabularMethods:
                     video_callable=lambda episode_id: episode_id == 0 or episode_id == (self.episodes - 1)
                 )
 
-            Q = TabularMethods.init_q(self.states, self.action_space_size, self.custom_env_object.file_name, pickle)
+            Q = TabularMethods.init_q(self.states, self.action_space_size, self.custom_env.file_name, pickle)
 
             accumulated_scores = 0
 
@@ -696,7 +696,7 @@ class TabularMethods:
 
                 observation = self.env.reset()
 
-                s = self.custom_env_object.get_state(observation)
+                s = self.custom_env.get_state(observation)
 
                 if visualize and i == self.episodes - 1:
                     self.env.render()
@@ -709,7 +709,7 @@ class TabularMethods:
                     ep_score += reward
                     accumulated_scores += reward
 
-                    s_ = self.custom_env_object.get_state(observation_)
+                    s_ = self.custom_env.get_state(observation_)
                     a_ = utils.ActionChooser.get_max_action_from_q_table(Q, s_, self.action_space_size)
                     Q[s, a] += self.ALPHA * (reward + self.GAMMA * Q[s_, a_] - Q[s, a])
                     # Q[s, a] += self.ALPHA * (reward + self.GAMMA * np.max(Q[s_, :]) - Q[s, a])  # if Q is a numpy.ndarray
@@ -734,7 +734,7 @@ class TabularMethods:
             print('\n', 'Game Ended', '\n')
 
             if pickle:
-                utils.SaverLoader.pickle_save(Q, self.custom_env_object.file_name + '-q-table')
+                utils.SaverLoader.pickle_save(Q, self.custom_env.file_name + '-q-table')
 
             return Q, self.totalScores, self.totalAccumulatedScores
 
@@ -758,7 +758,7 @@ class TabularMethods:
 
                 observation = self.env.reset()
 
-                s = self.custom_env_object.get_state(observation)
+                s = self.custom_env.get_state(observation)
 
                 if visualize and i == self.episodes - 1:
                     self.env.render()
@@ -771,7 +771,7 @@ class TabularMethods:
                     ep_score += reward
                     accumulated_scores += reward
 
-                    s_ = self.custom_env_object.get_state(observation_)
+                    s_ = self.custom_env.get_state(observation_)
                     rand = np.random.random()
                     if rand <= 0.5:
                         a_ = TabularMethods.max_action_q1_q2(Q1, Q1, s_, self.action_space_size)
