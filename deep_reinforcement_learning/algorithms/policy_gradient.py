@@ -6,6 +6,7 @@ set_random_seed(28)
 import os
 from gym import wrappers
 import numpy as np
+import datetime
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -454,7 +455,8 @@ class Agent(object):
 
 
 def train(custom_env, agent, n_episodes,
-          enable_models_saving, load_checkpoint, ep_batch_num=1,
+          enable_models_saving, load_checkpoint,
+          ep_batch_num=1, save_checkpoint=10,
           visualize=False, record=False):
 
     scores_history = []
@@ -479,9 +481,11 @@ def train(custom_env, agent, n_episodes,
             video_callable=lambda episode_id: episode_id == 0 or episode_id == (n_episodes - 1)
         )
 
-    print('\n', 'Game Started', '\n')
+    print('\n', 'Training Started', '\n')
+    start_time = datetime.datetime.now()
 
-    for i in range(episode_index + 1, n_episodes):
+    starting_ep = episode_index + 1
+    for i in range(starting_ep, n_episodes):
         done = False
         ep_score = 0
 
@@ -505,23 +509,25 @@ def train(custom_env, agent, n_episodes,
 
         scores_history.append(ep_score)
 
-        if (i + 1) % ep_batch_num == 0:
-            agent.learn()
-            if enable_models_saving:
-                episode_index = i
-                utils.SaverLoader.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
-                utils.SaverLoader.pickle_save(scores_history, 'scores_history_train', agent.chkpt_dir)
-                agent.save_models()
-
         avg_num = custom_env.window
         if ep_batch_num > avg_num:
             avg_num = ep_batch_num
         utils.Printer.print_training_progress(i, ep_score, scores_history, avg_num)
 
+        if (i + 1) % ep_batch_num == 0:
+            agent.learn()
+            if enable_models_saving and (i + 1) % (ep_batch_num * save_checkpoint) == 0:
+                episode_index = i
+                utils.SaverLoader.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
+                utils.SaverLoader.pickle_save(scores_history, 'scores_history_train', agent.chkpt_dir)
+                agent.save_models()
+
         if visualize and i == n_episodes - 1:
             env.close()
 
-    print('\n', 'Game Ended', '\n')
+    end_time = datetime.datetime.now()
+    duration = end_time - start_time
+    print('\n', 'Training Ended ~~~ Episodes: %d ~~~ Duration: %s' % (n_episodes - starting_ep, duration), '\n')
 
     return scores_history
 

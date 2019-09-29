@@ -2,6 +2,7 @@ import os
 
 from IPython.display import clear_output
 import time
+import datetime
 import pickle
 
 import matplotlib.pyplot as plt
@@ -170,8 +171,6 @@ class Printer:
                   'average score %.3f ;' % avg_score,
                   eps_string)
 
-        print('')
-
     @staticmethod
     def print_v(V):
         print('\n', 'V table', '\n')
@@ -268,7 +267,7 @@ class DeviceSetUtils:
         if devices_dict is not None:
             gpu_options = tf.GPUOptions(allow_growth=True)  # starts with allocating an approximated amount of GPU memory, and expands if necessary
             # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)  # set the fraction of GPU memory to be allocated
-            config = tf.ConfigProto(device_count=devices_dict, gpu_options=gpu_options, log_device_placement=True)  # log device placement tells which device is used.
+            config = tf.ConfigProto(device_count=devices_dict, gpu_options=gpu_options, log_device_placement=False)  # log device placement tells which device is used.
             # config.gpu_options.allow_growth = True
             # config.gpu_options.per_process_gpu_memory_fraction = 0.5
             sess = tf.Session(config=config)
@@ -412,13 +411,13 @@ class Tester:
     @staticmethod
     def test_method(custom_env_object, episodes, choose_action):
         env = custom_env_object.env
-
+        print('\n', 'Test Started', '\n')
+        start_time = datetime.datetime.now()
         total_scores = np.zeros(episodes)
         total_accumulated_scores = np.zeros(episodes)
         accumulated_score = 0
         eval = custom_env_object.get_evaluation_tuple()
         for i in range(episodes):
-            print('\n', 'Starting Episode %d' % (i + 1), '\n')
             done = False
             ep_steps = 0
             ep_score = 0
@@ -435,26 +434,33 @@ class Tester:
                 observation, s = observation_, s_
             total_scores[i] = ep_score
             total_accumulated_scores[i] = accumulated_score
-        print('\n', 'Game Ended', '\n')
+            Printer.print_training_progress(i, ep_score, total_scores, custom_env_object.window)
+        end_time = datetime.datetime.now()
+        duration = end_time - start_time
+        print('\n', 'Test Ended ~~~ Episodes: %d ~~~ Duration: %s' % (episodes, duration), '\n')
         custom_env_object.analyze_evaluation_tuple(eval, episodes)
         return total_scores, total_accumulated_scores
 
     @staticmethod
     def test_q_table(custom_env_object, Q, episodes=1000):
-        Tester.test_method(
+        return Tester.test_method(
             custom_env_object, episodes,
             lambda s: ActionChooser.get_max_action_from_q_table(Q, s, custom_env_object.env.action_space.n)
         )
 
     @staticmethod
     def test_policy(custom_env_object, policy, episodes=1000):
-        Tester.test_method(custom_env_object, episodes,
-                           lambda s: policy[s])
+        return Tester.test_method(custom_env_object, episodes,
+                                  lambda s: policy[s])
 
     @staticmethod
-    def test_trained_agent(custom_env_object, agent, episodes=1000):
-        Tester.test_method(custom_env_object, episodes,
-                           lambda s: agent.choose_action(s))
+    def test_trained_agent(custom_env_object, agent, enable_models_saving, episodes=1000):
+        total_scores, total_accumulated_scores = Tester.test_method(
+            custom_env_object, episodes,
+            lambda s: agent.choose_action(s))
+        if enable_models_saving:
+            SaverLoader.pickle_save(total_scores, 'scores_history_test', agent.chkpt_dir)
+        return total_scores, total_accumulated_scores
 
 
 class Watcher:
@@ -658,9 +664,9 @@ class General:
 
         episodes = 'N-' + str(episodes)  # n_episodes
 
-        plot_file_name = env + gamma + fc_layers_dims + \
+        file_name = env + gamma + fc_layers_dims + \
                          optimizer + alpha + beta + \
                          eps + replay_buffer + ep_batch_num + episodes
 
-        return plot_file_name
+        return file_name
 
