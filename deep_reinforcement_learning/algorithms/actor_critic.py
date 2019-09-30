@@ -684,7 +684,7 @@ def train(custom_env, agent, n_episodes,
 
     end_time = datetime.datetime.now()
     duration = end_time - start_time
-    print('\n', 'Training Ended ~~~ Episodes: %d ~~~ Duration: %s' % (n_episodes - starting_ep, duration), '\n')
+    print('\n', 'Training Ended ~~~ Episodes: %d ~~~ Runtime: %s' % (n_episodes - starting_ep, duration), '\n')
 
     return scores_history
 

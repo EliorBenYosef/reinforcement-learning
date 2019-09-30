@@ -437,7 +437,7 @@ class Tester:
             Printer.print_training_progress(i, ep_score, total_scores, custom_env.window)
         end_time = datetime.datetime.now()
         duration = end_time - start_time
-        print('\n', 'Test Ended ~~~ Episodes: %d ~~~ Duration: %s' % (episodes, duration), '\n')
+        print('\n', 'Test Ended ~~~ Episodes: %d ~~~ Runtime: %s' % (episodes, duration), '\n')
         custom_env.analyze_evaluation_tuple(eval, episodes)
         return total_scores, total_accumulated_scores
 
