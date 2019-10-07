@@ -482,7 +482,7 @@ def train(custom_env, agent, n_episodes,
         )
 
     print('\n', 'Training Started', '\n')
-    start_time = datetime.datetime.now()
+    train_start_time = datetime.datetime.now()
 
     starting_ep = episode_index + 1
     for i in range(starting_ep, n_episodes):
@@ -525,9 +525,8 @@ def train(custom_env, agent, n_episodes,
         if visualize and i == n_episodes - 1:
             env.close()
 
-    end_time = datetime.datetime.now()
-    duration = end_time - start_time
-    print('\n', 'Training Ended ~~~ Episodes: %d ~~~ Runtime: %s' % (n_episodes - starting_ep, duration), '\n')
+    print('\n', 'Training Ended ~~~ Episodes: %d ~~~ Runtime: %s' %
+          (n_episodes - starting_ep, datetime.datetime.now() - train_start_time), '\n')
 
     return scores_history
 

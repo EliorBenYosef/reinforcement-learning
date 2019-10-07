@@ -154,7 +154,7 @@ class Printer:
         print('episode: %d ;' % (i + 1), 'score: %d' % ep_score)  # score: %.2f
 
         eps_string = ''
-        if eps:
+        if eps is not None:
             eps_string = 'epsilon %.3f' % eps  # %.4f
 
         if trailing and (i + 1) >= avg_num:
@@ -435,9 +435,8 @@ class Tester:
             total_scores[i] = ep_score
             total_accumulated_scores[i] = accumulated_score
             Printer.print_training_progress(i, ep_score, total_scores, custom_env.window)
-        end_time = datetime.datetime.now()
-        duration = end_time - start_time
-        print('\n', 'Test Ended ~~~ Episodes: %d ~~~ Runtime: %s' % (episodes, duration), '\n')
+        print('\n', 'Test Ended ~~~ Episodes: %d ~~~ Runtime: %s' %
+              (episodes, datetime.datetime.now() - start_time), '\n')
         custom_env.analyze_evaluation_tuple(eval, episodes)
         return total_scores, total_accumulated_scores
 
