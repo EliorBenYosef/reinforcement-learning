@@ -208,20 +208,10 @@ class Envs:
 
         @staticmethod
         def stack_frames(stacked_frames, frame):  # to get a sense of motion. observation == frame, prev s == stacked_frames
-            buffer_size = Envs.Atari.frames_stack_size
-
-            if stacked_frames is None:  # at the start of the episode
-                stacked_frames = np.zeros((buffer_size, *frame.shape))
-                for i, _ in enumerate(stacked_frames):
-                    stacked_frames[i, :] = frame
-
-            else:  # not the beginning of the episode
-                stacked_frames = stacked_frames.reshape((buffer_size, *frame.shape))  # for being able to edit it
-                stacked_frames[0:buffer_size - 1, :] = stacked_frames[1:, :]  # shift the set of frames down (-1 index), the bottom frame gets overwriten
-                stacked_frames[buffer_size - 1, :] = frame  # append the current frame to the top (end of the array \ stack)
-
-            stacked_frames = stacked_frames.reshape((*frame.shape[0:2], buffer_size))  # for being able to feed it to the NN
-
+            if stacked_frames is None:  # start of the episode: duplicate frame
+                stacked_frames = np.repeat(frame, repeats=Envs.Atari.frames_stack_size, axis=2)
+            else:  # remove first frame, and add frame to the end
+                stacked_frames = np.concatenate((stacked_frames[:, :, 1:], frame), axis=2)
             return stacked_frames
 
         class Breakout(BaseEnv):
@@ -258,7 +248,7 @@ class Envs:
                 if self.image_channels == Envs.Atari.IMAGE_CHANNELS_RGB:
                     return cropped_observation
                 else:
-                    return np.mean(cropped_observation, axis=2)  # .reshape((*self.relevant_screen_size, 1))
+                    return np.mean(cropped_observation, axis=2)[:, :, np.newaxis]  # .reshape((*self.relevant_screen_size, 1))
 
         class SpaceInvaders(BaseEnv):
 
@@ -298,7 +288,7 @@ class Envs:
                 if self.image_channels == Envs.Atari.IMAGE_CHANNELS_RGB:
                     return cropped_observation
                 else:
-                    return np.mean(cropped_observation, axis=2)  # .reshape((*self.relevant_screen_size, 1))
+                    return np.mean(cropped_observation, axis=2)[:, :, np.newaxis]  # .reshape((*self.relevant_screen_size, 1))
 
             @staticmethod
             def update_reward(reward, done, info):
