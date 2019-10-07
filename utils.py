@@ -191,6 +191,21 @@ class Printer:
             a = policy[s]
             print('s', s, 'a', a, ' - ', '%.3f' % Q[s, a])
 
+    @staticmethod
+    def keras_print_model_info(keras_model):
+        # model's params number
+        print('Model info - total params: %d ; layers params: %s' % (
+            keras_model.count_params(), [layer.count_params() for layer in keras_model.layers]
+        ))
+
+        # # model's weights and biases
+        # print('model weights', '\n', model.weights, '\n')
+        # print("model layers' weights and biases:", '\n', [layer.get_weights() for layer in model.layers], '\n')
+        # for layer in model.layers:
+        #     weights, biases = layer.get_weights()
+        #     print("Layer's weights", '\n', weights, '\n')
+        #     print("Layer's biases", '\n', biases, '\n')
+
 
 class DeviceGetUtils:
 
