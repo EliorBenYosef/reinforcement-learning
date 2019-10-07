@@ -209,10 +209,9 @@ class Envs:
         @staticmethod
         def stack_frames(stacked_frames, frame):  # to get a sense of motion. observation == frame, prev s == stacked_frames
             if stacked_frames is None:  # start of the episode: duplicate frame
-                stacked_frames = np.repeat(frame, repeats=Envs.Atari.frames_stack_size, axis=2)
+                return np.repeat(frame, repeats=Envs.Atari.frames_stack_size, axis=2)
             else:  # remove first frame, and add frame to the end
-                stacked_frames = np.concatenate((stacked_frames[:, :, 1:], frame), axis=2)
-            return stacked_frames
+                return np.concatenate((stacked_frames[:, :, 1:], frame), axis=2)
 
         class Breakout(BaseEnv):
 

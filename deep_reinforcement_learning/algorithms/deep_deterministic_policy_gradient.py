@@ -653,7 +653,7 @@ def train(custom_env, agent, n_episodes,
             a = agent.choose_action(s, training_mode=True)
             observation_, r, done, info = env.step(a)
             r = custom_env.update_reward(r, done, info)
-            s_ = custom_env.get_state(observation_, s.copy())
+            s_ = custom_env.get_state(observation_, s)
             ep_score += r
             agent.store_transition(s, a, r, s_, done)
             agent.learn()

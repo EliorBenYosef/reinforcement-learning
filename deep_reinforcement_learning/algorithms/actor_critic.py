@@ -661,7 +661,7 @@ def train(custom_env, agent, n_episodes,
             a = agent.choose_action(s)
             observation_, r, done, info = env.step(a)
             r = custom_env.update_reward(r, done, info)
-            s_ = custom_env.get_state(observation_, s.copy())
+            s_ = custom_env.get_state(observation_, s)
             ep_score += r
             agent.learn(s, a, r, s_, done)
             observation, s = observation_, s_

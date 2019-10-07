@@ -486,7 +486,7 @@ def load_up_agent_memory_with_random_gameplay(custom_env, agent, n_episodes=None
             a = np.random.choice(custom_env.action_space)
             observation_, r, done, info = custom_env.env.step(a)
             r = custom_env.update_reward(r, done, info)
-            s_ = custom_env.get_state(observation_, s.copy())
+            s_ = custom_env.get_state(observation_, s)
             agent.store_transition(s, a, r, s_, done)
             observation, s = observation_, s_
 
@@ -542,7 +542,7 @@ def train(custom_env, agent, n_episodes, perform_random_gameplay,
             a = agent.choose_action(s)
             observation_, r, done, info = env.step(a)
             r = custom_env.update_reward(r, done, info)
-            s_ = custom_env.get_state(observation_, s.copy())
+            s_ = custom_env.get_state(observation_, s)
             ep_score += r
             agent.store_transition(s, a, r, s_, done)
             agent.learn_wrapper()
