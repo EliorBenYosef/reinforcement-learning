@@ -388,7 +388,7 @@ class Calculator:
 
     @staticmethod
     def calc_conv_layer_output_dim(Dimension, Filter, Padding, Stride):
-        return (Dimension - Filter + 2 * Padding) / Stride + 1
+        return (Dimension - Filter + 2 * Padding) // Stride + 1
 
     @staticmethod
     def calc_conv_layer_output_dims(Height, Width, Filter, Padding, Stride):
