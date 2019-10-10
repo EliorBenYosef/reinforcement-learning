@@ -384,11 +384,11 @@ class AC(object):
             self.update_target_networks_params()
 
         def load_model_file(self):
-            print("...Loading tf checkpoint...")
+            print("...Loading TF checkpoint...")
             self.saver.restore(self.sess, self.checkpoint_file)
 
         def save_model_file(self):
-            print("...Saving tf checkpoint...")
+            print("...Saving TF checkpoint...")
             self.saver.save(self.sess, self.checkpoint_file)
 
     class AC_Torch(object):
@@ -544,10 +544,11 @@ class OUActionNoise(object):
 
 class Agent(object):
 
-    def __init__(self, custom_env, fc_layers_dims=(400, 300),  # paper
-                 optimizer_type=utils.Optimizers.OPTIMIZER_Adam, lr_actor=0.0001, lr_critic=0.001, tau=0.001,  # paper
+    def __init__(self, custom_env, fc_layers_dims=(400, 300), tau=0.001,  # paper
+                 optimizer_type=utils.Optimizers.OPTIMIZER_Adam, lr_actor=0.0001, lr_critic=0.001,  # paper
                  memory_size=None, memory_batch_size=None,
-                 device_type=None, lib_type=utils.LIBRARY_TF):
+                 device_type=None, lib_type=utils.LIBRARY_TF,
+                 base_dir=''):
 
         self.GAMMA = 0.99  # paper
         self.fc_layers_dims = fc_layers_dims
@@ -568,7 +569,8 @@ class Agent(object):
 
         # sub_dir = utils.General.get_file_name(None, self, self.BETA, replay_buffer=True) + '/'
         sub_dir = ''
-        self.chkpt_dir = 'tmp/' + custom_env.file_name + '/DDPG/' + sub_dir
+        self.chkpt_dir = base_dir + sub_dir
+        utils.General.make_sure_dir_exists(self.chkpt_dir)
 
         if lib_type == utils.LIBRARY_TF:
             self.ac = AC.AC_TF(custom_env, fc_layers_dims,
@@ -608,7 +610,8 @@ class Agent(object):
 
 
 def train(custom_env, agent, n_episodes,
-          enable_models_saving, load_checkpoint, save_checkpoint=25,
+          save_checkpoint,
+          enable_models_saving, load_checkpoint,
           visualize=False, record=False):
 
     scores_history = []
@@ -638,6 +641,8 @@ def train(custom_env, agent, n_episodes,
 
     starting_ep = episode_index + 1
     for i in range(starting_ep, n_episodes):
+        ep_start_time = datetime.datetime.now()
+
         done = False
         ep_score = 0
 
@@ -664,13 +669,15 @@ def train(custom_env, agent, n_episodes,
 
         scores_history.append(ep_score)
 
-        utils.Printer.print_training_progress(i, ep_score, scores_history, custom_env.window)
+        utils.Printer.print_training_progress(i, ep_score, scores_history, avg_num=custom_env.window, ep_start_time=ep_start_time)
 
         if enable_models_saving and (i + 1) % save_checkpoint == 0:
+            save_start_time = datetime.datetime.now()
             episode_index = i
             utils.SaverLoader.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
             utils.SaverLoader.pickle_save(scores_history, 'scores_history_train', agent.chkpt_dir)
             agent.save_models()
+            print('Save time: %s' % (datetime.datetime.now() - save_start_time))
 
         if visualize and i == n_episodes - 1:
             env.close()
@@ -712,6 +719,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
         n_episodes = 1000
 
     tau = 0.001
+    save_checkpoint = 25
 
     if custom_env.is_discrete_action_space:
         print('\n', "Environment's Action Space should be continuous!", '\n')
@@ -725,22 +733,28 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
 
     # utils.DeviceSetUtils.set_device(lib_type)
 
-    agent = Agent(
-        custom_env, fc_layers_dims, optimizer_type, alpha, beta, tau,
-        memory_batch_size=custom_env.memory_batch_size, lib_type=lib_type
-    )
+    method_name = 'DDPG'
+    base_dir = 'tmp/' + custom_env.file_name + '/' + method_name + '/'
 
-    scores_history = train(custom_env, agent, n_episodes, enable_models_saving, load_checkpoint)
+    agent = Agent(custom_env, fc_layers_dims, tau,
+                  optimizer_type, alpha, beta,
+                  memory_batch_size=custom_env.memory_batch_size, lib_type=lib_type, base_dir=base_dir)
 
+    scores_history = train(custom_env, agent, n_episodes,
+                           save_checkpoint,
+                           enable_models_saving, load_checkpoint)
     utils.Plotter.plot_running_average(
-        custom_env.name, 'DDPG', scores_history, window=custom_env.window, show=False,
-        file_name=utils.General.get_file_name(custom_env.file_name, agent, n_episodes, 'DDPG'),
+        custom_env.name, method_name, scores_history, window=custom_env.window, show=False,
+        file_name=utils.General.get_file_name(custom_env.file_name, agent, n_episodes, method_name) + '_train',
         directory=agent.chkpt_dir if enable_models_saving else None
     )
 
-    scores_history_test = utils.Tester.test_trained_agent(custom_env, agent)
-    if enable_models_saving:
-        utils.SaverLoader.pickle_save(scores_history_test, 'scores_history_test', agent.chkpt_dir)
+    # scores_history_test = utils.Tester.test_trained_agent(custom_env, agent, enable_models_saving)
+    # utils.Plotter.plot_running_average(
+    #     custom_env.name, method_name, scores_history_test, window=custom_env.window, show=False,
+    #     file_name=utils.General.get_file_name(custom_env.file_name, agent, n_episodes, method_name) + '_test',
+    #     directory=agent.chkpt_dir if enable_models_saving else None
+    # )
 
 
 if __name__ == '__main__':

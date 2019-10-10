@@ -8,10 +8,10 @@ import tensorflow as tf
 import utils
 from deep_reinforcement_learning.envs import Envs
 
-from deep_reinforcement_learning.algorithms.deep_q_learning import Agent, train
-# from deep_reinforcement_learning.algorithms.policy_gradient import Agent, train
-# from deep_reinforcement_learning.algorithms.actor_critic import Agent, train
-# from deep_reinforcement_learning.algorithms.deep_deterministic_policy_gradient import Agent, train
+from .algorithms.deep_q_learning import Agent, train
+# from .algorithms.policy_gradient import Agent, train
+# from .algorithms.actor_critic import Agent, train
+# from .algorithms.deep_deterministic_policy_gradient import Agent, train
 
 
 def perform_grid_search(lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_checkpoint=False,
@@ -21,6 +21,8 @@ def perform_grid_search(lib_type=utils.LIBRARY_TF, enable_models_saving=False, l
     custom_env.env.seed(28)
 
     # utils.DeviceSetUtils.set_device(lib_type)
+
+    method_name = 'DQL'
 
     n_episodes = 3000
 
@@ -126,21 +128,19 @@ def perform_grid_search(lib_type=utils.LIBRARY_TF, enable_models_saving=False, l
                                                                    enable_models_saving, load_checkpoint)
                                             scores_histories_train.append(scores_history)
 
-                                            scores_history_test = utils.Tester.test_trained_agent(custom_env, agent)
-                                            if enable_models_saving:
-                                                utils.SaverLoader.pickle_save(scores_history_test, 'scores_history_test',
-                                                                  agent.chkpt_dir)
-                                            scores_histories_test.append(scores_history_test)
+                                            # scores_history_test = utils.Tester.test_trained_agent(
+                                            #     custom_env, agent, enable_models_saving)
+                                            # scores_histories_test.append(scores_history_test)
 
                                             tf.reset_default_graph()
 
     utils.Plotter.plot_running_average_comparison(
         custom_env.name, scores_histories_train, labels, window=custom_env.window, show=False,
-        file_name=custom_env.file_name + '_dql_train'
+        file_name=custom_env.file_name + '_' + method_name + '_train'
     )
     utils.Plotter.plot_running_average_comparison(
         custom_env.name, scores_histories_test, labels, window=custom_env.window, show=False,
-        file_name=custom_env.file_name + '_dql_test'
+        file_name=custom_env.file_name + '_' + method_name + '_test'
     )
 
 

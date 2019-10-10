@@ -150,8 +150,12 @@ class Printer:
             count += tick
 
     @staticmethod
-    def print_training_progress(i, ep_score, scores_history, avg_num, trailing=True, eps=None):
-        print('episode: %d ;' % (i + 1), 'score: %d' % ep_score)  # score: %.2f
+    def print_training_progress(i, ep_score, scores_history, avg_num, ep_start_time=None, trailing=True, eps=None):
+        time_string = ''
+        if ep_start_time is not None:
+            time_string = '; runtime: %s' % (datetime.datetime.now() - ep_start_time)
+
+        print('Episode: %d ;' % (i + 1), 'score: %d' % ep_score, time_string)  # score: %.2f
 
         eps_string = ''
         if eps is not None:
@@ -280,7 +284,7 @@ class DeviceSetUtils:
     @staticmethod
     def tf_get_session_according_to_device(devices_dict):
         if devices_dict is not None:
-            gpu_options = tf.GPUOptions(allow_growth=True)  # starts with allocating an approximated amount of GPU memory, and expands if necessary
+            gpu_options = tf.GPUOptions(allow_growth=True)  # limits session memory usage. starts with allocating an approximated amount of GPU memory, and expands if necessary
             # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)  # set the fraction of GPU memory to be allocated
             config = tf.ConfigProto(device_count=devices_dict, gpu_options=gpu_options, log_device_placement=False)  # log device placement tells which device is used.
             # config.gpu_options.allow_growth = True
@@ -294,6 +298,7 @@ class DeviceSetUtils:
     def keras_set_session_according_to_device(device_map):
         # call this function after importing keras if you are working on a machine.
         keras_set_session(DeviceSetUtils.tf_get_session_according_to_device(device_map))
+        # keras_tensorflow_backend.set_session(DeviceSetUtils.tf_get_session_according_to_device(device_map))
 
     @staticmethod
     def torch_get_device_according_to_device_type(device_str):  # e.g.: 'cpu' \ 'gpu' \ 'cuda:1'
@@ -344,6 +349,7 @@ class Optimizers:
             return optimizers.Adadelta(lr)
         elif optimizer_type == Optimizers.OPTIMIZER_RMSprop:
             return optimizers.RMSprop(lr)
+            # return optimizers.RMSprop(lr, epsilon=0.1, rho=0.99)
             # return optimizers.RMSprop(lr=lr, decay=0.99, momentum=0.0, epsilon=1e-6)
         else:  # optimizer_type == Optimizers.OPTIMIZER_Adam
             return optimizers.Adam(lr)
@@ -684,3 +690,7 @@ class General:
 
         return file_name
 
+    @staticmethod
+    def make_sure_dir_exists(dir):
+        if not os.path.exists(dir):
+            os.makedirs(dir)

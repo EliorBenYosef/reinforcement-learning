@@ -217,12 +217,12 @@ class DNN(object):
             return actor, critic, policy
 
         def load_model_file(self):
-            print("...Loading keras h5...")
+            print("...Loading Keras h5...")
             self.actor = models.load_model(self.h5_file_actor)
             self.critic = models.load_model(self.h5_file_critic)
 
         def save_model_file(self):
-            print("...Saving keras h5...")
+            print("...Saving Keras h5...")
             self.actor.save(self.h5_file_actor)
             self.critic.save(self.h5_file_critic)
 
@@ -244,9 +244,11 @@ class DNN(object):
             self.to(self.device)
 
         def load_model_file(self):
+            print("...Loading Torch file...")
             self.load_state_dict(T.load(self.model_file))
 
         def save_model_file(self):
+            print("...Saving Torch file...")
             T.save(self.state_dict(), self.model_file)
 
         def build_network(self):
@@ -414,11 +416,11 @@ class AC(object):
                 self.actor_critic.train(s, td_error, a)
 
         def load_model_file(self):
-            print("...Loading tf checkpoint...")
+            print("...Loading TF checkpoint...")
             self.saver.restore(self.sess, self.checkpoint_file)
 
         def save_model_file(self):
-            print("...Saving tf checkpoint...")
+            print("...Saving TF checkpoint...")
             self.saver.save(self.sess, self.checkpoint_file)
 
     class AC_Keras(object):
@@ -480,11 +482,11 @@ class AC(object):
             self.dnn.critic.fit(s, v_target, verbose=0)
 
         def load_model_file(self):
-            print("...Loading tf checkpoint...")
+            print("...Loading Keras models...")
             self.dnn.load_model_file()
 
         def save_model_file(self):
-            print("...Saving tf checkpoint...")
+            print("...Saving Keras models...")
             self.dnn.save_model_file()
 
     class AC_Torch(object):
@@ -562,7 +564,7 @@ class AC(object):
                 self.actor_critic.optimizer.step()
 
         def load_model_file(self):
-            print("...Loading torch models...")
+            print("...Loading Torch models...")
             if self.ac.network_type == NETWORK_TYPE_SEPARATE:
                 self.actor.load_model_file()
                 self.critic.load_model_file()
@@ -570,7 +572,7 @@ class AC(object):
                 self.actor_critic.load_model_file()
 
         def save_model_file(self):
-            print("...Saving torch models...")
+            print("...Saving Torch models...")
             if self.ac.network_type == NETWORK_TYPE_SEPARATE:
                 self.actor.save_model_file()
                 self.critic.save_model_file()
@@ -582,7 +584,8 @@ class Agent(object):
 
     def __init__(self, custom_env, fc_layers_dims=(400, 300),
                  optimizer_type=utils.Optimizers.OPTIMIZER_Adam, lr_actor=0.0001, lr_critic=None,
-                 device_type=None, lib_type=utils.LIBRARY_TF):
+                 device_type=None, lib_type=utils.LIBRARY_TF,
+                 base_dir=''):
 
         self.GAMMA = custom_env.GAMMA
         self.fc_layers_dims = fc_layers_dims
@@ -593,7 +596,8 @@ class Agent(object):
 
         # sub_dir = utils.General.get_file_name(None, self, self.BETA) + '/'
         sub_dir = ''
-        self.chkpt_dir = 'tmp/' + custom_env.file_name + '/AC/' + sub_dir
+        self.chkpt_dir = base_dir + sub_dir
+        utils.General.make_sure_dir_exists(self.chkpt_dir)
 
         network_type = NETWORK_TYPE_SHARED if (lr_critic is None or lib_type == utils.LIBRARY_KERAS) else NETWORK_TYPE_SEPARATE
         ac_base = AC(custom_env, fc_layers_dims, optimizer_type, lr_actor, lr_critic, network_type, self.chkpt_dir)
@@ -618,7 +622,8 @@ class Agent(object):
 
 
 def train(custom_env, agent, n_episodes,
-          enable_models_saving, load_checkpoint, save_checkpoint=25,
+          save_checkpoint,
+          enable_models_saving, load_checkpoint,
           visualize=False, record=False):
 
     scores_history = []
@@ -648,6 +653,8 @@ def train(custom_env, agent, n_episodes,
 
     starting_ep = episode_index + 1
     for i in range(starting_ep, n_episodes):
+        ep_start_time = datetime.datetime.now()
+
         done = False
         ep_score = 0
 
@@ -671,13 +678,15 @@ def train(custom_env, agent, n_episodes,
 
         scores_history.append(ep_score)
 
-        utils.Printer.print_training_progress(i, ep_score, scores_history, custom_env.window)
+        utils.Printer.print_training_progress(i, ep_score, scores_history, avg_num=custom_env.window, ep_start_time=ep_start_time)
 
         if enable_models_saving and (i + 1) % save_checkpoint == 0:
+            save_start_time = datetime.datetime.now()
             episode_index = i
             utils.SaverLoader.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
             utils.SaverLoader.pickle_save(scores_history, 'scores_history_train', agent.chkpt_dir)
             agent.save_models()
+            print('Save time: %s' % (datetime.datetime.now() - save_start_time))
 
         if visualize and i == n_episodes - 1:
             env.close()
@@ -722,6 +731,8 @@ def play(env_type, lib_type=utils.LIBRARY_TORCH, enable_models_saving=False, loa
         beta = alpha * 2
         n_episodes = 100  # longer than 100 --> instability (because the value function estimation is unstable)
 
+    save_checkpoint = 25
+
     if custom_env.input_type != Envs.INPUT_TYPE_OBSERVATION_VECTOR:
         print('\n', 'Algorithm currently works only with INPUT_TYPE_OBSERVATION_VECTOR!', '\n')
         return
@@ -730,19 +741,28 @@ def play(env_type, lib_type=utils.LIBRARY_TORCH, enable_models_saving=False, loa
 
     # utils.DeviceSetUtils.set_device(lib_type)
 
-    agent = Agent(custom_env, fc_layers_dims, optimizer_type, lr_actor=alpha, lr_critic=beta, lib_type=lib_type)
+    method_name = 'AC'
+    base_dir = 'tmp/' + custom_env.file_name + '/' + method_name + '/'
 
-    scores_history = train(custom_env, agent, n_episodes, enable_models_saving, load_checkpoint)
+    agent = Agent(custom_env, fc_layers_dims,
+                  optimizer_type, lr_actor=alpha, lr_critic=beta,
+                  lib_type=lib_type, base_dir=base_dir)
 
+    scores_history = train(custom_env, agent, n_episodes,
+                           save_checkpoint,
+                           enable_models_saving, load_checkpoint)
     utils.Plotter.plot_running_average(
-        custom_env.name, 'AC', scores_history, window=custom_env.window, show=False,
-        file_name=utils.General.get_file_name(custom_env.file_name, agent, n_episodes, 'AC'),
+        custom_env.name, method_name, scores_history, window=custom_env.window, show=False,
+        file_name=utils.General.get_file_name(custom_env.file_name, agent, n_episodes, method_name) + '_train',
         directory=agent.chkpt_dir if enable_models_saving else None
     )
 
-    scores_history_test = utils.Tester.test_trained_agent(custom_env, agent)
-    if enable_models_saving:
-        utils.SaverLoader.pickle_save(scores_history_test, 'scores_history_test', agent.chkpt_dir)
+    # scores_history_test = utils.Tester.test_trained_agent(custom_env, agent, enable_models_saving)
+    # utils.Plotter.plot_running_average(
+    #     custom_env.name, method_name, scores_history_test, window=custom_env.window, show=False,
+    #     file_name=utils.General.get_file_name(custom_env.file_name, agent, n_episodes, method_name) + '_test',
+    #     directory=agent.chkpt_dir if enable_models_saving else None
+    # )
 
 
 if __name__ == '__main__':

@@ -136,11 +136,11 @@ class DNN(object):
             print('Training Finished')
 
         def load_model_file(self):
-            print("...Loading tf checkpoint...")
+            print("...Loading TF checkpoint...")
             self.saver.restore(self.sess, self.checkpoint_file)
 
         def save_model_file(self):
-            print("...Saving tf checkpoint...")
+            print("...Saving TF checkpoint...")
             self.saver.save(self.sess, self.checkpoint_file)
 
     class DNN_Keras(object):
@@ -224,11 +224,11 @@ class DNN(object):
             print('Training Finished')
 
         def load_model_file(self):
-            print("...Loading keras h5...")
+            print("...Loading Keras h5...")
             self.model = models.load_model(self.h5_file)
 
         def save_model_file(self):
-            print("...Saving keras h5...")
+            print("...Saving Keras h5...")
             self.model.save(self.h5_file)
 
     class DNN_Torch(T.nn.Module):
@@ -323,11 +323,11 @@ class DNN(object):
             print('Training Finished')
 
         def load_model_file(self):
-            print("...Loading torch model...")
+            print("...Loading Torch file...")
             self.load_state_dict(T.load(self.model_file))
 
         def save_model_file(self):
-            print("...Saving torch model...")
+            print("...Saving Torch file...")
             T.save(self.state_dict(), self.model_file)
 
 
@@ -377,7 +377,8 @@ class Agent(object):
 
     def __init__(self, custom_env, fc_layers_dims, ep_batch_num,
                  alpha, optimizer_type=utils.Optimizers.OPTIMIZER_Adam,
-                 lib_type=utils.LIBRARY_TF):
+                 lib_type=utils.LIBRARY_TF,
+                 base_dir=''):
 
         self.GAMMA = custom_env.GAMMA
         self.fc_layers_dims = fc_layers_dims
@@ -395,7 +396,8 @@ class Agent(object):
 
         # sub_dir = utils.General.get_file_name(None, self) + '/'
         sub_dir = ''
-        self.chkpt_dir = 'tmp/' + custom_env.file_name + '/PG/' + sub_dir
+        self.chkpt_dir = base_dir + sub_dir
+        utils.General.make_sure_dir_exists(self.chkpt_dir)
 
         self.policy_dnn = self.init_network(custom_env)
 
@@ -455,8 +457,8 @@ class Agent(object):
 
 
 def train(custom_env, agent, n_episodes,
+          ep_batch_num, save_checkpoint,
           enable_models_saving, load_checkpoint,
-          ep_batch_num=1, save_checkpoint=10,
           visualize=False, record=False):
 
     scores_history = []
@@ -486,6 +488,8 @@ def train(custom_env, agent, n_episodes,
 
     starting_ep = episode_index + 1
     for i in range(starting_ep, n_episodes):
+        ep_start_time = datetime.datetime.now()
+
         done = False
         ep_score = 0
 
@@ -512,15 +516,20 @@ def train(custom_env, agent, n_episodes,
         avg_num = custom_env.window
         if ep_batch_num > avg_num:
             avg_num = ep_batch_num
-        utils.Printer.print_training_progress(i, ep_score, scores_history, avg_num)
+        utils.Printer.print_training_progress(i, ep_score, scores_history, avg_num, ep_start_time=ep_start_time)
 
         if (i + 1) % ep_batch_num == 0:
+            learn_start_time = datetime.datetime.now()
             agent.learn()
+            print('Learn time: %s' % (datetime.datetime.now() - learn_start_time))
+
             if enable_models_saving and (i + 1) % (ep_batch_num * save_checkpoint) == 0:
+                save_start_time = datetime.datetime.now()
                 episode_index = i
                 utils.SaverLoader.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
                 utils.SaverLoader.pickle_save(scores_history, 'scores_history_train', agent.chkpt_dir)
                 agent.save_models()
+                print('Save time: %s' % (datetime.datetime.now() - save_start_time))
 
         if visualize and i == n_episodes - 1:
             env.close()
@@ -536,26 +545,29 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
     if env_type == 0:
         # custom_env = Envs.Box2D.LunarLander()
         custom_env = Envs.ClassicControl.CartPole()
-        fc_layers_dims = [128, 128] if lib_type == utils.LIBRARY_TORCH else [64, 64]
+        fc_layers_dims = (128, 128) if lib_type == utils.LIBRARY_TORCH else (64, 64)
         optimizer_type = utils.Optimizers.OPTIMIZER_Adam
         alpha = 0.001 if lib_type == utils.LIBRARY_TORCH else 0.0005
         ep_batch_num = 1  # REINFORCE algorithm (MC PG)
+        save_checkpoint = 10
         n_episodes = 2000 if lib_type == utils.LIBRARY_KERAS else 2500  # supposed to be enough for good results in PG
 
     elif env_type == 1:
         custom_env = Envs.Atari.Breakout()
-        fc_layers_dims = [256]
+        fc_layers_dims = (256,)
         optimizer_type = utils.Optimizers.OPTIMIZER_RMSprop  # utils.Optimizers.OPTIMIZER_SGD
         alpha = 0.00025
         ep_batch_num = 1  # REINFORCE algorithm (MC PG)
+        save_checkpoint = 10
         n_episodes = 200  # start with 200, then 5000 ?
 
     else:
         custom_env = Envs.Atari.SpaceInvaders()
-        fc_layers_dims = [256]
+        fc_layers_dims = (256,)
         optimizer_type = utils.Optimizers.OPTIMIZER_RMSprop  # utils.Optimizers.OPTIMIZER_SGD
         alpha = 0.001  # 0.003
         ep_batch_num = 10
+        save_checkpoint = 1
         n_episodes = 1000
 
     if not custom_env.is_discrete_action_space:
@@ -566,19 +578,29 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
 
     # utils.DeviceSetUtils.set_device(lib_type)
 
-    agent = Agent(custom_env, fc_layers_dims, ep_batch_num, alpha, optimizer_type=optimizer_type, lib_type=lib_type)
+    method_name = 'PG'
+    base_dir = 'tmp/' + custom_env.file_name + '/' + method_name + '/'
 
-    scores_history = train(custom_env, agent, n_episodes, enable_models_saving, load_checkpoint, ep_batch_num)
+    agent = Agent(custom_env, fc_layers_dims,
+                  ep_batch_num,
+                  alpha, optimizer_type=optimizer_type,
+                  lib_type=lib_type, base_dir=base_dir)
 
+    scores_history = train(custom_env, agent, n_episodes,
+                           ep_batch_num, save_checkpoint,
+                           enable_models_saving, load_checkpoint)
     utils.Plotter.plot_running_average(
-        custom_env.name, 'PG', scores_history, window=custom_env.window, show=False,
-        file_name=utils.General.get_file_name(custom_env.file_name, agent, n_episodes, 'PG'),
+        custom_env.name, method_name, scores_history, window=custom_env.window, show=False,
+        file_name=utils.General.get_file_name(custom_env.file_name, agent, n_episodes, method_name) + '_train',
         directory=agent.chkpt_dir if enable_models_saving else None
     )
 
-    scores_history_test = utils.Tester.test_trained_agent(custom_env, agent)
-    if enable_models_saving:
-        utils.SaverLoader.pickle_save(scores_history_test, 'scores_history_test', agent.chkpt_dir)
+    # scores_history_test = utils.Tester.test_trained_agent(custom_env, agent, enable_models_saving)
+    # utils.Plotter.plot_running_average(
+    #     custom_env.name, method_name, scores_history_test, window=custom_env.window, show=False,
+    #     file_name=utils.General.get_file_name(custom_env.file_name, agent, n_episodes, method_name) + '_test',
+    #     directory=agent.chkpt_dir if enable_models_saving else None
+    # )
 
 
 if __name__ == '__main__':
