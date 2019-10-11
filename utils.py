@@ -404,15 +404,13 @@ class Calculator:
 
     @staticmethod
     def calculate_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA):
-        memory_G = []
+        memory_G = np.zeros_like(memory_r, dtype=np.float32)  # np.float64
         G = 0
-        n = len(memory_r)
-        for reward in reversed(memory_r):
-            if memory_terminal[n - 1 - len(memory_G)]:
+        for i in reversed(range(len(memory_r))):
+            if memory_terminal[i]:
                 G = 0
-            G = GAMMA * G + reward
-            memory_G.append(G)
-        memory_G = np.flip(np.array(memory_G, dtype=np.float64), 0)
+            G = GAMMA * G + memory_r[i]
+            memory_G[i] = G
         memory_G = General.scale_and_normalize(memory_G)
         return memory_G
 
@@ -555,6 +553,31 @@ class SaverLoader:
     def pickle_save(var, file_name, directory=''):
         with open(directory + file_name + '.pkl', 'wb') as file:  # .pickle  # wb = write binary
             pickle.dump(var, file)  # var == [X_train, y_train]
+
+    @staticmethod
+    def load_data(agent, load_checkpoint):
+        scores_history = []
+        episode_index = -1
+        if load_checkpoint:
+            try:
+                agent.load_models()
+                print('...Loading episode_index...')
+                episode_index = SaverLoader.pickle_load('episode_index', agent.chkpt_dir)
+                print('...Loading scores_history...')
+                scores_history = SaverLoader.pickle_load('scores_history_train', agent.chkpt_dir)
+            except (ValueError, tf.OpError, OSError):
+                print('...No models to load...')
+            except FileNotFoundError:
+                print('...No data to load...')
+        return scores_history, episode_index
+
+    @staticmethod
+    def save_data(agent, episode_index, scores_history):
+        save_start_time = datetime.datetime.now()
+        SaverLoader.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
+        SaverLoader.pickle_save(scores_history, 'scores_history_train', agent.chkpt_dir)
+        agent.save_models()
+        print('Save time: %s' % (datetime.datetime.now() - save_start_time))
 
 
 class General:

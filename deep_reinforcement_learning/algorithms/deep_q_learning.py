@@ -378,8 +378,8 @@ class Agent(object):
 
         return dqn
 
-    def store_transition(self, s, a, r, s_, done):
-        self.memory.store_transition(s, a, r, s_, done)
+    def store_transition(self, s, a, r, s_, is_terminal):
+        self.memory.store_transition(s, a, r, s_, is_terminal)
 
     def choose_action(self, s):
         s = s[np.newaxis, :]
@@ -500,19 +500,7 @@ def train(custom_env, agent, n_episodes,
           enable_models_saving, load_checkpoint,
           visualize=False, record=False):
 
-    scores_history = []
-    episode_index = -1
-    if load_checkpoint:
-        try:
-            agent.load_models()
-            print('...Loading episode_index...')
-            episode_index = utils.SaverLoader.pickle_load('episode_index', agent.chkpt_dir)
-            print('...Loading scores_history...')
-            scores_history = utils.SaverLoader.pickle_load('scores_history_train', agent.chkpt_dir)
-        except (ValueError, tf.OpError, OSError):
-            print('...No models to load...')
-        except FileNotFoundError:
-            print('...No data to load...')
+    scores_history, episode_index = utils.SaverLoader.load_data(agent, load_checkpoint)
 
     if perform_random_gameplay:
         # the agent's memory is originally initialized with zeros (which is perfectly acceptable).
@@ -561,12 +549,8 @@ def train(custom_env, agent, n_episodes,
         utils.Printer.print_training_progress(i, ep_score, scores_history, avg_num=custom_env.window, ep_start_time=ep_start_time, eps=agent.EPS)
 
         if enable_models_saving and (i + 1) % save_checkpoint == 0:
-            save_start_time = datetime.datetime.now()
             episode_index = i
-            utils.SaverLoader.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
-            utils.SaverLoader.pickle_save(scores_history, 'scores_history_train', agent.chkpt_dir)
-            agent.save_models()
-            print('Save time: %s' % (datetime.datetime.now() - save_start_time))
+            utils.SaverLoader.save_data(agent, episode_index, scores_history)
 
         if visualize and i == n_episodes - 1:
             env.close()
@@ -584,7 +568,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
         custom_env = Envs.ClassicControl.CartPole()
         optimizer_type = utils.Optimizers.OPTIMIZER_Adam
         alpha = 0.0005  # 0.003 ?
-        fc_layers_dims = (256, 256)
+        fc_layers_dims = [256, 256]
         double_dql = False
         tau = None
         n_episodes = 500  # ~150-200 solves LunarLander
@@ -593,7 +577,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
         custom_env = Envs.Atari.Breakout()
         optimizer_type = utils.Optimizers.OPTIMIZER_RMSprop  # utils.Optimizers.OPTIMIZER_SGD
         alpha = 0.00025
-        fc_layers_dims = (1024,)
+        fc_layers_dims = [1024, 0]
         double_dql = True
         tau = 10000
         n_episodes = 200  # start with 200, then 5000 ?
@@ -602,7 +586,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
         custom_env = Envs.Atari.SpaceInvaders()
         optimizer_type = utils.Optimizers.OPTIMIZER_RMSprop  # utils.Optimizers.OPTIMIZER_SGD
         alpha = 0.003
-        fc_layers_dims = (1024,)
+        fc_layers_dims = [1024, 0]
         double_dql = True
         tau = None
         n_episodes = 50

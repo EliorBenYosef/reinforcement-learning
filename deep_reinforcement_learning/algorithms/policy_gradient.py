@@ -461,19 +461,7 @@ def train(custom_env, agent, n_episodes,
           enable_models_saving, load_checkpoint,
           visualize=False, record=False):
 
-    scores_history = []
-    episode_index = -1
-    if load_checkpoint:
-        try:
-            agent.load_models()
-            print('...Loading episode_index...')
-            episode_index = utils.SaverLoader.pickle_load('episode_index', agent.chkpt_dir)
-            print('...Loading scores_history...')
-            scores_history = utils.SaverLoader.pickle_load('scores_history_train', agent.chkpt_dir)
-        except (ValueError, tf.OpError, OSError):
-            print('...No models to load...')
-        except FileNotFoundError:
-            print('...No data to load...')
+    scores_history, episode_index = utils.SaverLoader.load_data(agent, load_checkpoint)
 
     env = custom_env.env
 
@@ -524,12 +512,8 @@ def train(custom_env, agent, n_episodes,
             print('Learn time: %s' % (datetime.datetime.now() - learn_start_time))
 
             if enable_models_saving and (i + 1) % (ep_batch_num * save_checkpoint) == 0:
-                save_start_time = datetime.datetime.now()
                 episode_index = i
-                utils.SaverLoader.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
-                utils.SaverLoader.pickle_save(scores_history, 'scores_history_train', agent.chkpt_dir)
-                agent.save_models()
-                print('Save time: %s' % (datetime.datetime.now() - save_start_time))
+                utils.SaverLoader.save_data(agent, episode_index, scores_history)
 
         if visualize and i == n_episodes - 1:
             env.close()
@@ -545,7 +529,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
     if env_type == 0:
         # custom_env = Envs.Box2D.LunarLander()
         custom_env = Envs.ClassicControl.CartPole()
-        fc_layers_dims = (128, 128) if lib_type == utils.LIBRARY_TORCH else (64, 64)
+        fc_layers_dims = [128, 128] if lib_type == utils.LIBRARY_TORCH else [64, 64]
         optimizer_type = utils.Optimizers.OPTIMIZER_Adam
         alpha = 0.001 if lib_type == utils.LIBRARY_TORCH else 0.0005
         ep_batch_num = 1  # REINFORCE algorithm (MC PG)
@@ -554,7 +538,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
 
     elif env_type == 1:
         custom_env = Envs.Atari.Breakout()
-        fc_layers_dims = (256,)
+        fc_layers_dims = [256, 0]
         optimizer_type = utils.Optimizers.OPTIMIZER_RMSprop  # utils.Optimizers.OPTIMIZER_SGD
         alpha = 0.00025
         ep_batch_num = 1  # REINFORCE algorithm (MC PG)
@@ -563,7 +547,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
 
     else:
         custom_env = Envs.Atari.SpaceInvaders()
-        fc_layers_dims = (256,)
+        fc_layers_dims = [256, 0]
         optimizer_type = utils.Optimizers.OPTIMIZER_RMSprop  # utils.Optimizers.OPTIMIZER_SGD
         alpha = 0.001  # 0.003
         ep_batch_num = 10

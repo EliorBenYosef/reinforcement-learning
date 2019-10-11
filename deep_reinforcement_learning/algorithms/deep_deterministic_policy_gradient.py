@@ -614,19 +614,7 @@ def train(custom_env, agent, n_episodes,
           enable_models_saving, load_checkpoint,
           visualize=False, record=False):
 
-    scores_history = []
-    episode_index = -1
-    if load_checkpoint:
-        try:
-            agent.load_models()
-            print('...Loading episode_index...')
-            episode_index = utils.SaverLoader.pickle_load('episode_index', agent.chkpt_dir)
-            print('...Loading scores_history...')
-            scores_history = utils.SaverLoader.pickle_load('scores_history_train', agent.chkpt_dir)
-        except (ValueError, tf.OpError, OSError):
-            print('...No models to load...')
-        except FileNotFoundError:
-            print('...No data to load...')
+    scores_history, episode_index = utils.SaverLoader.load_data(agent, load_checkpoint)
 
     env = custom_env.env
 
@@ -672,12 +660,8 @@ def train(custom_env, agent, n_episodes,
         utils.Printer.print_training_progress(i, ep_score, scores_history, avg_num=custom_env.window, ep_start_time=ep_start_time)
 
         if enable_models_saving and (i + 1) % save_checkpoint == 0:
-            save_start_time = datetime.datetime.now()
             episode_index = i
-            utils.SaverLoader.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
-            utils.SaverLoader.pickle_save(scores_history, 'scores_history_train', agent.chkpt_dir)
-            agent.save_models()
-            print('Save time: %s' % (datetime.datetime.now() - save_start_time))
+            utils.SaverLoader.save_data(agent, episode_index, scores_history)
 
         if visualize and i == n_episodes - 1:
             env.close()
@@ -695,7 +679,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
 
     if env_type == 0:
         custom_env = Envs.ClassicControl.Pendulum()
-        fc_layers_dims = (800, 600)
+        fc_layers_dims = [800, 600]
         optimizer_type = utils.Optimizers.OPTIMIZER_Adam
         alpha = 0.00005
         beta = 0.0005
@@ -703,7 +687,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
 
     # elif env_type == 1:
     # custom_env = Envs.Box2D.BipedalWalker()
-    # fc_layers_dims = (400, 300)
+    # fc_layers_dims = [400, 300]
     # optimizer_type = utils.Optimizers.OPTIMIZER_Adam
     # alpha = 0.00005
     # beta = 0.0005
@@ -712,7 +696,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
     else:
         # custom_env = Envs.Box2D.LunarLanderContinuous()
         custom_env = Envs.ClassicControl.MountainCarContinuous()
-        fc_layers_dims = (400, 300)
+        fc_layers_dims = [400, 300]
         optimizer_type = utils.Optimizers.OPTIMIZER_Adam
         alpha = 0.000025
         beta = 0.00025
