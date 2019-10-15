@@ -8,7 +8,7 @@ import tensorflow as tf
 import utils
 from deep_reinforcement_learning.envs import Envs
 
-from .algorithms.deep_q_learning import Agent, train
+from .algorithms.deep_q_learning import Agent, train_agent
 # from .algorithms.policy_gradient import Agent, train
 # from .algorithms.actor_critic import Agent, train
 # from .algorithms.deep_deterministic_policy_gradient import Agent, train
@@ -123,9 +123,9 @@ def perform_grid_search(lib_type=utils.LIBRARY_TF, enable_models_saving=False, l
 
                                             labels.append('[%d,%d]' % (fc1_dim, fc2_dim))
 
-                                            scores_history = train(custom_env, agent, n_episodes,
-                                                                   perform_random_gameplay,
-                                                                   enable_models_saving, load_checkpoint)
+                                            scores_history = train_agent(custom_env, agent, n_episodes,
+                                                                         perform_random_gameplay,
+                                                                         enable_models_saving, load_checkpoint)
                                             scores_histories_train.append(scores_history)
 
                                             # scores_history_test = utils.Tester.test_trained_agent(

@@ -581,13 +581,13 @@ class Agent(object):
                                   optimizer_type, lr_actor, lr_critic,
                                   tau, self.chkpt_dir)
 
-    def store_transition(self, s, a, r, s_, is_terminal):
-        self.memory.store_transition(s, a, r, s_, is_terminal)
-
     def choose_action(self, s, training_mode=False):
         noise = self.noise() if training_mode else 0
         a = self.ac.choose_action(s, noise)
         return a
+
+    def store_transition(self, s, a, r, s_, is_terminal):
+        self.memory.store_transition(s, a, r, s_, is_terminal)
 
     def learn_wrapper(self):
         if self.memory.memory_counter >= self.memory_batch_size:
@@ -609,12 +609,12 @@ class Agent(object):
         self.ac.load_model_file()
 
 
-def train(custom_env, agent, n_episodes,
-          save_checkpoint,
-          enable_models_saving, load_checkpoint,
-          visualize=False, record=False):
+def train_agent(custom_env, agent, n_episodes,
+                save_checkpoint,
+                enable_models_saving, load_checkpoint,
+                visualize=False, record=False):
 
-    scores_history, episode_index = utils.SaverLoader.load_data(agent, load_checkpoint)
+    scores_history, episode_index = utils.SaverLoader.load_training_data(agent, load_checkpoint)
 
     env = custom_env.env
 
@@ -661,7 +661,7 @@ def train(custom_env, agent, n_episodes,
 
         if enable_models_saving and (i + 1) % save_checkpoint == 0:
             episode_index = i
-            utils.SaverLoader.save_data(agent, episode_index, scores_history)
+            utils.SaverLoader.save_training_data(agent, episode_index, scores_history)
 
         if visualize and i == n_episodes - 1:
             env.close()
@@ -724,9 +724,9 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
                   optimizer_type, alpha, beta,
                   memory_batch_size=custom_env.memory_batch_size, lib_type=lib_type, base_dir=base_dir)
 
-    scores_history = train(custom_env, agent, n_episodes,
-                           save_checkpoint,
-                           enable_models_saving, load_checkpoint)
+    scores_history = train_agent(custom_env, agent, n_episodes,
+                                 save_checkpoint,
+                                 enable_models_saving, load_checkpoint)
     utils.Plotter.plot_running_average(
         custom_env.name, method_name, scores_history, window=custom_env.window, show=False,
         file_name=utils.General.get_file_name(custom_env.file_name, agent, n_episodes, method_name) + '_train',

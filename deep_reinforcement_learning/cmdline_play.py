@@ -8,7 +8,7 @@ import argparse
 import utils
 from deep_reinforcement_learning.envs import Envs
 
-from .algorithms.deep_q_learning import Agent, train
+from .algorithms.deep_q_learning import Agent, train_agent
 # from .algorithms.policy_gradient import Agent, train
 # from .algorithms.actor_critic import Agent, train
 # from .algorithms.deep_deterministic_policy_gradient import Agent, train
@@ -122,10 +122,10 @@ def command_line_play(args=None):
         double_dql=args.ddql, tau=args.t, lib_type=lib_type
     )
 
-    scores_history = train(custom_env, agent, args.n,
-                           perform_random_gameplay,
-                           save_checkpoint,
-                           enable_models_saving, load_checkpoint)
+    scores_history = train_agent(custom_env, agent, args.n,
+                                 perform_random_gameplay,
+                                 save_checkpoint,
+                                 enable_models_saving, load_checkpoint)
 
     utils.Plotter.plot_running_average(
         custom_env.name, method_name, scores_history, window=custom_env.window, show=False,

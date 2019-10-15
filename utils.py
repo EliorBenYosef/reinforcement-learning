@@ -54,11 +54,19 @@ class Plotter:
     def get_running_avg(scores, window):
         episodes = len(scores)
 
-        x = [i + 1 for i in range(episodes)]
+        if episodes >= window + 50:
+            x = [i + 1 for i in range(window - 1, episodes)]
 
-        running_avg = np.empty(episodes)
-        for t in range(episodes):
-            running_avg[t] = np.mean(scores[max(0, t - window):(t + 1)])
+            running_avg = np.empty(episodes - window + 1)
+            for t in range(window - 1, episodes):
+                running_avg[t - window + 1] = np.mean(scores[(t - window + 1):(t + 1)])
+
+        else:
+            x = [i + 1 for i in range(episodes)]
+
+            running_avg = np.empty(episodes)
+            for t in range(episodes):
+                running_avg[t] = np.mean(scores[max(0, t - window):(t + 1)])
 
         return x, running_avg
 
@@ -555,24 +563,36 @@ class SaverLoader:
             pickle.dump(var, file)  # var == [X_train, y_train]
 
     @staticmethod
-    def load_data(agent, load_checkpoint):
+    def load_training_data(agent, load_checkpoint):
         scores_history = []
         episode_index = -1
         if load_checkpoint:
             try:
-                agent.load_models()
+                agent.load_models()  # REMOVE when load logic is finalized
                 print('...Loading episode_index...')
                 episode_index = SaverLoader.pickle_load('episode_index', agent.chkpt_dir)
                 print('...Loading scores_history...')
                 scores_history = SaverLoader.pickle_load('scores_history_train', agent.chkpt_dir)
-            except (ValueError, tf.OpError, OSError):
-                print('...No models to load...')
+            except (ValueError, tf.OpError, OSError):  # REMOVE when load logic is finalized
+                print('...No models to load...')  # REMOVE when load logic is finalized
             except FileNotFoundError:
                 print('...No data to load...')
         return scores_history, episode_index
 
     @staticmethod
-    def save_data(agent, episode_index, scores_history):
+    def load_scores_history_and_plot(env_name, method_name, window, chkpt_dir, training_data=False, show_scores=False):
+        try:
+            print('...Loading scores_history...')
+            suffix = '_train' if training_data else '_test'
+            scores_history = SaverLoader.pickle_load('scores_history' + suffix, chkpt_dir)
+            Plotter.plot_running_average(env_name, method_name, scores_history, window, show=show_scores,
+                                         file_name='scores_history' + suffix, directory=chkpt_dir)
+
+        except FileNotFoundError:
+            print('...No scores history data to load...')
+
+    @staticmethod
+    def save_training_data(agent, episode_index, scores_history):
         save_start_time = datetime.datetime.now()
         SaverLoader.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
         SaverLoader.pickle_save(scores_history, 'scores_history_train', agent.chkpt_dir)
