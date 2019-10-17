@@ -20,7 +20,7 @@ def perform_grid_search(lib_type=utils.LIBRARY_TF, enable_models_saving=False, l
     custom_env = Envs.ClassicControl.CartPole()
     custom_env.env.seed(28)
 
-    # utils.DeviceSetUtils.set_device(lib_type)
+    utils.DeviceSetUtils.set_device(lib_type, devices_dict=None)
 
     method_name = 'DQL'
 

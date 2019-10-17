@@ -559,7 +559,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
 
     custom_env.env.seed(28)
 
-    # utils.DeviceSetUtils.set_device(lib_type)
+    utils.DeviceSetUtils.set_device(lib_type, devices_dict=None)
 
     method_name = 'PG'
     base_dir = 'tmp/' + custom_env.file_name + '/' + method_name + '/'

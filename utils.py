@@ -223,7 +223,11 @@ class DeviceGetUtils:
 
     @staticmethod
     def tf_get_local_devices(GPUs_only=False):
-        # # confirm TensorFlow sees the GPU
+        """
+        Checks available devices to TensorFlow.
+        :param GPUs_only:
+        :return: a list of names of the devices that TensorFlow sees.
+        """
         # assert 'GPU' in str(device_lib.list_local_devices())
 
         local_devices = device_lib.list_local_devices()  # local_device_protos
@@ -239,15 +243,21 @@ class DeviceGetUtils:
             return [dev.name for dev in local_devices]
 
     @staticmethod
-    def keras_get_available_GPUs():  # To Check if keras(>=2.1.1) is using GPU:
-        # # confirm Keras sees the GPU
+    def keras_get_available_GPUs():
+        """
+        Checks available GPUs to Keras (>=2.1.1).
+        :return:
+        """
         # assert len(keras_tensorflow_backend._get_available_gpus()) > 0
 
         return keras_tensorflow_backend._get_available_gpus()
 
     @staticmethod
-    def torch_get_current_device_name():  # To Check if keras(>=2.1.1) is using GPU:
-        # confirm PyTorch sees the GPU
+    def torch_get_current_device_name():
+        """
+        Checks available GPUs to PyTorch.
+        :return:
+        """
         if T.cuda.is_available() and T.cuda.device_count() > 0:
             return T.cuda.get_device_name(T.cuda.current_device())
 
@@ -255,27 +265,29 @@ class DeviceGetUtils:
 class DeviceSetUtils:
 
     @staticmethod
-    def set_device(lib_type, devices_dict=None):  # {type: bus_id}
+    def set_device(lib_type, devices_dict=None):
+        """
+        :param lib_type:
+        :param devices_dict: {type: bus_id}. e.g.: {'CPU': 0}, {'GPU': 0, 'GPU': 1}
+        :return:
+        """
         # it seems that for:
         #   TF - tf_get_session_according_to_device() alone is enough...
         #   Keras - tf_set_device() alone is enough...
         # maybe only one method is enough for either?
 
-        if devices_dict is None:
-            devices_dict = {'GPU': 0}
-            # devices = {'GPU': 0, 'GPU': 1}  # 'CPU': 0
+        if devices_dict is not None:
+            designated_GPUs_bus_id_str = ''
+            for device_type, device_bus_id in devices_dict.items():
+                if len(designated_GPUs_bus_id_str) > 0:
+                    designated_GPUs_bus_id_str += ','
+                designated_GPUs_bus_id_str += str(device_bus_id)
 
-        designated_GPUs_bus_id_str = ''
-        for device_type, device_bus_id in devices_dict.items():
-            if len(designated_GPUs_bus_id_str) > 0:
-                designated_GPUs_bus_id_str += ','
-            designated_GPUs_bus_id_str += str(device_bus_id)
-
-        if lib_type == LIBRARY_TF:
-            DeviceSetUtils.tf_set_device(designated_GPUs_bus_id_str)
-        elif lib_type == LIBRARY_KERAS:
-            DeviceSetUtils.tf_set_device(designated_GPUs_bus_id_str)
-            DeviceSetUtils.keras_set_session_according_to_device(devices_dict)
+            if lib_type == LIBRARY_TF:
+                DeviceSetUtils.tf_set_device(designated_GPUs_bus_id_str)
+            elif lib_type == LIBRARY_KERAS:
+                DeviceSetUtils.tf_set_device(designated_GPUs_bus_id_str)
+                DeviceSetUtils.keras_set_session_according_to_device(devices_dict)
 
     # when trying to run a tensorflow \ keras model on GPU, make sure:
     #   1. the system has a Nvidia GPU (AMD doesn't work yet).
@@ -284,7 +296,11 @@ class DeviceSetUtils:
     #   4. tensorflow is running with GPU. use tf_get_local_devices()
 
     @staticmethod
-    def tf_set_device(designated_GPUs_bus_id_str):  # can be singular: '0', or multiple: '0,1'
+    def tf_set_device(designated_GPUs_bus_id_str):
+        """
+        :param designated_GPUs_bus_id_str: can be singular: '0', or multiple: '0,1'
+        :return:
+        """
         os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'  # set GPUs (CUDA devices) IDs' order by pci bus IDs (so it's consistent with nvidia-smi's output).
         os.environ['CUDA_VISIBLE_DEVICES'] = designated_GPUs_bus_id_str  # specify which GPU ID(s) to be used.
         os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
@@ -303,13 +319,17 @@ class DeviceSetUtils:
         return sess
 
     @staticmethod
-    def keras_set_session_according_to_device(device_map):
+    def keras_set_session_according_to_device(devices_dict):
         # call this function after importing keras if you are working on a machine.
-        keras_set_session(DeviceSetUtils.tf_get_session_according_to_device(device_map))
+        keras_set_session(DeviceSetUtils.tf_get_session_according_to_device(devices_dict))
         # keras_tensorflow_backend.set_session(DeviceSetUtils.tf_get_session_according_to_device(device_map))
 
     @staticmethod
-    def torch_get_device_according_to_device_type(device_str):  # e.g.: 'cpu' \ 'gpu' \ 'cuda:1'
+    def torch_get_device_according_to_device_type(device_str):
+        """
+        :param device_str: e.g.: 'cpu', 'gpu', 'cuda:1'
+        :return:
+        """
         # enabling GPU vs CPU:
         if device_str == 'cpu':
             device = T.device('cpu')  # default CPU. cpu:0 ?

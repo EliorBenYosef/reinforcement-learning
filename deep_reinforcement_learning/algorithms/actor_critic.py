@@ -723,7 +723,7 @@ def play(env_type, lib_type=utils.LIBRARY_TORCH, enable_models_saving=False, loa
 
     custom_env.env.seed(28)
 
-    # utils.DeviceSetUtils.set_device(lib_type)
+    utils.DeviceSetUtils.set_device(lib_type, devices_dict=None)
 
     method_name = 'AC'
     base_dir = 'tmp/' + custom_env.file_name + '/' + method_name + '/'

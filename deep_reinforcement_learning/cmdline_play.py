@@ -112,7 +112,7 @@ def command_line_play(args=None):
     load_checkpoint = False
     perform_random_gameplay = False
 
-    # utils.DeviceSetUtils.set_device(lib_type)
+    utils.DeviceSetUtils.set_device(lib_type, devices_dict=None)
 
     agent = Agent(
         custom_env, [args.fc1, args.fc2], args.n,
