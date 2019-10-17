@@ -496,11 +496,11 @@ def load_up_agent_memory_with_random_gameplay(custom_env, agent, n_episodes=None
 
 
 def train_agent(custom_env, agent, n_episodes,
-                perform_random_gameplay, save_checkpoint,
+                perform_random_gameplay,
                 enable_models_saving, load_checkpoint,
                 visualize=False, record=False):
 
-    scores_history, episode_index = utils.SaverLoader.load_training_data(agent, load_checkpoint)
+    scores_history, learn_episode_index, max_avg = utils.SaverLoader.load_training_data(agent, load_checkpoint)
 
     if perform_random_gameplay:
         # the agent's memory is originally initialized with zeros (which is perfectly acceptable).
@@ -518,7 +518,7 @@ def train_agent(custom_env, agent, n_episodes,
     print('\n', 'Training Started', '\n')
     train_start_time = datetime.datetime.now()
 
-    starting_ep = episode_index + 1
+    starting_ep = learn_episode_index + 1
     for i in range(starting_ep, n_episodes):
         ep_start_time = datetime.datetime.now()
 
@@ -545,12 +545,15 @@ def train_agent(custom_env, agent, n_episodes,
                 env.render()
 
         scores_history.append(ep_score)
+        utils.SaverLoader.pickle_save(scores_history, 'scores_history_train_total', agent.chkpt_dir)
 
-        utils.Printer.print_training_progress(i, ep_score, scores_history, avg_num=custom_env.window, ep_start_time=ep_start_time, eps=agent.EPS)
+        current_avg = utils.Printer.print_training_progress(i, ep_score, scores_history, avg_num=custom_env.window, ep_start_time=ep_start_time, eps=agent.EPS)
 
-        if enable_models_saving and (i + 1) % save_checkpoint == 0:
-            episode_index = i
-            utils.SaverLoader.save_training_data(agent, episode_index, scores_history)
+        if enable_models_saving and current_avg is not None and \
+                (max_avg is None or current_avg >= max_avg):
+            max_avg = current_avg
+            utils.SaverLoader.pickle_save(max_avg, 'max_avg', agent.chkpt_dir)
+            utils.SaverLoader.save_training_data(agent, i, scores_history)
 
         if visualize and i == n_episodes - 1:
             env.close()
@@ -591,8 +594,6 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
         tau = None
         n_episodes = 50
 
-    save_checkpoint = 10
-
     if not custom_env.is_discrete_action_space:
         print('\n', "Environment's Action Space should be discrete!", '\n')
         return
@@ -609,7 +610,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
                   double_dql=double_dql, tau=tau, lib_type=lib_type, base_dir=base_dir)
 
     scores_history = train_agent(custom_env, agent, n_episodes,
-                                 perform_random_gameplay, save_checkpoint,
+                                 perform_random_gameplay,
                                  enable_models_saving, load_checkpoint)
     utils.Plotter.plot_running_average(
         custom_env.name, method_name, scores_history, window=custom_env.window, show=False,

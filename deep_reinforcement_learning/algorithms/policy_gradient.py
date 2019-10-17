@@ -456,11 +456,12 @@ class Agent(object):
 
 
 def train_agent(custom_env, agent, n_episodes,
-                ep_batch_num, save_checkpoint,
+                ep_batch_num,
                 enable_models_saving, load_checkpoint,
                 visualize=False, record=False):
 
-    scores_history, episode_index = utils.SaverLoader.load_training_data(agent, load_checkpoint)
+    scores_history, learn_episode_index, max_avg = utils.SaverLoader.load_training_data(agent, load_checkpoint)
+    save_episode_index = learn_episode_index
 
     env = custom_env.env
 
@@ -473,7 +474,7 @@ def train_agent(custom_env, agent, n_episodes,
     print('\n', 'Training Started', '\n')
     train_start_time = datetime.datetime.now()
 
-    starting_ep = episode_index + 1
+    starting_ep = learn_episode_index + 1
     for i in range(starting_ep, n_episodes):
         ep_start_time = datetime.datetime.now()
 
@@ -499,20 +500,26 @@ def train_agent(custom_env, agent, n_episodes,
                 env.render()
 
         scores_history.append(ep_score)
+        utils.SaverLoader.pickle_save(scores_history, 'scores_history_train_total', agent.chkpt_dir)
 
         avg_num = custom_env.window
         if ep_batch_num > avg_num:
             avg_num = ep_batch_num
-        utils.Printer.print_training_progress(i, ep_score, scores_history, avg_num, ep_start_time=ep_start_time)
+        current_avg = utils.Printer.print_training_progress(i, ep_score, scores_history, avg_num, ep_start_time=ep_start_time)
+
+        if enable_models_saving and current_avg is not None and learn_episode_index != -1 and \
+                (max_avg is None or current_avg >= max_avg):
+            max_avg = current_avg
+            utils.SaverLoader.pickle_save(max_avg, 'max_avg', agent.chkpt_dir)
+            if i - save_episode_index - 1 >= ep_batch_num:
+                save_episode_index = learn_episode_index
+                utils.SaverLoader.save_training_data(agent, learn_episode_index, scores_history)
 
         if (i + 1) % ep_batch_num == 0:
+            learn_episode_index = i
             learn_start_time = datetime.datetime.now()
             agent.learn()
             print('Learn time: %s' % str(datetime.datetime.now() - learn_start_time).split('.')[0])
-
-            if enable_models_saving and (i + 1) % (ep_batch_num * save_checkpoint) == 0:
-                episode_index = i
-                utils.SaverLoader.save_training_data(agent, episode_index, scores_history)
 
         if visualize and i == n_episodes - 1:
             env.close()
@@ -532,7 +539,6 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
         optimizer_type = utils.Optimizers.OPTIMIZER_Adam
         alpha = 0.001 if lib_type == utils.LIBRARY_TORCH else 0.0005
         ep_batch_num = 1  # REINFORCE algorithm (MC PG)
-        save_checkpoint = 10
         n_episodes = 2000 if lib_type == utils.LIBRARY_KERAS else 2500  # supposed to be enough for good results in PG
 
     elif env_type == 1:
@@ -541,7 +547,6 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
         optimizer_type = utils.Optimizers.OPTIMIZER_RMSprop  # utils.Optimizers.OPTIMIZER_SGD
         alpha = 0.00025
         ep_batch_num = 1  # REINFORCE algorithm (MC PG)
-        save_checkpoint = 10
         n_episodes = 200  # start with 200, then 5000 ?
 
     else:
@@ -550,7 +555,6 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
         optimizer_type = utils.Optimizers.OPTIMIZER_RMSprop  # utils.Optimizers.OPTIMIZER_SGD
         alpha = 0.001  # 0.003
         ep_batch_num = 10
-        save_checkpoint = 1
         n_episodes = 1000
 
     if not custom_env.is_discrete_action_space:
@@ -570,7 +574,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
                   lib_type=lib_type, base_dir=base_dir)
 
     scores_history = train_agent(custom_env, agent, n_episodes,
-                                 ep_batch_num, save_checkpoint,
+                                 ep_batch_num,
                                  enable_models_saving, load_checkpoint)
     utils.Plotter.plot_running_average(
         custom_env.name, method_name, scores_history, window=custom_env.window, show=False,

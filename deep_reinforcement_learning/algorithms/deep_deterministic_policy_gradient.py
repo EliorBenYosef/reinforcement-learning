@@ -610,11 +610,10 @@ class Agent(object):
 
 
 def train_agent(custom_env, agent, n_episodes,
-                save_checkpoint,
                 enable_models_saving, load_checkpoint,
                 visualize=False, record=False):
 
-    scores_history, episode_index = utils.SaverLoader.load_training_data(agent, load_checkpoint)
+    scores_history, learn_episode_index, max_avg = utils.SaverLoader.load_training_data(agent, load_checkpoint)
 
     env = custom_env.env
 
@@ -627,7 +626,7 @@ def train_agent(custom_env, agent, n_episodes,
     print('\n', 'Training Started', '\n')
     train_start_time = datetime.datetime.now()
 
-    starting_ep = episode_index + 1
+    starting_ep = learn_episode_index + 1
     for i in range(starting_ep, n_episodes):
         ep_start_time = datetime.datetime.now()
 
@@ -656,12 +655,15 @@ def train_agent(custom_env, agent, n_episodes,
                 env.render()
 
         scores_history.append(ep_score)
+        utils.SaverLoader.pickle_save(scores_history, 'scores_history_train_total', agent.chkpt_dir)
 
-        utils.Printer.print_training_progress(i, ep_score, scores_history, avg_num=custom_env.window, ep_start_time=ep_start_time)
+        current_avg = utils.Printer.print_training_progress(i, ep_score, scores_history, avg_num=custom_env.window, ep_start_time=ep_start_time)
 
-        if enable_models_saving and (i + 1) % save_checkpoint == 0:
-            episode_index = i
-            utils.SaverLoader.save_training_data(agent, episode_index, scores_history)
+        if enable_models_saving and current_avg is not None and \
+                (max_avg is None or current_avg >= max_avg):
+            max_avg = current_avg
+            utils.SaverLoader.pickle_save(max_avg, 'max_avg', agent.chkpt_dir)
+            utils.SaverLoader.save_training_data(agent, i, scores_history)
 
         if visualize and i == n_episodes - 1:
             env.close()
@@ -703,7 +705,6 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
         n_episodes = 1000
 
     tau = 0.001
-    save_checkpoint = 25
 
     if custom_env.is_discrete_action_space:
         print('\n', "Environment's Action Space should be continuous!", '\n')
@@ -725,7 +726,6 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
                   memory_batch_size=custom_env.memory_batch_size, lib_type=lib_type, base_dir=base_dir)
 
     scores_history = train_agent(custom_env, agent, n_episodes,
-                                 save_checkpoint,
                                  enable_models_saving, load_checkpoint)
     utils.Plotter.plot_running_average(
         custom_env.name, method_name, scores_history, window=custom_env.window, show=False,

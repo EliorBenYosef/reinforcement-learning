@@ -108,7 +108,6 @@ def command_line_play(args=None):
 
     lib_type = utils.LIBRARY_TF
     enable_models_saving = False
-    save_checkpoint = 1
     load_checkpoint = False
     perform_random_gameplay = False
 
@@ -124,7 +123,6 @@ def command_line_play(args=None):
 
     scores_history = train_agent(custom_env, agent, args.n,
                                  perform_random_gameplay,
-                                 save_checkpoint,
                                  enable_models_saving, load_checkpoint)
 
     utils.Plotter.plot_running_average(

@@ -158,30 +158,29 @@ class Printer:
             count += tick
 
     @staticmethod
-    def print_training_progress(i, ep_score, scores_history, avg_num, ep_start_time=None, trailing=True, eps=None):
+    def print_training_progress(i, ep_score, scores_history, avg_num, trailing=True, eps=None, ep_start_time=None):
         time_string = ''
         if ep_start_time is not None:
             time_string = '; runtime: %s' % str(datetime.datetime.now() - ep_start_time).split('.')[0]
-
         print('Episode: %d ;' % (i + 1), 'score: %d' % ep_score, time_string)  # score: %.2f
 
         eps_string = ''
         if eps is not None:
             eps_string = 'epsilon %.3f' % eps  # %.4f
 
-        if trailing and (i + 1) >= avg_num:
-            # gives you the running avg of the last 'avg_num' episodes, every episode:
-            avg_score = np.mean(scores_history[-avg_num:])
-            print('trailing %d episodes ;' % avg_num,
-                  'average score %.3f ;' % avg_score,
-                  eps_string)
+        # compute the running avg of the last 'avg_num' episodes:
+        avg_score = np.mean(scores_history[-avg_num:]) if (i + 1) >= avg_num else None
+        if avg_score is not None:
+            if trailing:  # every episode
+                print('trailing %d episodes ;' % avg_num,
+                      'average score %.3f ;' % avg_score,
+                      eps_string)
+            elif (i + 1) % avg_num == 0:  # every 'avg_num' episodes
+                print('episodes: %d - %d ;' % (i + 2 - avg_num, i + 1),
+                      'average score %.3f ;' % avg_score,
+                      eps_string)
 
-        elif (i + 1) % avg_num == 0:
-            # gives you the running avg of the last 'avg_num' episodes, every 'avg_num' episodes:
-            avg_score = np.mean(scores_history[max(0, i + 1 - avg_num):(i + 1)])
-            print('episodes: %d - %d ;' % (i + 2 - avg_num, i + 1),
-                  'average score %.3f ;' % avg_score,
-                  eps_string)
+        return avg_score
 
     @staticmethod
     def print_v(V):
@@ -585,19 +584,22 @@ class SaverLoader:
     @staticmethod
     def load_training_data(agent, load_checkpoint):
         scores_history = []
-        episode_index = -1
+        learn_episode_index = -1
+        max_avg = None
         if load_checkpoint:
             try:
                 agent.load_models()  # REMOVE when load logic is finalized
-                print('...Loading episode_index...')
-                episode_index = SaverLoader.pickle_load('episode_index', agent.chkpt_dir)
+                print('...Loading learn_episode_index...')
+                learn_episode_index = SaverLoader.pickle_load('learn_episode_index', agent.chkpt_dir)
                 print('...Loading scores_history...')
                 scores_history = SaverLoader.pickle_load('scores_history_train', agent.chkpt_dir)
+                print('...Loading max_avg...')
+                max_avg = SaverLoader.pickle_load('max_avg', agent.chkpt_dir)
             except (ValueError, tf.OpError, OSError):  # REMOVE when load logic is finalized
                 print('...No models to load...')  # REMOVE when load logic is finalized
             except FileNotFoundError:
                 print('...No data to load...')
-        return scores_history, episode_index
+        return scores_history, learn_episode_index, max_avg
 
     @staticmethod
     def load_scores_history_and_plot(env_name, method_name, window, chkpt_dir, training_data=False, show_scores=False):
@@ -612,9 +614,9 @@ class SaverLoader:
             print('...No scores history data to load...')
 
     @staticmethod
-    def save_training_data(agent, episode_index, scores_history):
+    def save_training_data(agent, learn_episode_index, scores_history):
         save_start_time = datetime.datetime.now()
-        SaverLoader.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
+        SaverLoader.pickle_save(learn_episode_index, 'learn_episode_index', agent.chkpt_dir)
         SaverLoader.pickle_save(scores_history, 'scores_history_train', agent.chkpt_dir)
         agent.save_models()
         print('Save time: %s' % str(datetime.datetime.now() - save_start_time).split('.')[0])
