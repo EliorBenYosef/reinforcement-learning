@@ -161,7 +161,7 @@ class Printer:
     def print_training_progress(i, ep_score, scores_history, avg_num, ep_start_time=None, trailing=True, eps=None):
         time_string = ''
         if ep_start_time is not None:
-            time_string = '; runtime: %s' % (datetime.datetime.now() - ep_start_time)
+            time_string = '; runtime: %s' % str(datetime.datetime.now() - ep_start_time).split('.')[0]
 
         print('Episode: %d ;' % (i + 1), 'score: %d' % ep_score, time_string)  # score: %.2f
 
@@ -483,7 +483,7 @@ class Tester:
             total_accumulated_scores[i] = accumulated_score
             Printer.print_training_progress(i, ep_score, total_scores, custom_env.window)
         print('\n', 'Test Ended ~~~ Episodes: %d ~~~ Runtime: %s' %
-              (episodes, datetime.datetime.now() - start_time), '\n')
+              (episodes, str(datetime.datetime.now() - start_time).split('.')[0]), '\n')
         custom_env.analyze_evaluation_tuple(eval, episodes)
         return total_scores, total_accumulated_scores
 
@@ -617,7 +617,7 @@ class SaverLoader:
         SaverLoader.pickle_save(episode_index, 'episode_index', agent.chkpt_dir)
         SaverLoader.pickle_save(scores_history, 'scores_history_train', agent.chkpt_dir)
         agent.save_models()
-        print('Save time: %s' % (datetime.datetime.now() - save_start_time))
+        print('Save time: %s' % str(datetime.datetime.now() - save_start_time).split('.')[0])
 
 
 class General:

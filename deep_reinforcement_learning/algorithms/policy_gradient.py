@@ -508,7 +508,7 @@ def train_agent(custom_env, agent, n_episodes,
         if (i + 1) % ep_batch_num == 0:
             learn_start_time = datetime.datetime.now()
             agent.learn()
-            print('Learn time: %s' % (datetime.datetime.now() - learn_start_time))
+            print('Learn time: %s' % str(datetime.datetime.now() - learn_start_time).split('.')[0])
 
             if enable_models_saving and (i + 1) % (ep_batch_num * save_checkpoint) == 0:
                 episode_index = i
@@ -518,7 +518,7 @@ def train_agent(custom_env, agent, n_episodes,
             env.close()
 
     print('\n', 'Training Ended ~~~ Episodes: %d ~~~ Runtime: %s' %
-          (n_episodes - starting_ep, datetime.datetime.now() - train_start_time), '\n')
+          (n_episodes - starting_ep, str(datetime.datetime.now() - train_start_time).split('.')[0]), '\n')
 
     return scores_history
 
