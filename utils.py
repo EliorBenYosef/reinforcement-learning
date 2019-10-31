@@ -367,19 +367,19 @@ class Optimizers:
             return tf.train.AdamOptimizer(lr)
 
     @staticmethod
-    def keras_get_optimizer(optimizer_type, lr, momentum=0.9):
+    def keras_get_optimizer(optimizer_type, lr, momentum=0., rho=None, epsilon=None, decay=0., beta_1=0.9, beta_2=0.999):
         if optimizer_type == Optimizers.OPTIMIZER_SGD:
-            return optimizers.SGD(lr, momentum)
+            return optimizers.SGD(lr, momentum, decay)  # momentum=0.9
         elif optimizer_type == Optimizers.OPTIMIZER_Adagrad:
-            return optimizers.Adagrad(lr)
+            return optimizers.Adagrad(lr, epsilon, decay)
         elif optimizer_type == Optimizers.OPTIMIZER_Adadelta:
-            return optimizers.Adadelta(lr)
+            return optimizers.Adadelta(lr, rho if rho is not None else 0.95, epsilon, decay)
         elif optimizer_type == Optimizers.OPTIMIZER_RMSprop:
-            return optimizers.RMSprop(lr)
-            # return optimizers.RMSprop(lr, epsilon=0.1, rho=0.99)
-            # return optimizers.RMSprop(lr=lr, decay=0.99, momentum=0.0, epsilon=1e-6)
+            return optimizers.RMSprop(lr, rho if rho is not None else 0.9, epsilon, decay)  # momentum= ?
+            # return optimizers.RMSprop(lr, rho=0.99, epsilon=0.1)
+            # return optimizers.RMSprop(lr, epsilon=1e-6, decay=0.99)
         else:  # optimizer_type == Optimizers.OPTIMIZER_Adam
-            return optimizers.Adam(lr)
+            return optimizers.Adam(lr, beta_1, beta_2, epsilon, decay)
 
     @staticmethod
     def torch_get_optimizer(optimizer_type, params, lr, momentum=None):  # momentum=0.9
@@ -588,6 +588,7 @@ class SaverLoader:
         max_avg = None
         if load_checkpoint:
             try:
+                print('...Loading models...')  # REMOVE when load logic is finalized
                 agent.load_models()  # REMOVE when load logic is finalized
                 print('...Loading learn_episode_index...')
                 learn_episode_index = SaverLoader.pickle_load('learn_episode_index', agent.chkpt_dir)
@@ -602,14 +603,34 @@ class SaverLoader:
         return scores_history, learn_episode_index, max_avg
 
     @staticmethod
-    def load_scores_history_and_plot(env_name, method_name, window, chkpt_dir, training_data=False, show_scores=False):
+    def load_scores_history_and_plot(env_name, method_name, window, chkpt_dir,
+                                     training_data=False, show_scores=False):
         try:
             print('...Loading scores_history...')
-            suffix = '_train' if training_data else '_test'
+            suffix = '_train_total' if training_data else '_test'
             scores_history = SaverLoader.pickle_load('scores_history' + suffix, chkpt_dir)
             Plotter.plot_running_average(env_name, method_name, scores_history, window, show=show_scores,
                                          file_name='scores_history' + suffix, directory=chkpt_dir)
 
+        except FileNotFoundError:
+            print('...No scores history data to load...')
+
+    @staticmethod
+    def load_multiple_scores_history_and_plot(custom_env, method_name, base_dir, sub_dirs, labels,
+                                              training_data, show_scores):
+
+        suffix = '_train_total' if training_data else '_test'
+
+        try:
+            print('...Loading scores_history...')
+
+            scores_list = []
+            for sub_dir in sub_dirs:
+                scores_list.append(SaverLoader.pickle_load('scores_history' + suffix, base_dir + sub_dir))
+
+            Plotter.plot_running_average_comparison(custom_env.name + ' - ' + method_name, scores_list, labels,
+                                                    custom_env.window, show=show_scores,
+                                                    file_name='scores_history' + suffix, directory=base_dir)
         except FileNotFoundError:
             print('...No scores history data to load...')
 
@@ -620,6 +641,15 @@ class SaverLoader:
         SaverLoader.pickle_save(scores_history, 'scores_history_train', agent.chkpt_dir)
         agent.save_models()
         print('Save time: %s' % str(datetime.datetime.now() - save_start_time).split('.')[0])
+
+    @staticmethod
+    def extract_data(base_dir, sub_dir):
+        chkpt_dir = base_dir + sub_dir
+
+        learn_episode_index = SaverLoader.pickle_load('learn_episode_index', chkpt_dir)
+        max_avg = SaverLoader.pickle_load('max_avg', chkpt_dir)
+
+        print('learn_episode_index', learn_episode_index, 'max_avg', max_avg)
 
 
 class General:
