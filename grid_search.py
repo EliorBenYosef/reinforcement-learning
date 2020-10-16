@@ -1,14 +1,17 @@
 from numpy.random import seed
+
+import reinforcement_learning.utils.plotter
+
 seed(28)
 from tensorflow import set_random_seed
 set_random_seed(28)
 
 import tensorflow as tf
 
-import utils
-from deep_reinforcement_learning.envs import Envs
+from reinforcement_learning.utils import utils
+import reinforcement_learning.deep_RL.envs as Envs
 
-from .algorithms.deep_q_learning import Agent, train_agent
+from reinforcement_learning.deep_RL.algorithms.deep_q_learning import Agent, train_agent
 # from .algorithms.policy_gradient import Agent, train
 # from .algorithms.actor_critic import Agent, train
 # from .algorithms.deep_deterministic_policy_gradient import Agent, train
@@ -134,11 +137,11 @@ def perform_grid_search(lib_type=utils.LIBRARY_TF, enable_models_saving=False, l
 
                                             tf.reset_default_graph()
 
-    utils.Plotter.plot_running_average_comparison(
+    reinforcement_learning.utils.plotter.Plotter.plot_running_average_comparison(
         custom_env.name, scores_histories_train, labels, window=custom_env.window, show=False,
         file_name=custom_env.file_name + '_' + method_name + '_train'
     )
-    utils.Plotter.plot_running_average_comparison(
+    reinforcement_learning.utils.plotter.Plotter.plot_running_average_comparison(
         custom_env.name, scores_histories_test, labels, window=custom_env.window, show=False,
         file_name=custom_env.file_name + '_' + method_name + '_test'
     )

@@ -1,14 +1,17 @@
 from numpy.random import seed
+
+import reinforcement_learning.utils.plotter
+
 seed(28)
 from tensorflow import set_random_seed
 set_random_seed(28)
 
 import argparse
 
-import utils
-from deep_reinforcement_learning.envs import Envs
+from reinforcement_learning.utils import utils
+import reinforcement_learning.deep_RL.envs as Envs
 
-from .algorithms.deep_q_learning import Agent, train_agent
+from reinforcement_learning.deep_RL.algorithms.deep_q_learning import Agent, train_agent
 # from .algorithms.policy_gradient import Agent, train
 # from .algorithms.actor_critic import Agent, train
 # from .algorithms.deep_deterministic_policy_gradient import Agent, train
@@ -125,7 +128,7 @@ def command_line_play(args=None):
                                  perform_random_gameplay,
                                  enable_models_saving, load_checkpoint)
 
-    utils.Plotter.plot_running_average(
+    reinforcement_learning.utils.plotter.Plotter.plot_running_average(
         custom_env.name, method_name, scores_history, window=custom_env.window, show=False,
         file_name=utils.General.get_file_name(custom_env.file_name, agent, args.n, method_name),
         directory=agent.chkpt_dir if enable_models_saving else None

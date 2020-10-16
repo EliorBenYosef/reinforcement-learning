@@ -1,4 +1,7 @@
 from numpy.random import seed
+
+import reinforcement_learning.utils.plotter
+
 seed(28)
 from tensorflow import set_random_seed
 set_random_seed(28)
@@ -11,7 +14,6 @@ import datetime
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from tensorflow.python import random_uniform_initializer as random_uniform
 
 import torch as T
 import torch.distributions as distributions
@@ -19,11 +21,10 @@ import torch.nn.functional as F
 
 import keras.models as models
 import keras.layers as layers
-import keras.initializers as initializers
 import keras.backend as K
 
-import utils
-from deep_reinforcement_learning.envs import Envs
+from reinforcement_learning.utils import utils
+import reinforcement_learning.deep_RL.envs as Envs
 
 
 NETWORK_TYPE_SEPARATE = 0
@@ -627,7 +628,7 @@ def train_agent(custom_env, agent, n_episodes,
 
     scores_history, learn_episode_index, max_avg = utils.SaverLoader.load_training_data(agent, load_checkpoint)
 
-    env = custom_env.env
+    env = custom_env.envs
 
     if record:
         env = wrappers.Monitor(
@@ -734,7 +735,7 @@ def play(env_type, lib_type=utils.LIBRARY_TORCH, enable_models_saving=False, loa
 
     scores_history = train_agent(custom_env, agent, n_episodes,
                                  enable_models_saving, load_checkpoint)
-    utils.Plotter.plot_running_average(
+    reinforcement_learning.utils.plotter.Plotter.plot_running_average(
         custom_env.name, method_name, scores_history, window=custom_env.window, show=False,
         file_name=utils.General.get_file_name(custom_env.file_name, agent, n_episodes, method_name) + '_train',
         directory=agent.chkpt_dir if enable_models_saving else None

@@ -65,38 +65,38 @@ of both: running average of episode scores, and accumulated scores.
 **Mountain Car**
 
 <p float="left">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/tabular_methods/performance/mountain-car_untrained.gif" width="400">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/tabular_methods/performance/mountain-car_trained.gif" width="400">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/results/tabular_RL/mountain-car_untrained.gif" width="400">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/results/tabular_RL/mountain-car_trained.gif" width="400">
 </p>
 
 **Cart Pole**
 
 <p float="left">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/tabular_methods/performance/cart-pole_untrained.gif" width="400">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/tabular_methods/performance/cart-pole_trained.gif" width="400">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/results/tabular_RL/cart-pole_untrained.gif" width="400">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/results/tabular_RL/cart-pole_trained.gif" width="400">
 </p>
 
 **Acrobot**
 
 <p float="left">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/tabular_methods/performance/acrobot_untrained.gif" width="400">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/tabular_methods/performance/acrobot_trained.gif" width="400">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/results/tabular_RL/acrobot_untrained.gif" width="400">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/results/tabular_RL/acrobot_trained.gif" width="400">
 </p>
 
 #### `environments_test()` result graphs
 
 <p float="left">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/tabular_methods/performance/algorithms_comparison_legend.png" width="200">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/results/tabular_RL/algorithms_comparison_legend.png" width="200">
 </p>
 
 <p float="left">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/tabular_methods/performance/cart-pole-v0-score-training.png" width="390">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/tabular_methods/performance/cart-pole-v0-accumulated-score-training.png" width="410">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/results/tabular_RL/cart-pole-v0-score-training.png" width="390">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/results/tabular_RL/cart-pole-v0-accumulated-score-training.png" width="410">
 </p>
 
 <p float="left">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/tabular_methods/performance/cart-pole-v0-scores-test.png" width="390">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/tabular_methods/performance/cart-pole-v0-accumulated-scores-test.png" width="410">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/results/tabular_RL/cart-pole-v0-scores-test.png" width="390">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/results/tabular_RL/cart-pole-v0-accumulated-scores-test.png" width="410">
 </p>
 
 ## Deep Reinforcement Learning
@@ -168,7 +168,7 @@ Deep Q-learning, Policy Gradient | Deep Deterministic Policy Gradient
 Performance of DQL Grid Search on first & second FC layers' sizes (number of nodes \ neurons):
 
 <p float="left">
-  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/deep_reinforcement_learning/performance/cart-pole-v1_dql.png" width="500">
+  <img src="https://github.com/EliorBenYosef/reinforcement-learning/blob/master/results/deep_RL/cart-pole-v1_dql.png" width="500">
 </p>
 
 ## Dependencies

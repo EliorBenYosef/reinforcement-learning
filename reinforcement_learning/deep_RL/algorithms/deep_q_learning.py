@@ -1,4 +1,7 @@
 from numpy.random import seed
+
+import reinforcement_learning.utils.plotter
+
 seed(28)
 from tensorflow import set_random_seed
 set_random_seed(28)
@@ -9,8 +12,6 @@ import numpy as np
 import datetime
 
 import tensorflow as tf
-import tensorflow_probability as tfp
-from tensorflow.python import random_uniform_initializer as random_uniform
 
 import torch as T
 import torch.nn.functional as F
@@ -18,9 +19,9 @@ import torch.nn.functional as F
 import keras.models as models
 import keras.layers as layers
 
-import utils
-from deep_reinforcement_learning.envs import Envs
-from deep_reinforcement_learning.replay_buffer import ReplayBuffer
+from reinforcement_learning.utils import utils
+import reinforcement_learning.deep_RL.envs as Envs
+from reinforcement_learning.deep_RL.utils.replay_buffer import ReplayBuffer
 
 
 class DQN(object):
@@ -482,11 +483,11 @@ def load_up_agent_memory_with_random_gameplay(custom_env, agent, n_episodes=None
 
     while agent.memory.memory_counter < n_episodes:
         done = False
-        observation = custom_env.env.reset()
+        observation = custom_env.envs.reset()
         s = custom_env.get_state(observation, None)
         while not done:
             a = np.random.choice(custom_env.action_space)
-            observation_, r, done, info = custom_env.env.step(a)
+            observation_, r, done, info = custom_env.envs.step(a)
             r = custom_env.update_reward(r, done, info)
             s_ = custom_env.get_state(observation_, s)
             agent.store_transition(s, a, r, s_, done)
@@ -507,7 +508,7 @@ def train_agent(custom_env, agent, n_episodes,
         # however, we can overwrite these zeros with actual gameplay sampled from the environment.
         load_up_agent_memory_with_random_gameplay(custom_env, agent)
 
-    env = custom_env.env
+    env = custom_env.envs
 
     if record:
         env = wrappers.Monitor(
@@ -612,7 +613,7 @@ def play(env_type, lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_c
     scores_history = train_agent(custom_env, agent, n_episodes,
                                  perform_random_gameplay,
                                  enable_models_saving, load_checkpoint)
-    utils.Plotter.plot_running_average(
+    reinforcement_learning.utils.plotter.Plotter.plot_running_average(
         custom_env.name, method_name, scores_history, window=custom_env.window, show=False,
         file_name=utils.General.get_file_name(custom_env.file_name, agent, n_episodes, method_name) + '_train',
         directory=agent.chkpt_dir if enable_models_saving else None

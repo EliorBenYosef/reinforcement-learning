@@ -1,6 +1,6 @@
 import numpy as np
 
-from utils import LIBRARY_TORCH
+from reinforcement_learning.utils.utils import LIBRARY_TORCH
 
 
 class ReplayBuffer(object):  # aka 'ReplayMemory'
@@ -57,7 +57,7 @@ class ReplayBuffer(object):  # aka 'ReplayMemory'
         self.memory_terminal[i] = 1 - int(is_terminal)
 
         if self.is_discrete_action_space:
-            # integer action --> one hot encoding of actions:
+            # integer action --> one-hot encoding of actions:
             #   necessary for multiply the tensor [memory_batch_size, n_actions] with a vector [n_actions]
             a_index = self.action_space.index(a)
             self.memory_a_indices_one_hot[i, a_index] = 1
@@ -88,13 +88,15 @@ class ReplayBuffer(object):  # aka 'ReplayMemory'
         batch_terminal = self.memory_terminal[batch]
 
         if self.is_discrete_action_space:
-            batch_a_indices_one_hot = self.memory_a_indices_one_hot[batch]
+            batch_a_indices_one_hot = self.memory_a_indices_one_hot[batch]  # one-hot encoding of actions
 
             # simplest way to convert: multiplying the vector with the matrix \ vector.
+
             # a_values = np.array(self.action_space, dtype=self.dtype)
-            # batch_a_values = np.dot(batch_a_indices_one_hot, a_values)  # one hot encoding of actions --> integer action
+            # batch_a_values = np.dot(batch_a_indices_one_hot, a_values)  # -> action's integer
+
             a_indices = np.array([i for i in range(self.n_actions)], dtype=self.dtype)
-            batch_a_indices = np.dot(batch_a_indices_one_hot, a_indices)  # one hot encoding of actions --> action's index
+            batch_a_indices = np.dot(batch_a_indices_one_hot, a_indices)  # -> action's index
 
             return batch_s, batch_s_, batch_r, batch_terminal, batch_a_indices_one_hot, batch_a_indices,
         else:
