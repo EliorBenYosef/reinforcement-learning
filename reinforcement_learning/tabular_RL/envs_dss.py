@@ -1,11 +1,17 @@
 """
 https://github.com/openai/gym/wiki/Table-of-environments
 
-Environments with Discretized State Space (DSS)
-* Toy Text - FrozenLake, Taxi.  # TODO: add Grid World, Windy Gridworld, Custom Grid World.
-* Cards - Blackjack.
-* Classic Control - MountainCar, CartPole, Acrobot.
+https://github.com/openai/gym/tree/master/gym/envs -
+    check gym/gym/envs/__init__.py for solved properties (max_episode_steps, reward_threshold, optimum).
+    Solved: avg_score >= reward_threshold, over 100 consecutive trials.
+    "Unsolved environment" - doesn't have a specified reward_threshold at which it's considered solved.
+
+Environments with Discretized State Space (DSS):
+    Toy Text - FrozenLake, Taxi.  # TODO: add Grid World, Windy Gridworld, Custom Grid World.
+    Cards - Blackjack.
+    Classic Control - MountainCar, CartPole, Acrobot.
 """
+
 
 import numpy as np
 import gym
@@ -40,6 +46,16 @@ class FrozenLake(BaseEnv):
 
     Reward: +1 when reaching the goal (0 otherwise)
 
+    Solved:
+    gym/gym/envs/__init__.py :
+        FrozenLake-v0 (4x4 map): max_episode_steps = 100, reward_threshold = 0.78, optimum = .8196
+        FrozenLake8x8-v0 (8x8 map): max_episode_steps = 200, reward_threshold = 0.99, optimum = 1
+
+    Discrete observation space (1D TODO).
+    State space analysis:
+        = row*4 + column
+
+    Discrete action space (1D).
     Actions (4): left (0), down (1), right (2), up (3)
     """
 
@@ -47,9 +63,6 @@ class FrozenLake(BaseEnv):
         self.name = 'Frozen Lake'
         self.file_name = 'frozen-lake-v0'
         self.env = gym.make('FrozenLake-v0')
-
-        self.GAMMA = 0.9  # 0.99 ?
-        self.EPS_MIN = 0.1
 
         # State space analysis:
         self.rows = 4
@@ -61,9 +74,12 @@ class FrozenLake(BaseEnv):
             for c in range(self.columns):
                 self.states.append((r, c))
 
+        self.GAMMA = 0.9  # 0.99 ?
+        self.EPS_MIN = 0.1
+
     def get_state(self, observation):
         c = observation % self.columns
-        r = (observation // self.columns) % self.rows
+        r = (observation // self.columns) % self.rows  # TODO: '% self.rows' is unnecessary?
         return r, c
 
     @staticmethod
@@ -89,10 +105,11 @@ class Taxi(BaseEnv):
     The taxi drives on a 5x5 matrix.
 
     Goal: pick up the passenger at one location and drop him off in another.
+    Goal changes over time.
 
     There are:
         4 possible pick-up/drop-off destinations (R, G, B, Y).
-        5 possible passenger locations (4 destinations +  Taxi).
+        5 possible passenger locations (4 starting locations / destinations + Taxi).
     The pipe characters '|' indicate obstacles (the taxi cannot drive through them).
 
     Rewards:
@@ -102,15 +119,19 @@ class Taxi(BaseEnv):
         -1 for driving against a wall.
 
     Solved:
-        This is an unsolved environment (doesn't have a specified reward threshold at which it's considered solved).
+        Taxi-v2 is an unsolved environment.
         100 Episodes Best Average Reward:
-            top of the leader boars - 9.716
-            bottom of the leader boars - 9.23
+            leaders' board bottom (9.23) = reward_threshold
+            leaders' board top (9.716) = optimum
+    gym/gym/envs/__init__.py :
+        Taxi-v3: max_episode_steps = 200, reward_threshold = 8, optimum = 8.46
 
-    Actions (Discrete 6): north (0), south (1), east (2), west (3), pick up (4), drop off (5)
+    Discrete observation space (1D TODO).
+    State space analysis:
+        = ((taxi_row*5 + taxi_col)*5 + passenger_location)*4 + destination.  TODO
 
-    Discrete observation space.
-    Goal changes over time.
+    Discrete action space (1D).
+    Actions (6): north (0), south (1), east (2), west (3), pick up (4), drop off (5)
     """
 
     def __init__(self):
@@ -118,17 +139,13 @@ class Taxi(BaseEnv):
         self.file_name = 'taxi-v2'
         self.env = gym.make('Taxi-v2')
 
-        self.GAMMA = 0.999
-        self.EPS_MIN = 0.0
-
         # State space analysis:
         self.taxi_rows = 5
         self.taxi_columns = 5
-        self.passenger_locations = 5  # 4 starting locations + the taxi
+        self.passenger_locations = 5
         self.destinations = 4
 
         # Construct state space:
-        # ((taxi_row*5 + taxi_col)*5 + passenger_location)*4 + destination.
         self.states = []
         for tr in range(self.taxi_rows):
             for tc in range(self.taxi_columns):
@@ -136,14 +153,17 @@ class Taxi(BaseEnv):
                     for d in range(self.destinations):
                         self.states.append((tr, tc, pl, d))
 
+        self.GAMMA = 0.999
+        self.EPS_MIN = 0.0
+
     def get_state(self, o):
         """
         :param o: observation
         """
         d = o % self.destinations
-        pl = (o // self.destinations) % self.passenger_locations
-        tc = ((o // self.destinations) // self.passenger_locations) % self.taxi_columns
-        tr = (((o // self.destinations) // self.passenger_locations) // self.taxi_columns) % self.taxi_rows
+        pl = (o // self.destinations) % self.passenger_locations  # TODO: '% self.passenger_locations' is unnecessary?
+        tc = ((o // self.destinations) // self.passenger_locations) % self.taxi_columns  # TODO: '% self.taxi_columns' is unnecessary?
+        tr = (((o // self.destinations) // self.passenger_locations) // self.taxi_columns) % self.taxi_rows  # TODO: '% self.taxi_rows' is unnecessary?
         return tr, tc, pl, d
 
     @staticmethod
@@ -184,6 +204,13 @@ class Blackjack(BaseEnv):
 
     Reward: –1 for losing, 0 for a draw, and >=1 for winning (1.5 for natural = getting 21 on the first deal)
 
+    Discrete observation space (3D TODO).
+    State space analysis:
+        agent's cards sum - sum of the player's cards. was: range(4, 22), changed for e-SARSA:
+        dealer's showing card - the card that the dealer has showing, 1 = Ace, 10 = face card:
+        agent's usable ace - if the player has usable ace, it can count as 1 / 11:
+
+    Discrete action space (1D).
     Actions (2):
         stick = stop receiving cards (0)
         hit = receive another card (1)
@@ -194,15 +221,9 @@ class Blackjack(BaseEnv):
         self.file_name = 'blackjack-v0'
         self.env = gym.make('Blackjack-v0')
 
-        self.GAMMA = 1.0
-        self.EPS_MIN = 0.0
-
         # State space analysis:
-        # agent's cards sum - sum of the player's cards. was: range(4, 22), changed for e-SARSA:
-        self.agentCardsSumSpace = [i for i in range(4, 32)]
-        # dealer's showing card - the card that the dealer has showing, 1 = Ace, 10 = face card:
+        self.agentCardsSumSpace = [i for i in range(4, 32)]  # was: range(4, 22), changed for e-SARSA
         self.dealerShowingCardSpace = [i + 1 for i in range(10)]
-        # agent's usable ace - if the player has usable ace, it can count as 1 \ 11:
         self.agentUsableAceSpace = [False, True]
 
         # Construct state space:
@@ -211,6 +232,9 @@ class Blackjack(BaseEnv):
             for card in self.dealerShowingCardSpace:
                 for ace in self.agentUsableAceSpace:
                     self.states.append((total, card, ace))
+
+        self.GAMMA = 1.0
+        self.EPS_MIN = 0.0
 
     def get_state(self, observation):
         # observation == agentCardsSum, dealerShowingCard, agentUsableAce
@@ -262,14 +286,22 @@ class MountainCar(BaseEnv):
     Rewards: -1 for each time-step.
         As with MountainCarContinuous v0, there is no penalty for climbing the left hill,
             which upon reached acts as a wall.
-
-    Solved: getting average reward of -110.0 over 100 consecutive trials.
-
-    Actions (Discrete 3): backward/left (0), none (1), forward/right (2)
-    mountain_car_policy = lambda velocity_state: 0 if velocity_state < (car_vel_bin_num // 2) else 2
-
-    Continuous observation space
     No reward surrounding initial state.
+
+    Solved:
+    gym/gym/envs/__init__.py :
+        MountainCar-v0: max_episode_steps = 200, reward_threshold = -110.0
+
+    Continuous observation space (2D).
+    State space analysis:
+        observation = (pos, vel)
+        Num	    Observation	    Min	    Max
+        0	    position	    -1.2	0.6
+        1	    velocity	    -0.07	0.07
+
+    Discrete action space (1D).
+    Actions (3): backward/left (0), none (1), forward/right (2)
+    mountain_car_policy = lambda velocity_state: 0 if velocity_state < (car_vel_bin_num // 2) else 2
     """
 
     CAR_POS = 0
@@ -280,23 +312,13 @@ class MountainCar(BaseEnv):
         self.file_name = 'mountain-car-v0'
         self.env = gym.make('MountainCar-v0')
 
-        self.GAMMA = 1.0    # 0.99 (Q-learning) \ 1.0 (MC Policy Evaluation, TD-0)
-        self.EPS_MIN = 0.0  # 0.01 (Q-learning) \ 0.0 (MC Policy Evaluation, TD-0)
-                            # eps_max = 0.01 (Q-learning)
-
-        # State space analysis:
-        # observation = (pos, vel)
-        # Num	Observation	    Min	    Max
-        # 0	    position	    -1.2	0.6
-        # 1	    velocity	    -0.07	0.07
-
         # Discretize state space (into bins):
         self.carPosSpace = np.linspace(-1.2, 0.6, 9)  # (-1.2, 0.5, 8)
         self.carVelSpace = np.linspace(-0.07, 0.07, car_vel_bin_num)
 
         self.single_state_space = single_state_space
 
-        # Construct state space (450):
+        # Construct state space (9*50=450):
         self.states = []
         if single_state_space == MountainCar.CAR_POS:
             for pos in range(len(self.carPosSpace) + 1):
@@ -308,6 +330,10 @@ class MountainCar(BaseEnv):
             for pos in range(len(self.carPosSpace) + 1):
                 for vel in range(len(self.carVelSpace) + 1):
                     self.states.append((pos, vel))
+
+        self.GAMMA = 1.0    # 0.99 (Q-learning) \ 1.0 (MC Policy Evaluation, TD-0)
+        self.EPS_MIN = 0.0  # 0.01 (Q-learning) \ 0.0 (MC Policy Evaluation, TD-0)
+                            # eps_max = 0.01 (Q-learning)
 
     def get_state(self, observation):
         pos, vel = observation
@@ -355,13 +381,23 @@ class CartPole(BaseEnv):
 
     Rewards: +1 for every time-step that the pole remains upright.
 
-    Solved: getting average reward of 195.0 over 100 consecutive trials.
-        avg score >= 195.0 over 100 consecutive trials.
+    Solved:
+    gym/gym/envs/__init__.py :
+        CartPole-v0: max_episode_steps = 200, reward_threshold = 195.0
+        CartPole-v1: max_episode_steps = 500, reward_threshold = 475.0
 
-    Actions (Discrete 2): left (0), right (1)
+    Continuous observation space (4D).
+    State space analysis:
+        observation = (cart x position, cart velocity, pole theta angle, pole velocity)
+        Num     Observation	            Min	        Max
+        0	    Cart Position	        -2.4	    2.4
+        1	    Cart Velocity	        -Inf	    Inf
+        2	    Pole Angle	            ~ -41.8°	~ 41.8°
+        3	    Pole Velocity At Tip	-Inf	    Inf
+
+    Discrete action space (1D).
+    Actions (2): left (0), right (1)
     cart_pole_policy = lambda theta_state: 0 if theta_state < (pole_theta_bin_num // 2) else 1
-
-    Continuous observation space.
     """
 
     CART_X = 0
@@ -374,17 +410,6 @@ class CartPole(BaseEnv):
         self.file_name = 'cart-pole-v0'
         self.env = gym.make('CartPole-v0')
 
-        self.GAMMA = 1.0
-        self.EPS_MIN = 0.0
-
-        # State space analysis:
-        # observation = (cart x position, cart velocity, pole theta angle, pole velocity)
-        # Num	Observation	            Min	        Max
-        # 0	    Cart Position	        -2.4	    2.4
-        # 1	    Cart Velocity	        -Inf	    Inf
-        # 2	    Pole Angle	            ~ -41.8°	~ 41.8°
-        # 3	    Pole Velocity At Tip	-Inf	    Inf
-
         # Discretize state space (10 bins each):                    # an example of bad modeling (won't converge):
         self.cartXSpace = np.linspace(-2.4, 2.4, 10)                                    # (-4.8, 4.8, 10)
         self.cartXVelSpace = np.linspace(-4, 4, 10)                                     # (-5, 5, 10)
@@ -396,23 +421,26 @@ class CartPole(BaseEnv):
         # Construct state space (10^4):
         self.states = []
         if single_state_space == CartPole.CART_X:
-            for i in range(len(self.cartXSpace) + 1):
-                self.states.append(i)
+            for x in range(len(self.cartXSpace) + 1):
+                self.states.append(x)
         elif single_state_space == CartPole.CART_X_VEL:
-            for j in range(len(self.cartXVelSpace) + 1):
-                self.states.append(j)
+            for x_vel in range(len(self.cartXVelSpace) + 1):
+                self.states.append(x_vel)
         elif single_state_space == CartPole.POLE_THETA:
-            for k in range(len(self.poleThetaSpace) + 1):
-                self.states.append(k)
+            for theta in range(len(self.poleThetaSpace) + 1):
+                self.states.append(theta)
         elif single_state_space == CartPole.POLE_THETA_VEL:
-            for l in range(len(self.poleThetaVelSpace) + 1):
-                self.states.append(l)
+            for theta_vel in range(len(self.poleThetaVelSpace) + 1):
+                self.states.append(theta_vel)
         else:
-            for i in range(len(self.cartXSpace) + 1):
-                for j in range(len(self.cartXVelSpace) + 1):
-                    for k in range(len(self.poleThetaSpace) + 1):
-                        for l in range(len(self.poleThetaVelSpace) + 1):
-                            self.states.append((i, j, k, l))
+            for x in range(len(self.cartXSpace) + 1):
+                for x_vel in range(len(self.cartXVelSpace) + 1):
+                    for theta in range(len(self.poleThetaSpace) + 1):
+                        for theta_vel in range(len(self.poleThetaVelSpace) + 1):
+                            self.states.append((x, x_vel, theta, theta_vel))
+
+        self.GAMMA = 1.0
+        self.EPS_MIN = 0.0
 
     def get_state(self, observation):
         cart_x, cart_x_dot, pole_theta, pole_theta_dot = observation
@@ -444,28 +472,27 @@ class Acrobot(BaseEnv):
     Episode Termination (besides reaching the goal): reaching 500 iterations.
 
     Rewards: -1 for each time-step the links are hanging downwards.
+    No reward surrounding initial state.
 
     Solved:
-        This is an unsolved environment (doesn't have a specified reward threshold at which it's considered solved).
-        above -100 is pretty good.
-        best score is: -42.37 ± 4.83
+    gym/gym/envs/__init__.py :
+        Acrobot-v1: max_episode_steps = 500, reward_threshold = -100.0  # current best score: -42.37 ± 4.83
 
-    Actions (Discrete 3): applying +1, 0 or -1 torque on the joint between the two pendulum links
+    Continuous observation space (6D).
+    State space analysis:
+        observation = (cos_theta1, sin_theta1, cos_theta2, sin_theta2, theta1_dot, theta2_dot)
 
-    Continuous observation space.
-    No reward surrounding initial state.
+    Discrete action space (1D).
+    Actions (3): applying torque on the joint between the two pendulum links:
+        +1 torque (0)
+        0 torque (1)
+        -1 torque (2)
     """
 
     def __init__(self):
         self.name = 'Acrobot'
         self.file_name = 'acrobot-v1'
         self.env = gym.make('Acrobot-v1')
-
-        self.GAMMA = 0.99
-        self.EPS_MIN = 0.0
-
-        # State space analysis:
-        # observation = (cos_theta1, sin_theta1, cos_theta2, sin_theta2, theta1_dot, theta2_dot)
 
         # Discretize state space (10 bins each):
         self.theta_space = np.linspace(-1, 1, 10)
@@ -480,6 +507,9 @@ class Acrobot(BaseEnv):
                         for dot1 in range(len(self.theta_dot_space) + 1):
                             for dot2 in range(len(self.theta_dot_space) + 1):
                                 self.states.append((c1, s1, c2, s2, dot1, dot2))
+
+        self.GAMMA = 0.99
+        self.EPS_MIN = 0.0
 
     def get_state(self, observation):
         cos_theta1, sin_theta1, cos_theta2, sin_theta2, theta1_dot, theta2_dot = observation

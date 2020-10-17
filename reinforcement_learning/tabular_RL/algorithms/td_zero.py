@@ -1,7 +1,7 @@
 import numpy as np
 from gym import wrappers
 
-from reinforcement_learning.utils import utils
+from reinforcement_learning.utils.utils import decrement_eps, EPS_DEC_LINEAR, pickle_save
 from reinforcement_learning.tabular_RL.utils import init_v, init_q, init_q1_q2, \
     max_action_q, max_action_q1_q2, eps_greedy_q, eps_greedy_q1_q2, print_v
 
@@ -107,7 +107,7 @@ class TD0ControlModel:
     """
 
     def __init__(self, custom_env, episodes=50000, alpha=0.1, gamma=None,
-                 eps_max=1.0, eps_min=None, eps_dec=None, eps_dec_type=utils.Calculator.EPS_DEC_LINEAR):
+                 eps_max=1.0, eps_min=None, eps_dec=None, eps_dec_type=EPS_DEC_LINEAR):
 
         self.custom_env = custom_env
         self.env = custom_env.envs
@@ -190,7 +190,7 @@ class TD0ControlModel:
             if (i + 1) % (self.episodes // 10) == 0:
                 print('episode %d - eps: %.2f, score: %d, steps: %d' % (i + 1, self.EPS, ep_score, ep_steps))
 
-            self.EPS = utils.Calculator.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
+            self.EPS = decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
 
             self.totalSteps[i] = ep_steps
             self.totalScores[i] = ep_score
@@ -202,7 +202,7 @@ class TD0ControlModel:
         print('\n', 'Game Ended', '\n')
 
         if pickle:
-            utils.SaverLoader.pickle_save(Q, self.custom_env.file_name + '-q-table')
+            pickle_save(Q, self.custom_env.file_name + '-q-table')
 
         return Q, self.totalScores, self.totalAccumulatedScores
 
@@ -251,7 +251,7 @@ class TD0ControlModel:
             if (i + 1) % (self.episodes // 10) == 0:
                 print('episode %d - eps: %.2f, score: %d, steps: %d' % (i + 1, self.EPS, ep_score, ep_steps))
 
-            self.EPS = utils.Calculator.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
+            self.EPS = decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
 
             self.totalSteps[i] = ep_steps
             self.totalScores[i] = ep_score
@@ -263,7 +263,7 @@ class TD0ControlModel:
         print('\n', 'Game Ended', '\n')
 
         if pickle:
-            utils.SaverLoader.pickle_save(Q, self.custom_env.file_name + '-q-table')
+            pickle_save(Q, self.custom_env.file_name + '-q-table')
 
         return Q, self.totalScores, self.totalAccumulatedScores
 
@@ -313,7 +313,7 @@ class TD0ControlModel:
             if (i + 1) % (self.episodes // 10) == 0:
                 print('episode %d - eps: %.2f, score: %d, steps: %d' % (i + 1, self.EPS, ep_score, ep_steps))
 
-            self.EPS = utils.Calculator.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
+            self.EPS = decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
 
             self.totalSteps[i] = ep_steps
             self.totalScores[i] = ep_score
@@ -325,7 +325,7 @@ class TD0ControlModel:
         print('\n', 'Game Ended', '\n')
 
         if pickle:
-            utils.SaverLoader.pickle_save(Q, self.custom_env.file_name + '-q-table')
+            pickle_save(Q, self.custom_env.file_name + '-q-table')
 
         return Q, self.totalScores, self.totalAccumulatedScores
 
@@ -379,7 +379,7 @@ class TD0ControlModel:
             if (i + 1) % (self.episodes // 10) == 0:
                 print('episode %d - eps: %.2f, score: %d, steps: %d' % (i + 1, self.EPS, ep_score, ep_steps))
 
-            self.EPS = utils.Calculator.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
+            self.EPS = decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
 
             self.totalSteps[i] = ep_steps
             self.totalScores[i] = ep_score

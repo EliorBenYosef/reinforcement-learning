@@ -1,7 +1,7 @@
 import numpy as np
 from gym import wrappers
 
-from reinforcement_learning.utils import utils
+from reinforcement_learning.utils.utils import decrement_eps, EPS_DEC_LINEAR, print_policy
 from reinforcement_learning.tabular_RL.utils import init_v, init_q1_q2, \
     max_action_q, eps_greedy_q, print_v, print_q, get_policy_table_from_q_table, \
     calculate_episode_states_actions_returns
@@ -129,7 +129,7 @@ class MCPredictionModel:
 class MCControlModel:
 
     def __init__(self, custom_env, episodes=50000, alpha=0.1, gamma=None,
-                 eps_max=1.0, eps_min=None, eps_dec=None, eps_dec_type=utils.Calculator.EPS_DEC_LINEAR):
+                 eps_max=1.0, eps_min=None, eps_dec=None, eps_dec_type=EPS_DEC_LINEAR):
 
         self.custom_env = custom_env
         self.env = custom_env.envs
@@ -216,7 +216,7 @@ class MCControlModel:
             if (i + 1) % (self.episodes // 10) == 0:
                 print('episode %d - score: %d, steps: %d' % (i + 1, ep_score, ep_steps))
 
-            self.EPS = utils.Calculator.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
+            self.EPS = decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
 
             self.totalSteps[i] = ep_steps
             self.totalScores[i] = ep_score
@@ -246,7 +246,7 @@ class MCControlModel:
 
         if print_info:
             print_q(Q)
-            utils.Printer.print_policy(Q, policy)
+            print_policy(Q, policy)
 
         print('\n', 'Game Ended', '\n')
 
@@ -343,11 +343,11 @@ class MCControlModel:
                     prob = self.EPS / len(behavior_policy[s])  # probability of taking a random action.
                 W *= 1 / prob  # updating the weight
 
-            self.EPS = utils.Calculator.decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
+            self.EPS = decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
 
         if print_info:
             print_q(Q)
-            utils.Printer.print_policy(Q, target_policy)
+            print_policy(Q, target_policy)
 
         print('\n', 'Game Ended', '\n')
 

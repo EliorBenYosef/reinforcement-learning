@@ -1,29 +1,30 @@
 from numpy.random import seed
-
-import reinforcement_learning.utils.plotter
-
 seed(28)
 from tensorflow import set_random_seed
 set_random_seed(28)
 
 import tensorflow as tf
 
-from reinforcement_learning.utils import utils
-import reinforcement_learning.deep_RL.envs as Envs
+from reinforcement_learning.utils.plotter import plot_running_average_comparison
+from reinforcement_learning.deep_RL.const import LIBRARY_TF, LIBRARY_KERAS, LIBRARY_TORCH, \
+    OPTIMIZER_Adam, OPTIMIZER_RMSprop, OPTIMIZER_Adadelta, OPTIMIZER_Adagrad, OPTIMIZER_SGD
+from reinforcement_learning.deep_RL.utils.devices import set_device
+from reinforcement_learning.deep_RL.envs import CartPole, Pendulum, MountainCarContinuous, \
+    LunarLander, LunarLanderContinuous, BipedalWalker, Breakout, SpaceInvaders
 
 from reinforcement_learning.deep_RL.algorithms.deep_q_learning import Agent, train_agent
-# from .algorithms.policy_gradient import Agent, train
-# from .algorithms.actor_critic import Agent, train
-# from .algorithms.deep_deterministic_policy_gradient import Agent, train
+# from reinforcement_learning.deep_RL.algorithms.policy_gradient import Agent, train_agent
+# from reinforcement_learning.deep_RL.algorithms.actor_critic import Agent, train_agent
+# from reinforcement_learning.deep_RL.algorithms.deep_deterministic_policy_gradient import Agent, train_agent
 
 
-def perform_grid_search(lib_type=utils.LIBRARY_TF, enable_models_saving=False, load_checkpoint=False,
+def perform_grid_search(lib_type=LIBRARY_TF, enable_models_saving=False, load_checkpoint=False,
                         perform_random_gameplay=False):
 
-    custom_env = Envs.ClassicControl.CartPole()
+    custom_env = CartPole()
     custom_env.env.seed(28)
 
-    utils.DeviceSetUtils.set_device(lib_type, devices_dict=None)
+    set_device(lib_type, devices_dict=None)
 
     method_name = 'DQL'
 
@@ -82,7 +83,7 @@ def perform_grid_search(lib_type=utils.LIBRARY_TF, enable_models_saving=False, l
     fc1_dim_list = [64, 128, 256, 512]
     fc2_dim_list = [64, 128, 256, 512]
 
-    optimizer_list = [utils.Optimizers.OPTIMIZER_Adam]
+    optimizer_list = [OPTIMIZER_Adam]
     alpha_list = [0.0005]
     beta_list = [0.0005]  # only for AC & DDPG
 
@@ -131,17 +132,17 @@ def perform_grid_search(lib_type=utils.LIBRARY_TF, enable_models_saving=False, l
                                                                          enable_models_saving, load_checkpoint)
                                             scores_histories_train.append(scores_history)
 
-                                            # scores_history_test = utils.Tester.test_trained_agent(
+                                            # scores_history_test = test_trained_agent(
                                             #     custom_env, agent, enable_models_saving)
                                             # scores_histories_test.append(scores_history_test)
 
                                             tf.reset_default_graph()
 
-    reinforcement_learning.utils.plotter.Plotter.plot_running_average_comparison(
+    plot_running_average_comparison(
         custom_env.name, scores_histories_train, labels, window=custom_env.window, show=False,
         file_name=custom_env.file_name + '_' + method_name + '_train'
     )
-    reinforcement_learning.utils.plotter.Plotter.plot_running_average_comparison(
+    plot_running_average_comparison(
         custom_env.name, scores_histories_test, labels, window=custom_env.window, show=False,
         file_name=custom_env.file_name + '_' + method_name + '_test'
     )

@@ -1,6 +1,6 @@
 import numpy as np
 
-from reinforcement_learning.utils.utils import LIBRARY_TORCH
+from reinforcement_learning.deep_RL.const import LIBRARY_TORCH
 
 
 class ReplayBuffer(object):  # aka 'ReplayMemory'

@@ -1,6 +1,6 @@
 import numpy as np
 
-from reinforcement_learning.utils.utils import SaverLoader, Tester, Watcher
+from reinforcement_learning.utils.utils import test_method, watch_method, pickle_load
 
 
 # Initialization:
@@ -14,7 +14,7 @@ def init_v(states):
 
 def init_q(states, action_space_size, pickle_file_name, pickle):
     if pickle:
-        Q = SaverLoader.pickle_load(pickle_file_name)
+        Q = pickle_load(pickle_file_name)
     else:
         # if Q is a numpy.ndarray, options:
         #   Q = np.zeros((state_space_size, action_space_size))
@@ -110,15 +110,15 @@ def get_policy_table_from_q_table(states, Q, action_space_size):
 
 
 def test_q_table(custom_env, Q, episodes=1000):
-    return Tester.test_method(custom_env, episodes, lambda s: max_action_q(Q, s, custom_env.envs.action_space.n))
+    return test_method(custom_env, episodes, lambda s: max_action_q(Q, s, custom_env.envs.action_space.n))
 
 
 def test_policy_table(custom_env, policy, episodes=1000):
-    return Tester.test_method(custom_env, episodes, lambda s: policy[s])
+    return test_method(custom_env, episodes, lambda s: policy[s])
 
 
 def watch_q_table(custom_env, Q, episodes=3):
-    Watcher.watch_method(custom_env, episodes, lambda s: max_action_q(Q, s, custom_env.envs.action_space.n))
+    watch_method(custom_env, episodes, lambda s: max_action_q(Q, s, custom_env.envs.action_space.n))
 
 
 # Print:
@@ -134,3 +134,9 @@ def print_q(Q):
     # print(Q)
     for s, a in Q:
         print('s', s, 'a', a, ' - ', '%.3f' % Q[s, a])
+
+
+# Watcher:
+
+def watch_policy(custom_env, policy, episodes=3):
+    watch_method(custom_env, episodes, lambda s: policy[s])

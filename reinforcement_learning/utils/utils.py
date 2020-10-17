@@ -1,626 +1,228 @@
 import os
-
 from IPython.display import clear_output
 import time
 import datetime
+import numpy as np
 import pickle
 
-import numpy as np
 
-import tensorflow as tf
-from tensorflow.python.client import device_lib
+# Printer:
 
-import keras.backend.tensorflow_backend as keras_tensorflow_backend
-from keras.backend import set_session as keras_set_session
-import keras.optimizers as optimizers
+def print_average_score(total_scores, ratio=10):
+    # Calculate and print the average score per a number of episodes (tick)
 
-import torch as T
-import torch.optim.rmsprop as T_optim_rmsprop
-import torch.optim.adagrad as T_optim_adagrad
-import torch.optim.adadelta as T_optim_adadelta
+    scores_per_tick_episodes = np.split(np.array(total_scores), ratio)  # episodes / tick
 
-import reinforcement_learning.utils.plotter as Plotter
-
-LIBRARY_TF = 0
-LIBRARY_KERAS = 1
-LIBRARY_TORCH = 2
+    episodes = len(total_scores)
+    tick = episodes // ratio
+    print('\n********Average score per %d episodes********\n' % tick)
+    count = tick
+    for r in scores_per_tick_episodes:
+        print(count, ": ", str(sum(r / 1000)))
+        count += tick
 
 
-class Printer:
+def print_training_progress(i, ep_score, scores_history, avg_num, trailing=True, eps=None, ep_start_time=None):
+    time_string = ''
+    if ep_start_time is not None:
+        time_string = '; runtime: %s' % str(datetime.datetime.now() - ep_start_time).split('.')[0]
+    print('Episode: %d ;' % (i + 1), 'score: %d' % ep_score, time_string)  # score: %.2f
 
-    @staticmethod
-    def print_average_score(total_scores, ratio=10):
-        # Calculate and print the average score per a number of episodes (tick)
+    eps_string = ''
+    if eps is not None:
+        eps_string = 'epsilon %.3f' % eps  # %.4f
 
-        scores_per_tick_episodes = np.split(np.array(total_scores), ratio)  # episodes / tick
+    # compute the running avg of the last 'avg_num' episodes:
+    avg_score = np.mean(scores_history[-avg_num:]) if (i + 1) >= avg_num else None
+    if avg_score is not None:
+        if trailing:  # every episode
+            print('trailing %d episodes ;' % avg_num,
+                  'average score %.3f ;' % avg_score,
+                  eps_string)
+        elif (i + 1) % avg_num == 0:  # every 'avg_num' episodes
+            print('episodes: %d - %d ;' % (i + 2 - avg_num, i + 1),
+                  'average score %.3f ;' % avg_score,
+                  eps_string)
 
-        episodes = len(total_scores)
-        tick = episodes // ratio
-        print('\n********Average score per %d episodes********\n' % tick)
-        count = tick
-        for r in scores_per_tick_episodes:
-            print(count, ": ", str(sum(r / 1000)))
-            count += tick
-
-    @staticmethod
-    def print_training_progress(i, ep_score, scores_history, avg_num, trailing=True, eps=None, ep_start_time=None):
-        time_string = ''
-        if ep_start_time is not None:
-            time_string = '; runtime: %s' % str(datetime.datetime.now() - ep_start_time).split('.')[0]
-        print('Episode: %d ;' % (i + 1), 'score: %d' % ep_score, time_string)  # score: %.2f
-
-        eps_string = ''
-        if eps is not None:
-            eps_string = 'epsilon %.3f' % eps  # %.4f
-
-        # compute the running avg of the last 'avg_num' episodes:
-        avg_score = np.mean(scores_history[-avg_num:]) if (i + 1) >= avg_num else None
-        if avg_score is not None:
-            if trailing:  # every episode
-                print('trailing %d episodes ;' % avg_num,
-                      'average score %.3f ;' % avg_score,
-                      eps_string)
-            elif (i + 1) % avg_num == 0:  # every 'avg_num' episodes
-                print('episodes: %d - %d ;' % (i + 2 - avg_num, i + 1),
-                      'average score %.3f ;' % avg_score,
-                      eps_string)
-
-        return avg_score
-
-    @staticmethod
-    def print_policy(Q, policy):
-        print('\n', 'Policy', '\n')
-        for s in policy:
-            a = policy[s]
-            print('s', s, 'a', a, ' - ', '%.3f' % Q[s, a])
-
-    @staticmethod
-    def keras_print_model_info(keras_model):
-        # model's params number
-        print('Model info - total params: %d ; layers params: %s' % (
-            keras_model.count_params(), [layer.count_params() for layer in keras_model.layers]
-        ))
-
-        # # model's weights and biases
-        # print('model weights', '\n', model.weights, '\n')
-        # print("model layers' weights and biases:", '\n', [layer.get_weights() for layer in model.layers], '\n')
-        # for layer in model.layers:
-        #     weights, biases = layer.get_weights()
-        #     print("Layer's weights", '\n', weights, '\n')
-        #     print("Layer's biases", '\n', biases, '\n')
+    return avg_score
 
 
-class DeviceGetUtils:
-
-    @staticmethod
-    def tf_get_local_devices(GPUs_only=False):
-        """
-        Checks available devices to TensorFlow.
-        :param GPUs_only:
-        :return: a list of names of the devices that TensorFlow sees.
-        """
-        # assert 'GPU' in str(device_lib.list_local_devices())
-
-        local_devices = device_lib.list_local_devices()  # local_device_protos
-        # possible properties: name, device_type, memory_limit, incarnation, locality, physical_device_desc.
-        #   name - str with the following structure: '/' + prefix ':' + device_type + ':' + device_type_order_num.
-        #   device_type - CPU \ XLA_CPU \ GPU \ XLA_GPU
-        #   locality (can be empty) - for example: { bus_id: 1 links {} }
-        #   physical_device_desc (optional) - for example:
-        #       "device: 0, name: Tesla K80, pci bus id: 0000:00:04.0, compute capability: 3.7"
-        if GPUs_only:
-            return [dev.name for dev in local_devices if 'GPU' in dev.device_type]
-        else:
-            return [dev.name for dev in local_devices]
-
-    @staticmethod
-    def keras_get_available_GPUs():
-        """
-        Checks available GPUs to Keras (>=2.1.1).
-        :return:
-        """
-        # assert len(keras_tensorflow_backend._get_available_gpus()) > 0
-
-        return keras_tensorflow_backend._get_available_gpus()
-
-    @staticmethod
-    def torch_get_current_device_name():
-        """
-        Checks available GPUs to PyTorch.
-        :return:
-        """
-        if T.cuda.is_available() and T.cuda.device_count() > 0:
-            return T.cuda.get_device_name(T.cuda.current_device())
+def print_policy(Q, policy):
+    print('\n', 'Policy', '\n')
+    for s in policy:
+        a = policy[s]
+        print('s', s, 'a', a, ' - ', '%.3f' % Q[s, a])
 
 
-class DeviceSetUtils:
+def keras_print_model_info(keras_model):
+    # model's params number
+    print('Model info - total params: %d ; layers params: %s' % (
+        keras_model.count_params(), [layer.count_params() for layer in keras_model.layers]
+    ))
 
-    @staticmethod
-    def set_device(lib_type, devices_dict=None):
-        """
-        :param lib_type:
-        :param devices_dict: {type: bus_id}. e.g.: {'CPU': 0}, {'GPU': 0, 'GPU': 1}
-        :return:
-        """
-        # it seems that for:
-        #   TF - tf_get_session_according_to_device() alone is enough...
-        #   Keras - tf_set_device() alone is enough...
-        # maybe only one method is enough for either?
-
-        if devices_dict is not None:
-            designated_GPUs_bus_id_str = ''
-            for device_type, device_bus_id in devices_dict.items():
-                if len(designated_GPUs_bus_id_str) > 0:
-                    designated_GPUs_bus_id_str += ','
-                designated_GPUs_bus_id_str += str(device_bus_id)
-
-            if lib_type == LIBRARY_TF:
-                DeviceSetUtils.tf_set_device(designated_GPUs_bus_id_str)
-            elif lib_type == LIBRARY_KERAS:
-                DeviceSetUtils.tf_set_device(designated_GPUs_bus_id_str)
-                DeviceSetUtils.keras_set_session_according_to_device(devices_dict)
-
-    # when trying to run a tensorflow \ keras model on GPU, make sure:
-    #   1. the system has a Nvidia GPU (AMD doesn't work yet).
-    #   2. the GPU version of tensorflow is installed.
-    #   3. CUDA is installed. https://www.tensorflow.org/install
-    #   4. tensorflow is running with GPU. use tf_get_local_devices()
-
-    @staticmethod
-    def tf_set_device(designated_GPUs_bus_id_str):
-        """
-        :param designated_GPUs_bus_id_str: can be singular: '0', or multiple: '0,1'
-        :return:
-        """
-        os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'  # set GPUs (CUDA devices) IDs' order by pci bus IDs (so it's consistent with nvidia-smi's output).
-        os.environ['CUDA_VISIBLE_DEVICES'] = designated_GPUs_bus_id_str  # specify which GPU ID(s) to be used.
-        os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
-
-    @staticmethod
-    def tf_get_session_according_to_device(devices_dict):
-        if devices_dict is not None:
-            gpu_options = tf.GPUOptions(allow_growth=True)  # limits session memory usage. starts with allocating an approximated amount of GPU memory, and expands if necessary
-            # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)  # set the fraction of GPU memory to be allocated
-            config = tf.ConfigProto(device_count=devices_dict, gpu_options=gpu_options, log_device_placement=False)  # log device placement tells which device is used.
-            # config.gpu_options.allow_growth = True
-            # config.gpu_options.per_process_gpu_memory_fraction = 0.5
-            sess = tf.Session(config=config)
-        else:
-            sess = tf.Session()
-        return sess
-
-    @staticmethod
-    def keras_set_session_according_to_device(devices_dict):
-        # call this function after importing keras if you are working on a machine.
-        keras_set_session(DeviceSetUtils.tf_get_session_according_to_device(devices_dict))
-        # keras_tensorflow_backend.set_session(DeviceSetUtils.tf_get_session_according_to_device(device_map))
-
-    @staticmethod
-    def torch_get_device_according_to_device_type(device_str):
-        """
-        :param device_str: e.g.: 'cpu', 'gpu', 'cuda:1'
-        :return:
-        """
-        # enabling GPU vs CPU:
-        if device_str == 'cpu':
-            device = T.device('cpu')  # default CPU. cpu:0 ?
-        elif device_str == 'cuda:1':
-            device = T.device('cuda:1' if T.cuda.is_available() else 'cuda')  # 2nd\default GPU. cuda:0 ?
-        else:
-            device = T.device('cuda' if T.cuda.is_available() and T.cuda.device_count() > 0 else 'cpu')  # default GPU \ default CPU. :0 ?
-        return device
+    # # model's weights and biases
+    # print('model weights', '\n', model.weights, '\n')
+    # print("model layers' weights and biases:", '\n', [layer.get_weights() for layer in model.layers], '\n')
+    # for layer in model.layers:
+    #     weights, biases = layer.get_weights()
+    #     print("Layer's weights", '\n', weights, '\n')
+    #     print("Layer's biases", '\n', biases, '\n')
 
 
-class Optimizers:
+# Calculator:
 
-    OPTIMIZER_Adam = 0
-    OPTIMIZER_RMSprop = 1
-    OPTIMIZER_Adadelta = 2
-    OPTIMIZER_Adagrad = 3
-    OPTIMIZER_SGD = 4
-
-    @staticmethod
-    def tf_get_optimizer(optimizer_type, lr, momentum=None):  # momentum=0.9
-        if optimizer_type == Optimizers.OPTIMIZER_SGD:
-            if momentum is None:
-                return tf.train.GradientDescentOptimizer(lr)
-            else:
-                return tf.train.MomentumOptimizer(lr, momentum)
-        elif optimizer_type == Optimizers.OPTIMIZER_Adagrad:
-            return tf.train.AdagradOptimizer(lr)
-        elif optimizer_type == Optimizers.OPTIMIZER_Adadelta:
-            return tf.train.AdadeltaOptimizer(lr)
-        elif optimizer_type == Optimizers.OPTIMIZER_RMSprop:
-            if momentum is None:
-                return tf.train.RMSPropOptimizer(lr)
-            else:
-                return tf.train.RMSPropOptimizer(lr, decay=0.99, momentum=momentum, epsilon=1e-6)
-        else:  # optimizer_type == Optimizers.OPTIMIZER_Adam
-            return tf.train.AdamOptimizer(lr)
-
-    @staticmethod
-    def keras_get_optimizer(optimizer_type, lr, momentum=0., rho=None, epsilon=None, decay=0., beta_1=0.9, beta_2=0.999):
-        if optimizer_type == Optimizers.OPTIMIZER_SGD:
-            return optimizers.SGD(lr, momentum, decay)  # momentum=0.9
-        elif optimizer_type == Optimizers.OPTIMIZER_Adagrad:
-            return optimizers.Adagrad(lr, epsilon, decay)
-        elif optimizer_type == Optimizers.OPTIMIZER_Adadelta:
-            return optimizers.Adadelta(lr, rho if rho is not None else 0.95, epsilon, decay)
-        elif optimizer_type == Optimizers.OPTIMIZER_RMSprop:
-            return optimizers.RMSprop(lr, rho if rho is not None else 0.9, epsilon, decay)  # momentum= ?
-            # return optimizers.RMSprop(lr, rho=0.99, epsilon=0.1)
-            # return optimizers.RMSprop(lr, epsilon=1e-6, decay=0.99)
-        else:  # optimizer_type == Optimizers.OPTIMIZER_Adam
-            return optimizers.Adam(lr, beta_1, beta_2, epsilon, decay)
-
-    @staticmethod
-    def torch_get_optimizer(optimizer_type, params, lr, momentum=None):  # momentum=0.9
-        if optimizer_type == Optimizers.OPTIMIZER_SGD:
-            if momentum is None:
-                return T.optim.SGD(params, lr)
-            else:
-                return T.optim.SGD(params, lr, momentum)
-        elif optimizer_type == Optimizers.OPTIMIZER_Adagrad:
-            return T_optim_adagrad.Adagrad(params, lr)
-        elif optimizer_type == Optimizers.OPTIMIZER_Adadelta:
-            return T_optim_adadelta.Adadelta(params, lr)
-        elif optimizer_type == Optimizers.OPTIMIZER_RMSprop:
-            if momentum is None:
-                return T_optim_rmsprop.RMSprop(params, lr)
-            else:
-                return T_optim_rmsprop.RMSprop(params, lr, weight_decay=0.99, momentum=momentum, eps=1e-6)
-        else:  # optimizer_type == Optimizers.OPTIMIZER_Adam
-            return T.optim.Adam(params, lr)
+EPS_DEC_LINEAR = 0
+EPS_DEC_EXPONENTIAL = 1
+EPS_DEC_EXPONENTIAL_TIME_RELATED = 2
+# EPS_DEC_QUADRATIC = 4
 
 
-class Calculator:
+def decrement_eps(eps_current, eps_min, eps_dec, eps_dec_type, eps_max=None, t=None):
+    if eps_dec_type == EPS_DEC_EXPONENTIAL:
+        eps_temp = eps_current * eps_dec  # eps_dec = 0.996
+    elif eps_dec_type == EPS_DEC_EXPONENTIAL_TIME_RELATED and eps_max is not None and t is not None:
+        return eps_min + (eps_max - eps_min) * np.exp(-eps_dec * t)  # t == i
+    else:  # eps_dec_type == Calculator.EPS_DEC_LINEAR:
+        eps_temp = eps_current - eps_dec
 
-    EPS_DEC_LINEAR = 0
-    EPS_DEC_EXPONENTIAL = 1
-    EPS_DEC_EXPONENTIAL_TIME_RELATED = 2
-    # EPS_DEC_QUADRATIC = 4
-
-    @staticmethod
-    def decrement_eps(eps_current, eps_min, eps_dec, eps_dec_type, eps_max=None, t=None):
-        if eps_dec_type == Calculator.EPS_DEC_EXPONENTIAL:
-            eps_temp = eps_current * eps_dec  # eps_dec = 0.996
-        elif eps_dec_type == Calculator.EPS_DEC_EXPONENTIAL_TIME_RELATED and eps_max is not None and t is not None:
-            return eps_min + (eps_max - eps_min) * np.exp(-eps_dec * t)  # t == i
-        else:  # eps_dec_type == Calculator.EPS_DEC_LINEAR:
-            eps_temp = eps_current - eps_dec
-
-        return max(eps_temp, eps_min)
-
-    @staticmethod
-    def calc_conv_layer_output_dim(Dimension, Filter, Padding, Stride):
-        return (Dimension - Filter + 2 * Padding) // Stride + 1
-
-    @staticmethod
-    def calc_conv_layer_output_dims(Height, Width, Filter, Padding, Stride):
-        h = (Height - Filter + 2 * Padding) // Stride + 1
-        w = (Width - Filter + 2 * Padding) // Stride + 1
-        return h, w
-
-    @staticmethod
-    def calculate_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA):
-        memory_G = np.zeros_like(memory_r, dtype=np.float32)  # np.float64
-        G = 0
-        for i in reversed(range(len(memory_r))):
-            if memory_terminal[i]:
-                G = 0
-            G = GAMMA * G + memory_r[i]
-            memory_G[i] = G
-        memory_G = General.scale_and_normalize(memory_G)
-        return memory_G
+    return max(eps_temp, eps_min)
 
 
-class Tester:
-
-    @staticmethod
-    def test_method(custom_env, episodes, choose_action):
-        env = custom_env.envs
-        print('\n', 'Test Started', '\n')
-        start_time = datetime.datetime.now()
-        total_scores = np.zeros(episodes)
-        total_accumulated_scores = np.zeros(episodes)
-        accumulated_score = 0
-        eval = custom_env.get_evaluation_tuple()
-        for i in range(episodes):
-            done = False
-            ep_steps = 0
-            ep_score = 0
-            observation = env.reset()
-            s = custom_env.get_state(observation)
-            while not done:
-                a = choose_action(s)
-                observation_, reward, done, info = env.step(a)
-                eval = custom_env.update_evaluation_tuple(i + 1, reward, done, eval)
-                ep_steps += 1
-                ep_score += reward
-                accumulated_score += reward
-                s_ = custom_env.get_state(observation_)
-                observation, s = observation_, s_
-            total_scores[i] = ep_score
-            total_accumulated_scores[i] = accumulated_score
-            Printer.print_training_progress(i, ep_score, total_scores, custom_env.window)
-        print('\n', 'Test Ended ~~~ Episodes: %d ~~~ Runtime: %s' %
-              (episodes, str(datetime.datetime.now() - start_time).split('.')[0]), '\n')
-        custom_env.analyze_evaluation_tuple(eval, episodes)
-        return total_scores, total_accumulated_scores
-
-    @staticmethod
-    def test_trained_agent(custom_env, agent, enable_models_saving, episodes=1000):
-        total_scores, total_accumulated_scores = Tester.test_method(
-            custom_env, episodes,
-            lambda s: agent.choose_action(s))
-        if enable_models_saving:
-            SaverLoader.pickle_save(total_scores, 'scores_history_test', agent.chkpt_dir)
-        return total_scores, total_accumulated_scores
+def calculate_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA):
+    memory_G = np.zeros_like(memory_r, dtype=np.float32)  # np.float64
+    G = 0
+    for i in reversed(range(len(memory_r))):
+        if memory_terminal[i]:
+            G = 0
+        G = GAMMA * G + memory_r[i]
+        memory_G[i] = G
+    memory_G = scale_and_normalize(memory_G)
+    return memory_G
 
 
-class Watcher:
+# Tester:
 
-    @staticmethod
-    def watch_method(custom_env, episodes, choose_action, is_toy_text=False):
-        env = custom_env.envs
+def test_method(custom_env, episodes, choose_action):
+    env = custom_env.envs
+    print('\n', 'Test Started', '\n')
+    start_time = datetime.datetime.now()
+    total_scores = np.zeros(episodes)
+    total_accumulated_scores = np.zeros(episodes)
+    accumulated_score = 0
+    eval = custom_env.get_evaluation_tuple()
+    for i in range(episodes):
+        done = False
+        ep_steps = 0
+        ep_score = 0
+        observation = env.reset()
+        s = custom_env.get_state(observation)
+        while not done:
+            a = choose_action(s)
+            observation_, reward, done, info = env.step(a)
+            eval = custom_env.update_evaluation_tuple(i + 1, reward, done, eval)
+            ep_steps += 1
+            ep_score += reward
+            accumulated_score += reward
+            s_ = custom_env.get_state(observation_)
+            observation, s = observation_, s_
+        total_scores[i] = ep_score
+        total_accumulated_scores[i] = accumulated_score
+        print_training_progress(i, ep_score, total_scores, custom_env.window)
+    print('\n', 'Test Ended ~~~ Episodes: %d ~~~ Runtime: %s' %
+          (episodes, str(datetime.datetime.now() - start_time).split('.')[0]), '\n')
+    custom_env.analyze_evaluation_tuple(eval, episodes)
+    return total_scores, total_accumulated_scores
 
-        for i in range(episodes):
-            done = False
-            ep_steps = 0
-            ep_score = 0
-            observation = env.reset()
-            s = custom_env.get_state(observation)
+
+# Watcher:
+
+def watch_method(custom_env, episodes, choose_action, is_toy_text=False):
+    env = custom_env.envs
+
+    for i in range(episodes):
+        done = False
+        ep_steps = 0
+        ep_score = 0
+        observation = env.reset()
+        s = custom_env.get_state(observation)
+
+        if is_toy_text:
+            print('\n*****EPISODE ', i + 1, '*****\n')
+            time.sleep(1)
+            clear_output(wait=True)
+        env.render()
+        if is_toy_text:
+            time.sleep(0.3)
+
+        while not done:
+            a = choose_action(s)
+            observation_, reward, done, info = env.step(a)
+            ep_steps += 1
+            ep_score += reward
+            s_ = custom_env.get_state(observation_)
+            observation, s = observation_, s_
 
             if is_toy_text:
-                print('\n*****EPISODE ', i + 1, '*****\n')
-                time.sleep(1)
                 clear_output(wait=True)
             env.render()
             if is_toy_text:
                 time.sleep(0.3)
 
-            while not done:
-                a = choose_action(s)
-                observation_, reward, done, info = env.step(a)
-                ep_steps += 1
-                ep_score += reward
-                s_ = custom_env.get_state(observation_)
-                observation, s = observation_, s_
+        print('Episode Score:', ep_score)
+        if is_toy_text:
+            time.sleep(3)
+            clear_output(wait=True)
 
-                if is_toy_text:
-                    clear_output(wait=True)
-                env.render()
-                if is_toy_text:
-                    time.sleep(0.3)
-
-            print('Episode Score:', ep_score)
-            if is_toy_text:
-                time.sleep(3)
-                clear_output(wait=True)
-
-        env.close()
-
-    @staticmethod
-    def watch_policy(custom_env, policy, episodes=3):
-        Watcher.watch_method(custom_env, episodes,
-                             lambda s: policy[s])
-
-    @staticmethod
-    def watch_trained_agent(custom_env, agent, episodes=3):
-        Watcher.watch_method(custom_env, episodes,
-                             lambda s: agent.choose_action(s))
+    env.close()
 
 
-class SaverLoader:
+# SaverLoader:
 
-    @staticmethod
-    def pickle_load(file_name, directory=''):
-        with open(directory + file_name + '.pkl', 'rb') as file:  # .pickle  # rb = read binary
-            var = pickle.load(file)  # var == [X_train, y_train]
-        return var
-
-    @staticmethod
-    def pickle_save(var, file_name, directory=''):
-        with open(directory + file_name + '.pkl', 'wb') as file:  # .pickle  # wb = write binary
-            pickle.dump(var, file)  # var == [X_train, y_train]
-
-    @staticmethod
-    def load_training_data(agent, load_checkpoint):
-        scores_history = []
-        learn_episode_index = -1
-        max_avg = None
-        if load_checkpoint:
-            try:
-                print('...Loading models...')  # REMOVE when load logic is finalized
-                agent.load_models()  # REMOVE when load logic is finalized
-                print('...Loading learn_episode_index...')
-                learn_episode_index = SaverLoader.pickle_load('learn_episode_index', agent.chkpt_dir)
-                print('...Loading scores_history...')
-                scores_history = SaverLoader.pickle_load('scores_history_train', agent.chkpt_dir)
-                print('...Loading max_avg...')
-                max_avg = SaverLoader.pickle_load('max_avg', agent.chkpt_dir)
-            except (ValueError, tf.OpError, OSError):  # REMOVE when load logic is finalized
-                print('...No models to load...')  # REMOVE when load logic is finalized
-            except FileNotFoundError:
-                print('...No data to load...')
-        return scores_history, learn_episode_index, max_avg
-
-    @staticmethod
-    def load_scores_history_and_plot(env_name, method_name, window, chkpt_dir,
-                                     training_data=False, show_scores=False):
-        try:
-            print('...Loading scores_history...')
-            suffix = '_train_total' if training_data else '_test'
-            scores_history = SaverLoader.pickle_load('scores_history' + suffix, chkpt_dir)
-            Plotter.plot_running_average(env_name, method_name, scores_history, window, show=show_scores,
-                                         file_name='scores_history' + suffix, directory=chkpt_dir)
-
-        except FileNotFoundError:
-            print('...No scores history data to load...')
-
-    @staticmethod
-    def load_multiple_scores_history_and_plot(custom_env, method_name, base_dir, sub_dirs, labels,
-                                              training_data, show_scores):
-
-        suffix = '_train_total' if training_data else '_test'
-
-        try:
-            print('...Loading scores_history...')
-
-            scores_list = []
-            for sub_dir in sub_dirs:
-                scores_list.append(SaverLoader.pickle_load('scores_history' + suffix, base_dir + sub_dir))
-
-            Plotter.plot_running_average_comparison(custom_env.name + ' - ' + method_name, scores_list, labels,
-                                                    custom_env.window, show=show_scores,
-                                                    file_name='scores_history' + suffix, directory=base_dir)
-        except FileNotFoundError:
-            print('...No scores history data to load...')
-
-    @staticmethod
-    def save_training_data(agent, learn_episode_index, scores_history):
-        save_start_time = datetime.datetime.now()
-        SaverLoader.pickle_save(learn_episode_index, 'learn_episode_index', agent.chkpt_dir)
-        SaverLoader.pickle_save(scores_history, 'scores_history_train', agent.chkpt_dir)
-        agent.save_models()
-        print('Save time: %s' % str(datetime.datetime.now() - save_start_time).split('.')[0])
-
-    @staticmethod
-    def extract_data(base_dir, sub_dir):
-        chkpt_dir = base_dir + sub_dir
-
-        learn_episode_index = SaverLoader.pickle_load('learn_episode_index', chkpt_dir)
-        max_avg = SaverLoader.pickle_load('max_avg', chkpt_dir)
-
-        print('learn_episode_index', learn_episode_index, 'max_avg', max_avg)
+def pickle_load(file_name, directory=''):
+    with open(directory + file_name + '.pkl', 'rb') as file:  # .pickle  # rb = read binary
+        var = pickle.load(file)  # var == [X_train, y_train]
+    return var
 
 
-class General:
+def pickle_save(var, file_name, directory=''):
+    with open(directory + file_name + '.pkl', 'wb') as file:  # .pickle  # wb = write binary
+        pickle.dump(var, file)  # var == [X_train, y_train]
 
-    @staticmethod
-    def scale_and_normalize(np_array):
-        mean = np.mean(np_array)
-        std = np.std(np_array)
-        if std == 0:
-            std = 1
-        return (np_array - mean) / std
 
-    @staticmethod
-    def compare_current_and_original_params(current_actor, current_critic,
-                                            original_actor, original_critic):
-        current_actor_dict = dict(current_actor.named_parameters())
-        original_actor_dict = dict(original_actor.named_parameters())
-        print('Checking Actor parameters')
-        for param in current_actor_dict:
-            print(param, T.equal(original_actor_dict[param], current_actor_dict[param]))
+# General:
 
-        current_critic_dict = dict(current_critic.named_parameters())
-        original_critic_dict = dict(original_critic.named_parameters())
-        print('Checking critic parameters')
-        for param in current_critic_dict:
-            print(param, T.equal(original_critic_dict[param], current_critic_dict[param]))
+def scale_and_normalize(np_array):
+    mean = np.mean(np_array)
+    std = np.std(np_array)
+    if std == 0:
+        std = 1
+    return (np_array - mean) / std
 
-        input()
 
-    @staticmethod
-    def query_env(env):
+def query_env(env):
+    print(
+        'Environment Id -', env.spec.id, '\n',  # id (str): The official environment ID
+        # nondeterministic (bool): Whether this environment is non-deterministic even after seeding:
+        'Non-Deterministic -', env.spec.nondeterministic, '\n',
+        'Observation Space -', env.observation_space, '\n',
+        'Action Space -', env.action_space, '\n',
 
-        print(
-            'Environment Id -', env.spec.id, '\n',  # id (str): The official environment ID
-            'Non-Deterministic -', env.spec.nondeterministic, '\n',  # nondeterministic (bool): Whether this environment is non-deterministic even after seeding
-            'Observation Space -', env.observation_space, '\n',
-            'Action Space -', env.action_space, '\n',
+        'Max Episode Seconds -', env.spec.max_episode_seconds, '\n',
+        # max_episode_steps (Optional[int]): The maximum number of steps that an episode can consist of
+        'Max Episode Steps -', env.spec.max_episode_steps, '\n',
 
-            'Max Episode Seconds -', env.spec.max_episode_seconds, '\n',
-            'Max Episode Steps -', env.spec.max_episode_steps, '\n',  # max_episode_steps (Optional[int]): The maximum number of steps that an episode can consist of
+        'Reward Range -', env.reward_range, '\n',
+        # reward_threshold (Optional[int]): The reward threshold before the task is considered solved
+        'Reward Threshold -', env.spec.reward_threshold, '\n',
 
-            'Reward Range -', env.reward_range, '\n',
-            'Reward Threshold -', env.spec.reward_threshold, '\n',  # reward_threshold (Optional[int]): The reward threshold before the task is considered solved
+        'TimeStep Limit -', env.spec.timestep_limit, '\n',
+        'Trials -', env.spec.trials, '\n',
 
-            'TimeStep Limit -', env.spec.timestep_limit, '\n',
-            'Trials -', env.spec.trials, '\n',
+        'Local Only -', getattr(env.spec, '_local_only', 'not defined'), '\n',
+        'kwargs -', getattr(env.spec, '_kwargs', '')  # kwargs (dict): The kwargs to pass to the environment class
+    )
 
-            'Local Only -', getattr(env.spec, '_local_only', 'not defined'), '\n',
-            'kwargs -', getattr(env.spec, '_kwargs', '')  # kwargs (dict): The kwargs to pass to the environment class
-        )
 
-    @staticmethod
-    def get_file_name(env_file_name, agent, episodes, method_name):
-        # options:
-        #   .replace('.', 'p')
-        #   .split('.')[1]
-
-        if env_file_name is not None:
-            env = env_file_name + '_'
-        else:
-            env = ''
-
-        ############################
-
-        gamma = 'G' + str(agent.GAMMA).replace('.', 'p') + '_'  # 'GAMMA-'
-
-        fc_layers_dims = 'FC-'
-        for i, fc_layer_dims in enumerate(agent.fc_layers_dims):
-            if i:
-                fc_layers_dims += 'x'
-            fc_layers_dims += str(fc_layer_dims)
-        fc_layers_dims += '_'
-
-        ############################
-
-        optimizer = 'OPT_'
-        if agent.optimizer_type == Optimizers.OPTIMIZER_Adam:
-            optimizer += 'adam_'
-        elif agent.optimizer_type == Optimizers.OPTIMIZER_RMSprop:
-            optimizer += 'rms_'  # 'rmsprop_'
-        elif agent.optimizer_type == Optimizers.OPTIMIZER_Adadelta:
-            optimizer += 'adad_'  # 'adadelta_'
-        elif agent.optimizer_type == Optimizers.OPTIMIZER_Adagrad:
-            optimizer += 'adag_'  # 'adagrad_'
-        else:  # agent.optimizer_type == Optimizers.OPTIMIZER_SGD
-            optimizer += 'sgd_'
-        alpha = 'a-' + str(agent.ALPHA).replace('.', 'p') + '_'  # 'alpha-'
-
-        if method_name == 'AC' or method_name == 'DDPG':
-            beta = 'b-' + str(agent.BETA).replace('.', 'p') + '_'  # 'beta-'
-        else:
-            beta = ''
-
-        ############################
-
-        if method_name == 'DQL':
-            eps_max = 'max-' + str(agent.eps_max).replace('.', 'p') + '_'
-            eps_min = 'min-' + str(agent.eps_min).replace('.', 'p') + '_'
-            eps_dec = 'dec-' + str(agent.eps_dec).replace('.', 'p') + '_'
-            eps = 'EPS_' + eps_max + eps_min + eps_dec
-        else:
-            eps = ''
-
-        ############################
-
-        if method_name == 'DQL' or method_name == 'DDPG':
-            memory_size = 'size-' + str(agent.memory_size)
-            memory_batch_size = 'batch-' + str(agent.memory_batch_size)
-            replay_buffer = 'MEM_' + memory_size + memory_batch_size
-        else:
-            replay_buffer = ''
-
-        if method_name == 'PG':
-            ep_batch_num = 'PG-ep-batch-' + str(agent.ep_batch_num) + '_'
-        else:
-            ep_batch_num = ''
-
-        ############################
-
-        episodes = 'N-' + str(episodes)  # n_episodes
-
-        file_name = env + gamma + fc_layers_dims + \
-                         optimizer + alpha + beta + \
-                         eps + replay_buffer + ep_batch_num + episodes
-
-        return file_name
-
-    @staticmethod
-    def make_sure_dir_exists(dir):
-        if not os.path.exists(dir):
-            os.makedirs(dir)
+def make_sure_dir_exists(dir):
+    if not os.path.exists(dir):
+        os.makedirs(dir)

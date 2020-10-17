@@ -1,23 +1,26 @@
+"""
+https://docs.python.org/2/library/argparse.html#adding-arguments
+"""
+
 from numpy.random import seed
-
-import reinforcement_learning.utils.plotter
-
 seed(28)
 from tensorflow import set_random_seed
 set_random_seed(28)
 
 import argparse
 
-from reinforcement_learning.utils import utils
-import reinforcement_learning.deep_RL.envs as Envs
+from reinforcement_learning.utils.plotter import plot_running_average
+from reinforcement_learning.deep_RL.const import LIBRARY_TF, LIBRARY_KERAS, LIBRARY_TORCH, \
+    OPTIMIZER_Adam, OPTIMIZER_RMSprop, OPTIMIZER_Adadelta, OPTIMIZER_Adagrad, OPTIMIZER_SGD
+from reinforcement_learning.deep_RL.utils.utils import get_file_name
+from reinforcement_learning.deep_RL.utils.devices import set_device
+from reinforcement_learning.deep_RL.envs import CartPole, Pendulum, MountainCarContinuous, \
+    LunarLander, LunarLanderContinuous, BipedalWalker, Breakout, SpaceInvaders
 
 from reinforcement_learning.deep_RL.algorithms.deep_q_learning import Agent, train_agent
-# from .algorithms.policy_gradient import Agent, train
-# from .algorithms.actor_critic import Agent, train
-# from .algorithms.deep_deterministic_policy_gradient import Agent, train
-
-
-# https://docs.python.org/2/library/argparse.html#adding-arguments
+# from reinforcement_learning.deep_RL.algorithms.policy_gradient import Agent, train_agent
+# from reinforcement_learning.deep_RL.algorithms.actor_critic import Agent, train_agent
+# from reinforcement_learning.deep_RL.algorithms.deep_deterministic_policy_gradient import Agent, train_agent
 
 
 # def parse_args(args):
@@ -93,28 +96,28 @@ def command_line_play(args=None):
     args = parse_args()
 
     if args.opt == 'sgd':
-        optimizer = utils.Optimizers.OPTIMIZER_SGD
+        optimizer = OPTIMIZER_SGD
     elif args.opt == 'adagrad':
-        optimizer = utils.Optimizers.OPTIMIZER_Adagrad
+        optimizer = OPTIMIZER_Adagrad
     elif args.opt == 'adadelta':
-        optimizer = utils.Optimizers.OPTIMIZER_Adadelta
+        optimizer = OPTIMIZER_Adadelta
     elif args.opt == 'rmsprop':
-        optimizer = utils.Optimizers.OPTIMIZER_RMSprop
+        optimizer = OPTIMIZER_RMSprop
     else:  # args.opt == 'adam'
-        optimizer = utils.Optimizers.OPTIMIZER_Adam
+        optimizer = OPTIMIZER_Adam
 
     #####################################
 
     method_name = 'AC'
-    custom_env = Envs.ClassicControl.CartPole()
+    custom_env = CartPole()
     custom_env.env.seed(28)
 
-    lib_type = utils.LIBRARY_TF
+    lib_type = LIBRARY_TF
     enable_models_saving = False
     load_checkpoint = False
     perform_random_gameplay = False
 
-    utils.DeviceSetUtils.set_device(lib_type, devices_dict=None)
+    set_device(lib_type, devices_dict=None)
 
     agent = Agent(
         custom_env, [args.fc1, args.fc2], args.n,
@@ -128,16 +131,16 @@ def command_line_play(args=None):
                                  perform_random_gameplay,
                                  enable_models_saving, load_checkpoint)
 
-    reinforcement_learning.utils.plotter.Plotter.plot_running_average(
+    plot_running_average(
         custom_env.name, method_name, scores_history, window=custom_env.window, show=False,
-        file_name=utils.General.get_file_name(custom_env.file_name, agent, args.n, method_name),
+        file_name=get_file_name(custom_env.file_name, agent, args.n, method_name),
         directory=agent.chkpt_dir if enable_models_saving else None
     )
 
-    # scores_history_test = utils.Tester.test_trained_agent(custom_env, agent, enable_models_saving)
-    # utils.Plotter.plot_running_average(
+    # scores_history_test = test_trained_agent(custom_env, agent, enable_models_saving)
+    # plot_running_average(
     #     custom_env.name, method_name, scores_history_test, window=custom_env.window, show=False,
-    #     file_name=utils.General.get_file_name(custom_env.file_name, agent, n_episodes, method_name) + '_test',
+    #     file_name=get_file_name(custom_env.file_name, agent, n_episodes, method_name) + '_test',
     #     directory=agent.chkpt_dir if enable_models_saving else None
     # )
 

@@ -1,3 +1,6 @@
+from numpy.random import seed
+seed(28)
+
 from reinforcement_learning.tabular_RL.envs_dss import FrozenLake, Taxi, Blackjack, MountainCar, CartPole, Acrobot
 from reinforcement_learning.tabular_RL.algorithms.monte_carlo import MCPredictionModel, MCControlModel
 from reinforcement_learning.tabular_RL.algorithms.td_zero import TD0PredictionModel, TD0ControlModel
