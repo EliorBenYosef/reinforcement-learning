@@ -12,6 +12,9 @@ from reinforcement_learning.utils.plotter import plot_running_average, plot_accu
 # Prediction (policy evaluation algorithms)
 
 def test_mc_policy_evaluation(episodes=10, print_v_table=True):
+    """
+    Performs MC policy evaluation on multiple environments (separately).
+    """
     # Mountain Car:
     car_vel_bin_num = 34  # ~100% success rate (32 rarely loses)
     mountain_car_env = MountainCar(car_vel_bin_num, single_state_space=MountainCar.CAR_VEL)
@@ -37,6 +40,9 @@ def test_mc_policy_evaluation(episodes=10, print_v_table=True):
 
 
 def test_td0_policy_evaluation(episodes=10, print_v_table=True):
+    """
+    Performs TD0 policy evaluation on multiple environments (separately).
+    """
     # Mountain Car:
     car_vel_bin_num = 34  # ~100% success rate (32 rarely loses)
     mountain_car_env = MountainCar(car_vel_bin_num, single_state_space=MountainCar.CAR_VEL)
@@ -64,6 +70,9 @@ def test_td0_policy_evaluation(episodes=10, print_v_table=True):
 # Control (value function estimation \ learning algorithms)
 
 def test_mc_non_exploring_starts_control(episodes=100000, print_q_table_and_policy=True):
+    """
+    Performs MC non-exploring starts on multiple environments (separately).
+    """
     method_name = 'MC non-exploring starts'
 
     # Frozen Lake:
@@ -88,6 +97,9 @@ def test_mc_non_exploring_starts_control(episodes=100000, print_q_table_and_poli
 
 
 def test_off_policy_mc_control(episodes=100000, print_q_table_and_policy=False):
+    """
+    Performs Off-policy MC Control on multiple environments (separately).
+    """
     method_name = 'Off-policy MC Control'
 
     # Frozen Lake:
@@ -112,6 +124,9 @@ def test_off_policy_mc_control(episodes=100000, print_q_table_and_policy=False):
 
 
 def test_sarsa():
+    """
+    Performs SARSA (On-policy TD0 Control) on multiple environments (separately).
+    """
     method_name = 'SARSA'
 
     # Taxi:
@@ -148,6 +163,9 @@ def test_sarsa():
 
 
 def test_expected_sarsa():
+    """
+    Performs Expected SARSA (On-policy TD0 Control) on multiple environments (separately).
+    """
     method_name = 'Expected SARSA'
 
     # Taxi:
@@ -184,7 +202,10 @@ def test_expected_sarsa():
 
 
 def test_q_learning():
-    method_name = 'Q-learning'
+    """
+    Performs Q Learning (Off-policy TD0 Control) on multiple environments (separately).
+    """
+    method_name = 'Q Learning'
 
     # Taxi:
     taxi_env = Taxi()
@@ -212,7 +233,10 @@ def test_q_learning():
 
 
 def test_double_q_learning():
-    method_name = 'Double Q-learning'
+    """
+    Performs Double Q Learning (Off-policy TD0 Control) on multiple environments (separately).
+    """
+    method_name = 'Double Q Learning'
 
     # Taxi:
     taxi_env = Taxi()
@@ -256,14 +280,17 @@ def environment_test(env, episodes, eps_max=1.0, eps_dec=None, alpha=0.1,
                      q_table_test_method=test_q_table,
                      policy_test_method=test_policy_table,
                      show_scores=True, show_accumulated_scores=True):
+    """
+    Performs a comparative algorithms test for a single environment.
+    """
 
     labels = [
         'MC non-exploring starts',
-        'off-policy MC',
+        'Off-policy MC',
         'SARSA',
         'Expected SARSA',
-        'Q-learning',
-        'Double Q-learning'
+        'Q Learning',
+        'Double Q Learning'
     ]
 
     mc_model_01 = MCControlModel(env, episodes=episodes, alpha=alpha, eps_max=eps_max, eps_dec=eps_dec)
@@ -320,6 +347,9 @@ def environment_test(env, episodes, eps_max=1.0, eps_dec=None, alpha=0.1,
 
 
 def test_environments():
+    """
+    Performs environment_test() on multiple environments (separately).
+    """
     environment_test(FrozenLake(), episodes=100000, eps_max=0.1, eps_dec=None)
     environment_test(Taxi(), episodes=10000, alpha=0.4)
     environment_test(Blackjack(), episodes=100000, eps_max=0.05, eps_dec=1e-7)

@@ -6,9 +6,8 @@ https://github.com/openai/gym/tree/master/gym/envs -
     Solved: avg_score >= reward_threshold, over 100 consecutive trials.
     "Unsolved environment" - doesn't have a specified reward_threshold at which it's considered solved.
 
-Environments with Discretized State Space (DSS):
-    Toy Text - FrozenLake, Taxi.  # TODO: add Grid World, Windy Gridworld, Custom Grid World.
-    Cards - Blackjack.
+Environments with Discrete\Discretized State Space (DSS):
+    Toy Text - FrozenLake, Taxi, Blackjack.  # TODO: add Grid World, Windy Gridworld, Custom Grid World.
     Classic Control - MountainCar, CartPole, Acrobot.
 """
 
@@ -193,10 +192,6 @@ class Taxi(BaseEnv):
               'driving against a wall: %d%%' % (driving_against_a_wall * 100 / episodes))
 
 
-########################################
-
-# Cards:
-
 class Blackjack(BaseEnv):
     """
     At the start, the player receives two cards (so the total min is 2 + 2 = 4)
@@ -331,9 +326,9 @@ class MountainCar(BaseEnv):
                 for vel in range(len(self.carVelSpace) + 1):
                     self.states.append((pos, vel))
 
-        self.GAMMA = 1.0    # 0.99 (Q-learning) \ 1.0 (MC Policy Evaluation, TD-0)
-        self.EPS_MIN = 0.0  # 0.01 (Q-learning) \ 0.0 (MC Policy Evaluation, TD-0)
-                            # eps_max = 0.01 (Q-learning)
+        self.GAMMA = 1.0    # 0.99 (Q Learning) \ 1.0 (MC Policy Evaluation, TD-0)
+        self.EPS_MIN = 0.0  # 0.01 (Q Learning) \ 0.0 (MC Policy Evaluation, TD-0)
+                            # eps_max = 0.01 (Q Learning)
 
     def get_state(self, observation):
         pos, vel = observation

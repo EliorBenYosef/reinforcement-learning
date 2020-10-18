@@ -4,8 +4,8 @@ https://docs.python.org/2/library/argparse.html#adding-arguments
 
 from tests.test_deep_rl.test_dql import play_dql
 from tests.test_deep_rl.test_pg import play_pg
-from tests.test_deep_rl.test_ac import play_ac
 from tests.test_deep_rl.test_ddpg import play_ddpg
+from tests.test_deep_rl.test_ac import play_ac
 
 import sys
 import argparse
@@ -47,8 +47,8 @@ def parse_args(args):
     parser.add_argument('--lib', type=str, default='torch', help="Python library type "
                         "{LIBRARY_TF (tf), LIBRARY_KERAS (keras), LIBRARY_TORCH (torch)}")
 
-    parser.add_argument('--algo', type=str, default='DDPG', help="Algorithm "
-                        "{DQL, PG, AC, DDPG}")
+    parser.add_argument('--algo', type=str, default='AC', help="Algorithm "
+                        "{DQL, PG, DDPG, AC}")
     parser.add_argument('--env', type=str, default='si', help="OpenAI Gym Environment "
                         "{CartPole (cp), Pendulum (p), MountainCarContinuous (mcc), LunarLander (ll), "
                         "LunarLanderContinuous (llc), BipedalWalker (bpw), Breakout (bo), SpaceInvaders (si)}")
@@ -63,7 +63,7 @@ def parse_args(args):
 
     parser.add_argument('--opt', type=int, default='adam', help='Optimizer')
     parser.add_argument('--a', type=float, default=0.001, help='Alpha learning rate for Optimizer')  # 0.0005, 0.003 ?
-    parser.add_argument('--b', type=float, default=0.0005, help="AC/DDPG - Beta learning rate for Optimizer")
+    parser.add_argument('--b', type=float, default=0.0005, help="DDPG/AC - Beta learning rate for Optimizer")
 
     # # DQL args:
     #
@@ -148,17 +148,17 @@ def command_line_play(args=None):
         play_pg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, ep_batch_num,
                 lib_type, enable_models_saving, load_checkpoint)
 
-    elif args.algo == 'AC':
-        beta = args.b
-        play_ac(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta,
-                lib_type, enable_models_saving, load_checkpoint)
-
-    else:  # args.algo == 'DDPG'
+    elif args.algo == 'DDPG':
         beta = args.b
         # memory_size = args.mem_s
         # memory_batch_size = args.mem_bs
         play_ddpg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta,
                   lib_type, enable_models_saving, load_checkpoint)
+
+    else:  # args.algo == 'AC'
+        beta = args.b
+        play_ac(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta,
+                lib_type, enable_models_saving, load_checkpoint)
 
 
 if __name__ == '__main__':

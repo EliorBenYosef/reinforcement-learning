@@ -1,7 +1,7 @@
 from tests.test_deep_rl.test_dql import play_dql
 # from tests.test_deep_rl.test_pg import play_pg
-# from tests.test_deep_rl.test_ac import play_ac
 # from tests.test_deep_rl.test_ddpg import play_ddpg
+# from tests.test_deep_rl.test_ac import play_ac
 
 import tensorflow as tf
 
@@ -36,7 +36,7 @@ def perform_grid_search(lib_type=LIBRARY_TF, enable_models_saving=False, load_ch
     # alpha_list = [0.0005, 0.001, 0.002, 0.004]
     alpha_list = [0.0005]
 
-    beta_list = [0.0005]  # only for AC & DDPG
+    beta_list = [0.0005]  # only for DDPG & AC
 
     # gamma_list = [0.9, 0.95, 0.99, 1.0]
     gamma_list = [0.99]
