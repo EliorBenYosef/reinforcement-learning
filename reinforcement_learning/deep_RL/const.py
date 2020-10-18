@@ -6,7 +6,7 @@ WINDOW_UNKNOWN = 100
 
 ########################
 
-atari_frames_stack_size = 4  # to give the agent a sense of motion, buffer_size
+atari_frames_stack_size = 4  # buffer_size. Number of consecutive frames. Gives the agent a sense of motion.
 
 ATARI_IMAGE_CHANNELS_GRAYSCALE = 1
 ATARI_IMAGE_CHANNELS_RGB = 3

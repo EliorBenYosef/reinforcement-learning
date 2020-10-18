@@ -7,7 +7,7 @@ from reinforcement_learning.utils.plotter import plot_running_average
 from reinforcement_learning.deep_RL.const import LIBRARY_TF, LIBRARY_KERAS, LIBRARY_TORCH, \
     OPTIMIZER_Adam, OPTIMIZER_RMSprop, OPTIMIZER_Adadelta, OPTIMIZER_Adagrad, OPTIMIZER_SGD, \
     INPUT_TYPE_OBSERVATION_VECTOR
-from reinforcement_learning.deep_RL.utils.utils import get_file_name
+from reinforcement_learning.deep_RL.utils.utils import get_file_name, test_trained_agent
 from reinforcement_learning.deep_RL.utils.devices import set_device
 from reinforcement_learning.deep_RL.envs import CartPole, Pendulum, MountainCarContinuous, \
     LunarLander, LunarLanderContinuous, BipedalWalker, Breakout, SpaceInvaders
@@ -15,7 +15,8 @@ from reinforcement_learning.deep_RL.algorithms.deep_deterministic_policy_gradien
 
 
 def play_ddpg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta,
-              lib_type=LIBRARY_TF, enable_models_saving=False, load_checkpoint=False):
+              lib_type=LIBRARY_TF, enable_models_saving=False, load_checkpoint=False,
+              plot=True, test=False):
 
     if lib_type == LIBRARY_KERAS:
         print('\n', "Algorithm currently doesn't work with Keras", '\n')
@@ -44,18 +45,25 @@ def play_ddpg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, bet
 
     scores_history = train_agent(custom_env, agent, n_episodes,
                                  enable_models_saving, load_checkpoint)
-    plot_running_average(
-        custom_env.name, method_name, scores_history, window=custom_env.window, show=False,
-        file_name=get_file_name(custom_env.file_name, agent, n_episodes, method_name) + '_train',
-        directory=agent.chkpt_dir if enable_models_saving else None
-    )
 
-    # scores_history_test = test_trained_agent(custom_env, agent, enable_models_saving)
-    # plot_running_average(
-    #     custom_env.name, method_name, scores_history_test, window=custom_env.window, show=False,
-    #     file_name=get_file_name(custom_env.file_name, agent, n_episodes, method_name) + '_test',
-    #     directory=agent.chkpt_dir if enable_models_saving else None
-    # )
+    if plot:
+        plot_running_average(
+            custom_env.name, method_name, scores_history, window=custom_env.window, show=False,
+            file_name=get_file_name(custom_env.file_name, agent, n_episodes, method_name) + '_train',
+            directory=agent.chkpt_dir if enable_models_saving else None
+        )
+
+    scores_history_test = None
+    if test:
+        scores_history_test = test_trained_agent(custom_env, agent, enable_models_saving)
+        if plot:
+            plot_running_average(
+                custom_env.name, method_name, scores_history_test, window=custom_env.window, show=False,
+                file_name=get_file_name(custom_env.file_name, agent, n_episodes, method_name) + '_test',
+                directory=agent.chkpt_dir if enable_models_saving else None
+            )
+
+    return agent, scores_history, scores_history_test
 
 
 def test_ddpg_pendulum():
