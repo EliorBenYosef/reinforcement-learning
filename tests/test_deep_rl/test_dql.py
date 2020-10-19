@@ -64,7 +64,7 @@ def test_dql_cartpole():
     alpha = 0.0005  # 0.003 ?
     double_dql = False
     tau = None
-    n_episodes = 500  # ~150-200 solves LunarLander
+    n_episodes = 5  # n_episodes = 500  # ~150-200 solves LunarLander
 
     play_dql(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, double_dql, tau)
 
@@ -76,7 +76,7 @@ def test_dql_breakout():
     alpha = 0.00025
     double_dql = True
     tau = 10000
-    n_episodes = 200  # start with 200, then 5000 ?
+    n_episodes = 5  # n_episodes = 200  # start with 200, then 5000 ?
 
     play_dql(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, double_dql, tau)
 
@@ -88,6 +88,6 @@ def test_dql_space_invaders():
     alpha = 0.003
     double_dql = True
     tau = None
-    n_episodes = 50
+    n_episodes = 5  # n_episodes = 50
 
     play_dql(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, double_dql, tau)

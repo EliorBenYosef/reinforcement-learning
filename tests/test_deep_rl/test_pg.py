@@ -72,7 +72,8 @@ def test_pg_cartpole():
 
     optimizer_type = OPTIMIZER_Adam
     ep_batch_num = 1  # REINFORCE algorithm (MC PG)
-    n_episodes = 2000 if lib_type == LIBRARY_KERAS else 2500  # supposed to be enough for good results in PG
+    # n_episodes = 2000 if lib_type == LIBRARY_KERAS else 2500  # supposed to be enough for good results in PG
+    n_episodes = 5
 
     play_pg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, ep_batch_num, lib_type)
 
@@ -83,7 +84,7 @@ def test_pg_breakout():
     optimizer_type = OPTIMIZER_RMSprop  # OPTIMIZER_SGD
     alpha = 0.00025
     ep_batch_num = 1  # REINFORCE algorithm (MC PG)
-    n_episodes = 200  # start with 200, then 5000 ?
+    n_episodes = 5  # n_episodes = 200  # start with 200, then 5000 ?
 
     play_pg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, ep_batch_num)
 
@@ -94,6 +95,6 @@ def test_pg_space_invaders():
     optimizer_type = OPTIMIZER_RMSprop  # OPTIMIZER_SGD
     alpha = 0.001  # 0.003
     ep_batch_num = 10
-    n_episodes = 1000
+    n_episodes = 50  # n_episodes = 1000
 
     play_pg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, ep_batch_num)

@@ -72,7 +72,7 @@ def test_ddpg_pendulum():
     optimizer_type = OPTIMIZER_Adam
     alpha = 0.00005
     beta = 0.0005
-    n_episodes = 1000
+    n_episodes = 5  # n_episodes = 1000
 
     play_ddpg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta)
 
@@ -83,7 +83,7 @@ def test_ddpg_pendulum():
 #     optimizer_type = OPTIMIZER_Adam
 #     alpha = 0.00005
 #     beta = 0.0005
-#     n_episodes = 5000
+#     n_episodes = 5  # n_episodes = 5000
 #
 #     play_ddpg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta)
 
@@ -95,6 +95,6 @@ def test_ddpg_mountain_car_continuous():
     optimizer_type = OPTIMIZER_Adam
     alpha = 0.000025
     beta = 0.00025
-    n_episodes = 1000
+    n_episodes = 5  # n_episodes = 1000
 
     play_ddpg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta)

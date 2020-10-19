@@ -70,7 +70,7 @@ def test_ac_cartpole():
     optimizer_type = OPTIMIZER_Adam
     alpha = 0.0001  # 0.00001
     beta = alpha * 5
-    n_episodes = 2500
+    n_episodes = 5  # n_episodes = 2500
 
     play_ac(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta, lib_type=LIBRARY_KERAS)
 
@@ -85,7 +85,7 @@ def test_ac_pendulum():
     optimizer_type = OPTIMIZER_Adam
     alpha = 0.00001
     beta = alpha * 5 if lib_type == LIBRARY_KERAS else None
-    n_episodes = 2000
+    n_episodes = 5  # n_episodes = 2000
 
     play_ac(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta, lib_type)
 
@@ -96,6 +96,6 @@ def test_ac_mountain_car_continuous():
     optimizer_type = OPTIMIZER_Adam
     alpha = 0.000005
     beta = alpha * 2
-    n_episodes = 100  # longer than 100 --> instability (because the value function estimation is unstable)
+    n_episodes = 5  # n_episodes = 100  # > 100 --> instability (because the value function estimation is unstable)
 
     play_ac(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta, lib_type=LIBRARY_KERAS)
