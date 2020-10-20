@@ -2,8 +2,6 @@
 INPUT_TYPE_OBSERVATION_VECTOR = 0
 INPUT_TYPE_STACKED_FRAMES = 1
 
-WINDOW_UNKNOWN = 100
-
 ########################
 
 atari_frames_stack_size = 4  # buffer_size. Number of consecutive frames. Gives the agent a sense of motion.

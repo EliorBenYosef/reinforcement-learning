@@ -1,7 +1,7 @@
 import torch
 
 from reinforcement_learning.deep_RL.const import OPTIMIZER_Adam, OPTIMIZER_RMSprop, OPTIMIZER_Adadelta, OPTIMIZER_Adagrad
-from reinforcement_learning.utils.utils import test_method, watch_method, pickle_save
+from reinforcement_learning.utils.utils import run_method, watch_method, pickle_save
 
 
 # Calculator:
@@ -18,8 +18,8 @@ def calc_conv_layer_output_dims(Height, Width, Filter, Padding, Stride):
 
 # Tester:
 
-def test_trained_agent(custom_env, agent, enable_models_saving, episodes=1000):
-    total_scores, total_accumulated_scores = test_method(
+def run_trained_agent(custom_env, agent, enable_models_saving, episodes=1000):
+    total_scores, total_accumulated_scores = run_method(
         custom_env, episodes,
         lambda s: agent.choose_action(s))
     if enable_models_saving:

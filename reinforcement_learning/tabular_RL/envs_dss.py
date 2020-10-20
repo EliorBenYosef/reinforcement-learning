@@ -50,9 +50,8 @@ class FrozenLake(BaseEnv):
         FrozenLake-v0 (4x4 map): max_episode_steps = 100, reward_threshold = 0.78, optimum = .8196
         FrozenLake8x8-v0 (8x8 map): max_episode_steps = 200, reward_threshold = 0.99, optimum = 1
 
-    Discrete observation space (1D TODO).
-    State space analysis:
-        = row*4 + column
+    Discrete observation space (1D).
+        O = r * columns + c
 
     Discrete action space (1D).
     Actions (4): left (0), down (1), right (2), up (3)
@@ -77,8 +76,11 @@ class FrozenLake(BaseEnv):
         self.EPS_MIN = 0.1
 
     def get_state(self, observation):
+        """
+        O = r * columns + c
+        """
         c = observation % self.columns
-        r = (observation // self.columns) % self.rows  # TODO: '% self.rows' is unnecessary?
+        r = observation // self.columns
         return r, c
 
     @staticmethod
@@ -125,9 +127,8 @@ class Taxi(BaseEnv):
     gym/gym/envs/__init__.py :
         Taxi-v3: max_episode_steps = 200, reward_threshold = 8, optimum = 8.46
 
-    Discrete observation space (1D TODO).
-    State space analysis:
-        = ((taxi_row*5 + taxi_col)*5 + passenger_location)*4 + destination.  TODO
+    Discrete observation space (1D).
+        O = ((tr * columns + tc) * passenger_locations + pl) * destinations + d.
 
     Discrete action space (1D).
     Actions (6): north (0), south (1), east (2), west (3), pick up (4), drop off (5)
@@ -139,15 +140,15 @@ class Taxi(BaseEnv):
         self.env = gym.make('Taxi-v2')
 
         # State space analysis:
-        self.taxi_rows = 5
-        self.taxi_columns = 5
+        self.rows = 5
+        self.columns = 5
         self.passenger_locations = 5
         self.destinations = 4
 
         # Construct state space:
         self.states = []
-        for tr in range(self.taxi_rows):
-            for tc in range(self.taxi_columns):
+        for tr in range(self.rows):
+            for tc in range(self.columns):
                 for pl in range(self.passenger_locations):
                     for d in range(self.destinations):
                         self.states.append((tr, tc, pl, d))
@@ -160,9 +161,9 @@ class Taxi(BaseEnv):
         :param o: observation
         """
         d = o % self.destinations
-        pl = (o // self.destinations) % self.passenger_locations  # TODO: '% self.passenger_locations' is unnecessary?
-        tc = ((o // self.destinations) // self.passenger_locations) % self.taxi_columns  # TODO: '% self.taxi_columns' is unnecessary?
-        tr = (((o // self.destinations) // self.passenger_locations) // self.taxi_columns) % self.taxi_rows  # TODO: '% self.taxi_rows' is unnecessary?
+        pl = (o // self.destinations) % self.passenger_locations
+        tc = ((o // self.destinations) // self.passenger_locations) % self.columns
+        tr = (((o // self.destinations) // self.passenger_locations) // self.columns)
         return tr, tc, pl, d
 
     @staticmethod
@@ -199,11 +200,11 @@ class Blackjack(BaseEnv):
 
     Reward: –1 for losing, 0 for a draw, and >=1 for winning (1.5 for natural = getting 21 on the first deal)
 
-    Discrete observation space (3D TODO).
-    State space analysis:
-        agent's cards sum - sum of the player's cards. was: range(4, 22), changed for e-SARSA:
-        dealer's showing card - the card that the dealer has showing, 1 = Ace, 10 = face card:
-        agent's usable ace - if the player has usable ace, it can count as 1 / 11:
+    Discrete observation space (3D).
+        O = (sum, card, ace)
+            sum - agent's cards sum (int) - the sum of the player's cards.
+            card - dealer's showing card (int) - the card that the dealer has showing, 1 = Ace, 10 = face card.
+            ace - agent's usable ace (bool) - if the player has usable ace, it can count as 1 / 11.
 
     Discrete action space (1D).
     Actions (2):
@@ -223,10 +224,10 @@ class Blackjack(BaseEnv):
 
         # Construct state space:
         self.states = []
-        for total in self.agentCardsSumSpace:
+        for sum in self.agentCardsSumSpace:
             for card in self.dealerShowingCardSpace:
                 for ace in self.agentUsableAceSpace:
-                    self.states.append((total, card, ace))
+                    self.states.append((sum, card, ace))
 
         self.GAMMA = 1.0
         self.EPS_MIN = 0.0
@@ -288,11 +289,9 @@ class MountainCar(BaseEnv):
         MountainCar-v0: max_episode_steps = 200, reward_threshold = -110.0
 
     Continuous observation space (2D).
-    State space analysis:
-        observation = (pos, vel)
-        Num	    Observation	    Min	    Max
-        0	    position	    -1.2	0.6
-        1	    velocity	    -0.07	0.07
+        O = ndarray[pos, vel]
+            pos - position [-1.2, 0.6]
+            vel - velocity [-0.07, 0.07]
 
     Discrete action space (1D).
     Actions (3): backward/left (0), none (1), forward/right (2)
@@ -308,22 +307,22 @@ class MountainCar(BaseEnv):
         self.env = gym.make('MountainCar-v0')
 
         # Discretize state space (into bins):
-        self.carPosSpace = np.linspace(-1.2, 0.6, 9)  # (-1.2, 0.5, 8)
-        self.carVelSpace = np.linspace(-0.07, 0.07, car_vel_bin_num)
+        self.carXSpace = np.linspace(-1.2, 0.6, 9)  # (-1.2, 0.5, 8)
+        self.carVSpace = np.linspace(-0.07, 0.07, car_vel_bin_num)
 
         self.single_state_space = single_state_space
 
         # Construct state space (9*50=450):
         self.states = []
         if single_state_space == MountainCar.CAR_POS:
-            for pos in range(len(self.carPosSpace) + 1):
+            for pos in range(len(self.carXSpace) + 1):
                 self.states.append(pos)
         elif single_state_space == MountainCar.CAR_VEL:
-            for vel in range(len(self.carVelSpace) + 1):
+            for vel in range(len(self.carVSpace) + 1):
                 self.states.append(vel)
         else:
-            for pos in range(len(self.carPosSpace) + 1):
-                for vel in range(len(self.carVelSpace) + 1):
+            for pos in range(len(self.carXSpace) + 1):
+                for vel in range(len(self.carVSpace) + 1):
                     self.states.append((pos, vel))
 
         self.GAMMA = 1.0    # 0.99 (Q Learning) \ 1.0 (MC Policy Evaluation, TD-0)
@@ -331,16 +330,16 @@ class MountainCar(BaseEnv):
                             # eps_max = 0.01 (Q Learning)
 
     def get_state(self, observation):
-        pos, vel = observation
-        car_pos = int(np.digitize(pos, self.carPosSpace))  # pos_bin
-        car_vel = int(np.digitize(vel, self.carVelSpace))  # vel_bin
+        x, x_dot = observation
+        x_bin = int(np.digitize(x, self.carXSpace))
+        x_dot_bin = int(np.digitize(x_dot, self.carVSpace))
 
         if self.single_state_space == MountainCar.CAR_POS:
-            return car_pos
+            return x_bin
         elif self.single_state_space == MountainCar.CAR_VEL:
-            return car_vel
+            return x_dot_bin
         else:
-            return car_pos, car_vel
+            return x_bin, x_dot_bin
 
     @staticmethod
     def get_evaluation_tuple():
@@ -382,13 +381,11 @@ class CartPole(BaseEnv):
         CartPole-v1: max_episode_steps = 500, reward_threshold = 475.0
 
     Continuous observation space (4D).
-    State space analysis:
-        observation = (cart x position, cart velocity, pole theta angle, pole velocity)
-        Num     Observation	            Min	        Max
-        0	    Cart Position	        -2.4	    2.4
-        1	    Cart Velocity	        -Inf	    Inf
-        2	    Pole Angle	            ~ -41.8°	~ 41.8°
-        3	    Pole Velocity At Tip	-Inf	    Inf
+        O = ndarray[x, x_dot, theta, theta_dot]
+            x - Cart Position [-2.4, 2.4]
+            x_dot - Cart Velocity [-Inf, Inf]
+            theta - Pole Angle [~-41.8°, ~41.8°]
+            theta_dot - Pole Velocity [-Inf, Inf]
 
     Discrete action space (1D).
     Actions (2): left (0), right (1)
@@ -396,9 +393,9 @@ class CartPole(BaseEnv):
     """
 
     CART_X = 0
-    CART_X_VEL = 1
+    CART_V = 1
     POLE_THETA = 2
-    POLE_THETA_VEL = 3
+    POLE_V = 3
 
     def __init__(self, pole_theta_bin_num=10, single_state_space=-1):
         self.name = 'Cart Pole'
@@ -407,9 +404,9 @@ class CartPole(BaseEnv):
 
         # Discretize state space (10 bins each):                    # an example of bad modeling (won't converge):
         self.cartXSpace = np.linspace(-2.4, 2.4, 10)                                    # (-4.8, 4.8, 10)
-        self.cartXVelSpace = np.linspace(-4, 4, 10)                                     # (-5, 5, 10)
+        self.cartVSpace = np.linspace(-4, 4, 10)                                        # (-5, 5, 10)
         self.poleThetaSpace = np.linspace(-0.20943951, 0.20943951, pole_theta_bin_num)  # (-.418, .418, 10)
-        self.poleThetaVelSpace = np.linspace(-4, 4, 10)                                 # (-5, 5, 10)
+        self.poleVSpace = np.linspace(-4, 4, 10)                                        # (-5, 5, 10)
 
         self.single_state_space = single_state_space
 
@@ -418,42 +415,42 @@ class CartPole(BaseEnv):
         if single_state_space == CartPole.CART_X:
             for x in range(len(self.cartXSpace) + 1):
                 self.states.append(x)
-        elif single_state_space == CartPole.CART_X_VEL:
-            for x_vel in range(len(self.cartXVelSpace) + 1):
-                self.states.append(x_vel)
+        elif single_state_space == CartPole.CART_V:
+            for x_dot in range(len(self.cartVSpace) + 1):
+                self.states.append(x_dot)
         elif single_state_space == CartPole.POLE_THETA:
             for theta in range(len(self.poleThetaSpace) + 1):
                 self.states.append(theta)
-        elif single_state_space == CartPole.POLE_THETA_VEL:
-            for theta_vel in range(len(self.poleThetaVelSpace) + 1):
-                self.states.append(theta_vel)
+        elif single_state_space == CartPole.POLE_V:
+            for theta_dot in range(len(self.poleVSpace) + 1):
+                self.states.append(theta_dot)
         else:
             for x in range(len(self.cartXSpace) + 1):
-                for x_vel in range(len(self.cartXVelSpace) + 1):
+                for x_dot in range(len(self.cartVSpace) + 1):
                     for theta in range(len(self.poleThetaSpace) + 1):
-                        for theta_vel in range(len(self.poleThetaVelSpace) + 1):
-                            self.states.append((x, x_vel, theta, theta_vel))
+                        for theta_dot in range(len(self.poleVSpace) + 1):
+                            self.states.append((x, x_dot, theta, theta_dot))
 
         self.GAMMA = 1.0
         self.EPS_MIN = 0.0
 
     def get_state(self, observation):
-        cart_x, cart_x_dot, pole_theta, pole_theta_dot = observation
-        cart_x = int(np.digitize(cart_x, self.cartXSpace))
-        cart_x_dot = int(np.digitize(cart_x_dot, self.cartXVelSpace))
-        pole_theta = int(np.digitize(pole_theta, self.poleThetaSpace))
-        pole_theta_dot = int(np.digitize(pole_theta_dot, self.poleThetaVelSpace))
+        x, x_dot, theta, theta_dot = observation
+        x_bin = int(np.digitize(x, self.cartXSpace))
+        x_dot_bin = int(np.digitize(x_dot, self.cartVSpace))
+        theta_bin = int(np.digitize(theta, self.poleThetaSpace))
+        theta_dot_bin = int(np.digitize(theta_dot, self.poleVSpace))
 
         if self.single_state_space == CartPole.CART_X:
-            return cart_x
-        elif self.single_state_space == CartPole.CART_X_VEL:
-            return cart_x_dot
+            return x_bin
+        elif self.single_state_space == CartPole.CART_V:
+            return x_dot_bin
         elif self.single_state_space == CartPole.POLE_THETA:
-            return pole_theta
-        elif self.single_state_space == CartPole.POLE_THETA_VEL:
-            return pole_theta_dot
+            return theta_bin
+        elif self.single_state_space == CartPole.POLE_V:
+            return theta_dot_bin
         else:
-            return cart_x, cart_x_dot, pole_theta, pole_theta_dot
+            return x_bin, x_dot_bin, theta_bin, theta_dot_bin
 
 
 class Acrobot(BaseEnv):
@@ -474,8 +471,7 @@ class Acrobot(BaseEnv):
         Acrobot-v1: max_episode_steps = 500, reward_threshold = -100.0  # current best score: -42.37 ± 4.83
 
     Continuous observation space (6D).
-    State space analysis:
-        observation = (cos_theta1, sin_theta1, cos_theta2, sin_theta2, theta1_dot, theta2_dot)
+        O = ndarray[cos_theta1, sin_theta1, cos_theta2, sin_theta2, theta1_dot, theta2_dot]
 
     Discrete action space (1D).
     Actions (3): applying torque on the joint between the two pendulum links:
@@ -508,13 +504,13 @@ class Acrobot(BaseEnv):
 
     def get_state(self, observation):
         cos_theta1, sin_theta1, cos_theta2, sin_theta2, theta1_dot, theta2_dot = observation
-        c_th1 = int(np.digitize(cos_theta1, self.theta_space))
-        s_th1 = int(np.digitize(sin_theta1, self.theta_space))
-        c_th2 = int(np.digitize(cos_theta2, self.theta_space))
-        s_th2 = int(np.digitize(sin_theta2, self.theta_space))
-        th1_dot = int(np.digitize(theta1_dot, self.theta_dot_space))
-        th2_dot = int(np.digitize(theta2_dot, self.theta_dot_space))
-        return c_th1, s_th1, c_th2, s_th2, th1_dot, th2_dot
+        cos_theta1_bin = int(np.digitize(cos_theta1, self.theta_space))
+        sin_theta1_bin = int(np.digitize(sin_theta1, self.theta_space))
+        cos_theta2_bin = int(np.digitize(cos_theta2, self.theta_space))
+        sin_theta2_bin = int(np.digitize(sin_theta2, self.theta_space))
+        theta1_dot_bin = int(np.digitize(theta1_dot, self.theta_dot_space))
+        theta2_dot_bin = int(np.digitize(theta2_dot, self.theta_dot_space))
+        return cos_theta1_bin, sin_theta1_bin, cos_theta2_bin, sin_theta2_bin, theta1_dot_bin, theta2_dot_bin
 
     @staticmethod
     def get_evaluation_tuple():

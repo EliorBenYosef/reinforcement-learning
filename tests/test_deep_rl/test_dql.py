@@ -6,7 +6,7 @@ set_random_seed(28)
 from reinforcement_learning.utils.plotter import plot_running_average
 from reinforcement_learning.deep_RL.const import LIBRARY_TF, LIBRARY_KERAS, LIBRARY_TORCH, \
     OPTIMIZER_Adam, OPTIMIZER_RMSprop, OPTIMIZER_Adadelta, OPTIMIZER_Adagrad, OPTIMIZER_SGD
-from reinforcement_learning.deep_RL.utils.utils import get_file_name, test_trained_agent
+from reinforcement_learning.deep_RL.utils.utils import get_file_name, run_trained_agent
 from reinforcement_learning.deep_RL.utils.devices import set_device
 from reinforcement_learning.deep_RL.envs import CartPole, Pendulum, MountainCarContinuous, \
     LunarLander, LunarLanderContinuous, BipedalWalker, Breakout, SpaceInvaders
@@ -38,18 +38,18 @@ def play_dql(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, doub
 
     if plot:
         plot_running_average(
-            custom_env.name, method_name, scores_history, window=custom_env.window, show=False,
-            file_name=get_file_name(custom_env.file_name, agent, n_episodes, method_name) + '_train',
+            custom_env.name, method_name, scores_history,
+            # file_name=get_file_name(custom_env.file_name, agent, n_episodes, method_name) + '_train',
             directory=agent.chkpt_dir if enable_models_saving else None
         )
 
     scores_history_test = None
     if test:
-        scores_history_test = test_trained_agent(custom_env, agent, enable_models_saving)
+        scores_history_test = run_trained_agent(custom_env, agent, enable_models_saving)
         if plot:
             plot_running_average(
-                custom_env.name, method_name, scores_history_test, window=custom_env.window, show=False,
-                file_name=get_file_name(custom_env.file_name, agent, n_episodes, method_name) + '_test',
+                custom_env.name, method_name, scores_history_test,
+                # file_name=get_file_name(custom_env.file_name, agent, n_episodes, method_name) + '_test',
                 directory=agent.chkpt_dir if enable_models_saving else None
             )
 

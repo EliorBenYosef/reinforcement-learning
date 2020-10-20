@@ -22,7 +22,7 @@ def print_average_score(total_scores, ratio=10):
         count += tick
 
 
-def print_training_progress(i, ep_score, scores_history, avg_num, trailing=True, eps=None, ep_start_time=None):
+def print_training_progress(i, ep_score, scores_history, window=100, trailing=True, eps=None, ep_start_time=None):
     time_string = ''
     if ep_start_time is not None:
         time_string = '; runtime: %s' % str(datetime.datetime.now() - ep_start_time).split('.')[0]
@@ -32,15 +32,15 @@ def print_training_progress(i, ep_score, scores_history, avg_num, trailing=True,
     if eps is not None:
         eps_string = 'epsilon %.3f' % eps  # %.4f
 
-    # compute the running avg of the last 'avg_num' episodes:
-    avg_score = np.mean(scores_history[-avg_num:]) if (i + 1) >= avg_num else None
+    # compute the running avg of the last 'window' / 'avg_num' episodes:
+    avg_score = np.mean(scores_history[-window:]) if (i + 1) >= window else None
     if avg_score is not None:
         if trailing:  # every episode
-            print('trailing %d episodes ;' % avg_num,
+            print('trailing %d episodes ;' % window,
                   'average score %.3f ;' % avg_score,
                   eps_string)
-        elif (i + 1) % avg_num == 0:  # every 'avg_num' episodes
-            print('episodes: %d - %d ;' % (i + 2 - avg_num, i + 1),
+        elif (i + 1) % window == 0:  # every 'window' / 'avg_num' episodes
+            print('episodes: %d - %d ;' % (i + 2 - window, i + 1),
                   'average score %.3f ;' % avg_score,
                   eps_string)
 
@@ -102,8 +102,8 @@ def calculate_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA):
 
 # Tester:
 
-def test_method(custom_env, episodes, choose_action):
-    env = custom_env.envs
+def run_method(custom_env, episodes, choose_action):
+    env = custom_env.env
     print('\n', 'Test Started', '\n')
     start_time = datetime.datetime.now()
     total_scores = np.zeros(episodes)
@@ -127,7 +127,7 @@ def test_method(custom_env, episodes, choose_action):
             observation, s = observation_, s_
         total_scores[i] = ep_score
         total_accumulated_scores[i] = accumulated_score
-        print_training_progress(i, ep_score, total_scores, custom_env.window)
+        print_training_progress(i, ep_score, total_scores)
     print('\n', 'Test Ended ~~~ Episodes: %d ~~~ Runtime: %s' %
           (episodes, str(datetime.datetime.now() - start_time).split('.')[0]), '\n')
     custom_env.analyze_evaluation_tuple(eval, episodes)
@@ -137,7 +137,7 @@ def test_method(custom_env, episodes, choose_action):
 # Watcher:
 
 def watch_method(custom_env, episodes, choose_action, is_toy_text=False):
-    env = custom_env.envs
+    env = custom_env.env
 
     for i in range(episodes):
         done = False

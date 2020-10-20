@@ -7,7 +7,7 @@ https://github.com/openai/gym/tree/master/gym/envs -
     "Unsolved environment" - doesn't have a specified reward_threshold at which it's considered solved.
 
 Environments:
-    Classic Control - CartPole, Pendulum, MountainCar.  # TODO: Acrobot.
+    Classic Control - CartPole, Pendulum, MountainCarContinuous.  # TODO: Acrobot.
     Box2D - LunarLander, LunarLanderContinuous, BipedalWalker.
     Atari - Breakout, SpaceInvaders.
 
@@ -31,7 +31,7 @@ import numpy as np
 import gym
 
 from reinforcement_learning.deep_RL.const import INPUT_TYPE_OBSERVATION_VECTOR, INPUT_TYPE_STACKED_FRAMES, \
-    WINDOW_UNKNOWN, atari_frames_stack_size, ATARI_IMAGE_CHANNELS_GRAYSCALE, ATARI_IMAGE_CHANNELS_RGB
+    atari_frames_stack_size, ATARI_IMAGE_CHANNELS_GRAYSCALE, ATARI_IMAGE_CHANNELS_RGB
 
 
 class BaseEnv:
@@ -69,13 +69,11 @@ class CartPole(BaseEnv):
         CartPole-v1: max_episode_steps = 500, reward_threshold = 475.0
 
     Continuous observation space (4D).
-    State space analysis:
-        observation = (cart x position, cart velocity, pole theta angle, pole velocity)
-        Num     Observation	            Min	        Max
-        0	    Cart Position	        -2.4	    2.4
-        1	    Cart Velocity	        -Inf	    Inf
-        2	    Pole Angle	            ~ -41.8°	~ 41.8°
-        3	    Pole Velocity At Tip	-Inf	    Inf
+        O = ndarray[x, x_dot, theta, theta_dot]
+            x - Cart Position [-2.4, 2.4]
+            x_dot - Cart Velocity [-Inf, Inf]
+            theta - Pole Angle [~-41.8°, ~41.8°]
+            theta_dot - Pole Velocity [-Inf, Inf]
 
     Discrete action space (1D).
     Actions (2): left (0), right (1)
@@ -93,8 +91,6 @@ class CartPole(BaseEnv):
         self.is_discrete_action_space = True
         self.n_actions = 2      # Discrete(2)
         self.action_space = [i for i in range(self.n_actions)]
-
-        self.window = 100
 
         self.GAMMA = 0.99
         self.EPS_MIN = None
@@ -128,8 +124,6 @@ class Pendulum(BaseEnv):
         self.n_actions = 1      # Box(1,)
         self.action_boundary = 2
 
-        self.window = WINDOW_UNKNOWN
-
         self.GAMMA = 0.99
         self.EPS_MIN = None
 
@@ -159,8 +153,6 @@ class MountainCarContinuous(BaseEnv):
         self.is_discrete_action_space = False
         self.n_actions = 1      # Box(1,)
         self.action_boundary = 1
-
-        self.window = WINDOW_UNKNOWN
 
         self.GAMMA = 0.99
         self.EPS_MIN = None
@@ -195,8 +187,6 @@ class LunarLander(BaseEnv):
         self.n_actions = 4      # Discrete(4)
         self.action_space = [i for i in range(self.n_actions)]
 
-        self.window = 100
-
         self.GAMMA = 0.99
         self.EPS_MIN = None
 
@@ -226,8 +216,6 @@ class LunarLanderContinuous(BaseEnv):
         self.is_discrete_action_space = False
         self.n_actions = 2      # Box(2,)
         self.action_boundary = [1, 1]
-
-        self.window = 100
 
         self.GAMMA = 0.99
         self.EPS_MIN = None
@@ -272,8 +260,6 @@ class BipedalWalker(BaseEnv):
         self.n_actions = 4          # Box(4,)
         self.action_boundary = [1, 1, 1, 1]
 
-        self.window = 100
-
         self.GAMMA = 0.99
         self.EPS_MIN = None
 
@@ -311,8 +297,6 @@ class Breakout(BaseEnv):
         self.is_discrete_action_space = True
         self.n_actions = 3                                                              # Discrete(4)
         self.action_space = [1, 2, 3]
-
-        self.window = 10
 
         self.GAMMA = 0.99
         self.EPS_MIN = None
@@ -354,8 +338,6 @@ class SpaceInvaders(BaseEnv):
         self.is_discrete_action_space = True
         self.n_actions = 6                                                              # Discrete(6)
         self.action_space = [i for i in range(self.n_actions)]
-
-        self.window = 10
 
         self.GAMMA = 0.95  # 0.9 in PG tf.
         self.EPS_MIN = None

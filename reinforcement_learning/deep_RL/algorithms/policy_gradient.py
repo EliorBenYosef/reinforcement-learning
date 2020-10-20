@@ -460,7 +460,7 @@ def train_agent(custom_env, agent, n_episodes,
     scores_history, learn_episode_index, max_avg = load_training_data(agent, load_checkpoint)
     save_episode_index = learn_episode_index
 
-    env = custom_env.envs
+    env = custom_env.env
 
     if record:
         env = wrappers.Monitor(
@@ -499,10 +499,8 @@ def train_agent(custom_env, agent, n_episodes,
         scores_history.append(ep_score)
         pickle_save(scores_history, 'scores_history_train_total', agent.chkpt_dir)
 
-        avg_num = custom_env.window
-        if ep_batch_num > avg_num:
-            avg_num = ep_batch_num
-        current_avg = print_training_progress(i, ep_score, scores_history, avg_num, ep_start_time=ep_start_time)
+        window = max(ep_batch_num, 100)
+        current_avg = print_training_progress(i, ep_score, scores_history, window, ep_start_time=ep_start_time)
 
         if enable_models_saving and current_avg is not None and learn_episode_index != -1 and \
                 (max_avg is None or current_avg >= max_avg):

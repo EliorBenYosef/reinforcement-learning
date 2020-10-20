@@ -11,7 +11,7 @@ class TD0PredictionModel:
     def __init__(self, custom_env, episodes=50000, alpha=0.1, gamma=None):
 
         self.custom_env = custom_env
-        self.env = custom_env.envs
+        self.env = custom_env.env
         self.action_space_size = self.env.action_space.n
         self.states = custom_env.states
 
@@ -77,7 +77,7 @@ class TD0PredictionModel:
                 if visualize and i == self.episodes - 1:
                     self.env.render()
 
-            if (i + 1) % (self.episodes // 10) == 0:
+            if self.episodes < 10 or (i + 1) % (self.episodes // 10) == 0:
                 print('episode %d - score: %d, steps: %d' % (i + 1, ep_score, ep_steps))
 
             self.totalSteps[i] = ep_steps
@@ -110,7 +110,7 @@ class TD0ControlModel:
                  eps_max=1.0, eps_min=None, eps_dec=None, eps_dec_type=EPS_DEC_LINEAR):
 
         self.custom_env = custom_env
-        self.env = custom_env.envs
+        self.env = custom_env.env
         self.action_space_size = self.env.action_space.n
         self.states = custom_env.states
 
@@ -150,7 +150,7 @@ class TD0ControlModel:
         if record:
             self.env = wrappers.Monitor(
                 self.env, 'recordings/SARSA/', force=True,
-                video_callable=lambda episode_id: episode_id == 0 or (i + 1) % (self.episodes // 10) == 0
+                video_callable=lambda episode_id: episode_id == 0 or episode_id == (self.episodes - 1)
             )
 
         Q = init_q(self.states, self.action_space_size, self.custom_env.file_name, pickle)
@@ -187,7 +187,7 @@ class TD0ControlModel:
                 if visualize and i == self.episodes - 1:
                     self.env.render()
 
-            if (i + 1) % (self.episodes // 10) == 0:
+            if self.episodes < 10 or (i + 1) % (self.episodes // 10) == 0:
                 print('episode %d - eps: %.2f, score: %d, steps: %d' % (i + 1, self.EPS, ep_score, ep_steps))
 
             self.EPS = decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
@@ -248,7 +248,7 @@ class TD0ControlModel:
                 if visualize and i == self.episodes - 1:
                     self.env.render()
 
-            if (i + 1) % (self.episodes // 10) == 0:
+            if self.episodes < 10 or (i + 1) % (self.episodes // 10) == 0:
                 print('episode %d - eps: %.2f, score: %d, steps: %d' % (i + 1, self.EPS, ep_score, ep_steps))
 
             self.EPS = decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
@@ -310,7 +310,7 @@ class TD0ControlModel:
                 if visualize and i == self.episodes - 1:
                     self.env.render()
 
-            if (i + 1) % (self.episodes // 10) == 0:
+            if self.episodes < 10 or (i + 1) % (self.episodes // 10) == 0:
                 print('episode %d - eps: %.2f, score: %d, steps: %d' % (i + 1, self.EPS, ep_score, ep_steps))
 
             self.EPS = decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
@@ -376,7 +376,7 @@ class TD0ControlModel:
                 if visualize and i == self.episodes - 1:
                     self.env.render()
 
-            if (i + 1) % (self.episodes // 10) == 0:
+            if self.episodes < 10 or (i + 1) % (self.episodes // 10) == 0:
                 print('episode %d - eps: %.2f, score: %d, steps: %d' % (i + 1, self.EPS, ep_score, ep_steps))
 
             self.EPS = decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)

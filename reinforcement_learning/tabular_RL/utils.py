@@ -1,6 +1,6 @@
 import numpy as np
 
-from reinforcement_learning.utils.utils import test_method, watch_method, pickle_load
+from reinforcement_learning.utils.utils import run_method, watch_method, pickle_load
 
 
 # Initialization:
@@ -109,16 +109,20 @@ def get_policy_table_from_q_table(states, Q, action_space_size):
     return policy
 
 
-def test_q_table(custom_env, Q, episodes=1000):
-    return test_method(custom_env, episodes, lambda s: max_action_q(Q, s, custom_env.envs.action_space.n))
+# Tester:
+
+def run_q_table(custom_env, Q, episodes=1000):
+    return run_method(custom_env, episodes, lambda s: max_action_q(Q, s, custom_env.env.action_space.n))
 
 
-def test_policy_table(custom_env, policy, episodes=1000):
-    return test_method(custom_env, episodes, lambda s: policy[s])
+def run_policy_table(custom_env, policy, episodes=1000):
+    return run_method(custom_env, episodes, lambda s: policy[s])
 
+
+# Watcher:
 
 def watch_q_table(custom_env, Q, episodes=3):
-    watch_method(custom_env, episodes, lambda s: max_action_q(Q, s, custom_env.envs.action_space.n))
+    watch_method(custom_env, episodes, lambda s: max_action_q(Q, s, custom_env.env.action_space.n))
 
 
 # Print:

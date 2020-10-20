@@ -52,7 +52,7 @@ def load_multiple_scores_history_and_plot(custom_env, method_name, base_dir, sub
             scores_list.append(pickle_load('scores_history' + suffix, base_dir + sub_dir))
 
         plot_running_average_comparison(custom_env.name + ' - ' + method_name, scores_list, labels,
-                                        custom_env.window, show=show_scores,
+                                        show=show_scores,
                                         file_name='scores_history' + suffix, directory=base_dir)
     except FileNotFoundError:
         print('...No scores history data to load...')

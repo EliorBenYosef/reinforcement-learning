@@ -99,11 +99,11 @@ def perform_grid_search(lib_type=LIBRARY_TF, enable_models_saving=False, load_ch
                                             tf.reset_default_graph()
 
     plot_running_average_comparison(
-        custom_env.name, scores_histories_train, labels, window=custom_env.window, show=False,
+        custom_env.name, scores_histories_train, labels, show=False,
         file_name=custom_env.file_name + '_' + method_name + '_train'
     )
     plot_running_average_comparison(
-        custom_env.name, scores_histories_test, labels, window=custom_env.window, show=False,
+        custom_env.name, scores_histories_test, labels, show=False,
         file_name=custom_env.file_name + '_' + method_name + '_test'
     )
 
