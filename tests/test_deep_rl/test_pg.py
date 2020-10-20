@@ -1,6 +1,6 @@
 from numpy.random import seed
 seed(28)
-from tensorflow import set_random_seed
+from tensorflow.compat.v1 import set_random_seed
 set_random_seed(28)
 
 from reinforcement_learning.utils.plotter import plot_running_average
@@ -57,11 +57,9 @@ def play_pg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, ep_ba
     return agent, scores_history, scores_history_test
 
 
-def test_pg_cartpole():
+def run_pg_cartpole(lib_type):
     # custom_env = LunarLander()
     custom_env = CartPole()
-
-    lib_type = LIBRARY_KERAS
 
     if lib_type == LIBRARY_TORCH:
         fc_layers_dims = [128, 128]
@@ -78,23 +76,65 @@ def test_pg_cartpole():
     play_pg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, ep_batch_num, lib_type)
 
 
-def test_pg_breakout():
+def run_pg_lunar_lander(lib_type):
+    custom_env = LunarLander()
+
+    if lib_type == LIBRARY_TORCH:
+        fc_layers_dims = [128, 128]
+        alpha = 0.001
+    else:
+        fc_layers_dims = [64, 64]
+        alpha = 0.0005
+
+    optimizer_type = OPTIMIZER_Adam
+    ep_batch_num = 1  # REINFORCE algorithm (MC PG)
+    # n_episodes = 2000 if lib_type == LIBRARY_KERAS else 2500  # supposed to be enough for good results in PG
+    n_episodes = 5
+
+    play_pg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, ep_batch_num, lib_type)
+
+
+def run_pg_breakout(lib_type):
     custom_env = Breakout()
     fc_layers_dims = [256, 0]
     optimizer_type = OPTIMIZER_RMSprop  # OPTIMIZER_SGD
     alpha = 0.00025
     ep_batch_num = 1  # REINFORCE algorithm (MC PG)
-    n_episodes = 5  # n_episodes = 200  # start with 200, then 5000 ?
+    n_episodes = 2  # n_episodes = 200  # start with 200, then 5000 ?
 
-    play_pg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, ep_batch_num)
+    play_pg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, ep_batch_num, lib_type)
 
 
-def test_pg_space_invaders():
+def run_pg_space_invaders(lib_type):
     custom_env = SpaceInvaders()
     fc_layers_dims = [256, 0]
     optimizer_type = OPTIMIZER_RMSprop  # OPTIMIZER_SGD
     alpha = 0.001  # 0.003
-    ep_batch_num = 10
-    n_episodes = 50  # n_episodes = 1000
+    ep_batch_num = 2  # ep_batch_num = 10
+    n_episodes = 4  # n_episodes = 1000
 
-    play_pg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, ep_batch_num)
+    play_pg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, ep_batch_num, lib_type)
+
+
+def test_OBSVEC_TF():
+    run_pg_cartpole(LIBRARY_TF)
+
+
+def test_OBSVEC_KERAS():
+    run_pg_cartpole(LIBRARY_KERAS)
+
+
+def test_OBSVEC_TORCH():
+    run_pg_lunar_lander(LIBRARY_TORCH)
+
+
+def test_FRAMES_TF():
+    run_pg_breakout(LIBRARY_TF)
+
+
+def test_FRAMES_KERAS():
+    run_pg_breakout(LIBRARY_KERAS)
+
+
+def test_FRAMES_TORCH():
+    run_pg_space_invaders(LIBRARY_TORCH)

@@ -55,28 +55,25 @@ class DNN(object):
 
             self.sess = tf_get_session_according_to_device(device_map)
             self.build_network()
-            self.sess.run(tf.global_variables_initializer())
+            self.sess.run(tf.compat.v1.global_variables_initializer())
 
-            self.saver = tf.train.Saver()
+            self.saver = tf.compat.v1.train.Saver()
             self.checkpoint_file = os.path.join(dnn.chkpt_dir, 'dnn_tf.ckpt')
 
-            self.params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
+            self.params = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
 
         def build_network(self):
-            with tf.variable_scope(self.name):
-                self.s = tf.placeholder(tf.float32, shape=[None, *self.dnn.input_dims], name='s')
-                self.a_index = tf.placeholder(tf.int32, shape=[None], name='a_index')
-                self.G = tf.placeholder(tf.float32, shape=[None], name='G')
+            with tf.compat.v1.variable_scope(self.name):
+                self.s = tf.compat.v1.placeholder(tf.float32, shape=[None, *self.dnn.input_dims], name='s')
+                self.a_index = tf.compat.v1.placeholder(tf.int32, shape=[None], name='a_index')
+                self.G = tf.compat.v1.placeholder(tf.float32, shape=[None], name='G')
 
                 if self.dnn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
-                    fc1_ac = tf.layers.dense(inputs=self.s, units=self.dnn.fc_layers_dims[0],
-                                             activation='relu',
+                    fc1_ac = tf.layers.dense(inputs=self.s, units=self.dnn.fc_layers_dims[0], activation='relu',
                                              kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
-                    fc2_ac = tf.layers.dense(inputs=fc1_ac, units=self.dnn.fc_layers_dims[1],
-                                             activation='relu',
+                    fc2_ac = tf.layers.dense(inputs=fc1_ac, units=self.dnn.fc_layers_dims[1], activation='relu',
                                              kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
-                    fc_last = tf.layers.dense(inputs=fc2_ac, units=self.dnn.n_actions,
-                                              activation=None,
+                    fc_last = tf.layers.dense(inputs=fc2_ac, units=self.dnn.n_actions, activation=None,
                                               kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
 
                 else:  # self.input_type == INPUT_TYPE_STACKED_FRAMES
@@ -97,11 +94,9 @@ class DNN(object):
                     conv3_bn_ac = tf.nn.relu(conv3_bn)
 
                     flat = tf.layers.flatten(conv3_bn_ac)
-                    fc1_ac = tf.layers.dense(inputs=flat, units=self.dnn.fc_layers_dims[0],
-                                             activation='relu',
+                    fc1_ac = tf.layers.dense(inputs=flat, units=self.dnn.fc_layers_dims[0], activation='relu',
                                              kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
-                    fc_last = tf.layers.dense(inputs=fc1_ac, units=self.dnn.n_actions,
-                                              activation=None,
+                    fc_last = tf.layers.dense(inputs=fc1_ac, units=self.dnn.n_actions, activation=None,
                                               kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
 
                 self.actions_probabilities = tf.nn.softmax(fc_last, name='actions_probabilities')
@@ -394,6 +389,9 @@ class Agent(object):
         sub_dir = ''
         self.chkpt_dir = base_dir + sub_dir
         make_sure_dir_exists(self.chkpt_dir)
+
+        if lib_type == LIBRARY_TF:
+            tf.reset_default_graph()
 
         self.policy_dnn = self.init_network(custom_env)
 

@@ -1,6 +1,6 @@
 from numpy.random import seed
 seed(28)
-from tensorflow import set_random_seed
+from tensorflow.compat.v1 import set_random_seed
 set_random_seed(28)
 
 from reinforcement_learning.utils.plotter import plot_running_average
@@ -66,35 +66,59 @@ def play_ddpg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, bet
     return agent, scores_history, scores_history_test
 
 
-def test_ddpg_pendulum():
+def run_ddpg_pendulum(lib_type):
     custom_env = Pendulum()
     fc_layers_dims = [800, 600]
     optimizer_type = OPTIMIZER_Adam
     alpha = 0.00005
     beta = 0.0005
-    n_episodes = 5  # n_episodes = 1000
+    n_episodes = 2  # n_episodes = 1000
 
-    play_ddpg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta)
-
-
-# def test_ddpg_bipedal_walker():
-#     custom_env = BipedalWalker()
-#     fc_layers_dims = [400, 300]
-#     optimizer_type = OPTIMIZER_Adam
-#     alpha = 0.00005
-#     beta = 0.0005
-#     n_episodes = 5  # n_episodes = 5000
-#
-#     play_ddpg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta)
+    play_ddpg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta, lib_type)
 
 
-def test_ddpg_mountain_car_continuous():
-    # custom_env = LunarLanderContinuous()
+def run_ddpg_bipedal_walker(lib_type):
+    custom_env = BipedalWalker()
+    fc_layers_dims = [400, 300]
+    optimizer_type = OPTIMIZER_Adam
+    alpha = 0.00005
+    beta = 0.0005
+    n_episodes = 2  # n_episodes = 5000
+
+    play_ddpg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta, lib_type)
+
+
+def run_ddpg_mountain_car_continuous(lib_type):
     custom_env = MountainCarContinuous()
     fc_layers_dims = [400, 300]
     optimizer_type = OPTIMIZER_Adam
     alpha = 0.000025
     beta = 0.00025
-    n_episodes = 5  # n_episodes = 1000
+    n_episodes = 2  # n_episodes = 1000
 
-    play_ddpg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta)
+    play_ddpg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta, lib_type)
+
+
+def run_ddpg_lunar_lander_continuous(lib_type):
+    custom_env = LunarLanderContinuous()
+    fc_layers_dims = [400, 300]
+    optimizer_type = OPTIMIZER_Adam
+    alpha = 0.000025
+    beta = 0.00025
+    n_episodes = 2  # n_episodes = 1000
+
+    play_ddpg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta, lib_type)
+
+
+def test_OBSVEC_TF():
+    run_ddpg_pendulum(LIBRARY_TF)
+    run_ddpg_mountain_car_continuous(LIBRARY_TF)
+
+
+# def test_OBSVEC_KERAS():
+#     pass
+
+
+def test_OBSVEC_TORCH():
+    run_ddpg_bipedal_walker(LIBRARY_TORCH)
+    run_ddpg_lunar_lander_continuous(LIBRARY_TORCH)

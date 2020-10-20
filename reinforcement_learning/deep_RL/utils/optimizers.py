@@ -9,20 +9,20 @@ from reinforcement_learning.deep_RL.const import OPTIMIZER_SGD, OPTIMIZER_Adagra
 def tf_get_optimizer(optimizer_type, lr, momentum=None):  # momentum=0.9
     if optimizer_type == OPTIMIZER_SGD:
         if momentum is None:
-            return tf.train.GradientDescentOptimizer(lr)
+            return tf.compat.v1.train.GradientDescentOptimizer(lr)
         else:
-            return tf.train.MomentumOptimizer(lr, momentum)
+            return tf.compat.v1.train.MomentumOptimizer(lr, momentum)
     elif optimizer_type == OPTIMIZER_Adagrad:
-        return tf.train.AdagradOptimizer(lr)
+        return tf.compat.v1.train.AdagradOptimizer(lr)
     elif optimizer_type == OPTIMIZER_Adadelta:
-        return tf.train.AdadeltaOptimizer(lr)
+        return tf.compat.v1.train.AdadeltaOptimizer(lr)
     elif optimizer_type == OPTIMIZER_RMSprop:
         if momentum is None:
-            return tf.train.RMSPropOptimizer(lr)
+            return tf.compat.v1.train.RMSPropOptimizer(lr)
         else:
-            return tf.train.RMSPropOptimizer(lr, decay=0.99, momentum=momentum, epsilon=1e-6)
+            return tf.compat.v1.train.RMSPropOptimizer(lr, decay=0.99, momentum=momentum, epsilon=1e-6)
     else:  # optimizer_type == OPTIMIZER_Adam
-        return tf.train.AdamOptimizer(lr)
+        return tf.compat.v1.train.AdamOptimizer(lr)
 
 
 def keras_get_optimizer(optimizer_type, lr, momentum=0., rho=None, epsilon=None, decay=0., beta_1=0.9, beta_2=0.999):

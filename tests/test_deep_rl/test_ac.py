@@ -1,6 +1,6 @@
 from numpy.random import seed
 seed(28)
-from tensorflow import set_random_seed
+from tensorflow.compat.v1 import set_random_seed
 set_random_seed(28)
 
 from reinforcement_learning.utils.plotter import plot_running_average
@@ -64,38 +64,62 @@ def play_ac(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta,
     return agent, scores_history, scores_history_test
 
 
-def test_ac_cartpole():
+def run_ac_cartpole(lib_type):
     custom_env = CartPole()
     fc_layers_dims = [32, 32]
     optimizer_type = OPTIMIZER_Adam
     alpha = 0.0001  # 0.00001
     beta = alpha * 5
-    n_episodes = 5  # n_episodes = 2500
+    n_episodes = 2  # n_episodes = 2500
 
-    play_ac(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta, lib_type=LIBRARY_KERAS)
+    play_ac(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta, lib_type)
 
 
-def test_ac_pendulum():
+def run_ac_pendulum(lib_type):
     # custom_env = LunarLander()
     custom_env = Pendulum()
-
-    lib_type = LIBRARY_KERAS
 
     fc_layers_dims = [2048, 512]  # Keras: [1024, 512]
     optimizer_type = OPTIMIZER_Adam
     alpha = 0.00001
     beta = alpha * 5 if lib_type == LIBRARY_KERAS else None
-    n_episodes = 5  # n_episodes = 2000
+    n_episodes = 2  # n_episodes = 2000
 
     play_ac(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta, lib_type)
 
 
-def test_ac_mountain_car_continuous():
+def run_ac_lunar_lander(lib_type):
+    custom_env = LunarLander()
+
+    fc_layers_dims = [2048, 512]  # Keras: [1024, 512]
+    optimizer_type = OPTIMIZER_Adam
+    alpha = 0.00001
+    beta = alpha * 5 if lib_type == LIBRARY_KERAS else None
+    n_episodes = 2  # n_episodes = 2000
+
+    play_ac(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta, lib_type)
+
+
+def run_ac_mountain_car_continuous(lib_type):
     custom_env = MountainCarContinuous()
     fc_layers_dims = [256, 256]
     optimizer_type = OPTIMIZER_Adam
     alpha = 0.000005
     beta = alpha * 2
-    n_episodes = 5  # n_episodes = 100  # > 100 --> instability (because the value function estimation is unstable)
+    n_episodes = 2  # n_episodes = 100  # > 100 --> instability (because the value function estimation is unstable)
 
-    play_ac(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta, lib_type=LIBRARY_KERAS)
+    play_ac(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta, lib_type)
+
+
+# def test_OBSVEC_TF():
+#     pass
+
+
+def test_OBSVEC_KERAS():
+    run_ac_cartpole(LIBRARY_KERAS)
+    run_ac_lunar_lander(LIBRARY_KERAS)
+
+
+def test_OBSVEC_TORCH():
+    run_ac_pendulum(LIBRARY_TORCH)
+    run_ac_mountain_car_continuous(LIBRARY_TORCH)

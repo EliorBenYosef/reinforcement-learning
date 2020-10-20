@@ -67,22 +67,20 @@ class DNN(object):
             self.params = tf.trainable_variables(scope=self.dnn.name)
 
         def build_network(self):
-            with tf.variable_scope(self.dnn.name):
-                self.s = tf.placeholder(tf.float32, shape=[None, *self.dnn.input_dims], name='s')
-                self.td_error = tf.placeholder(tf.float32, shape=[None, 1], name='td_error')
-                self.a_log_probs = tf.placeholder(tf.float32, shape=[None, 1], name='a_log_probs')
-                self.a = tf.placeholder(tf.int32, shape=[None, 1], name='a')
+            with tf.compat.v1.variable_scope(self.dnn.name):
+                self.s = tf.compat.v1.placeholder(tf.float32, shape=[None, *self.dnn.input_dims], name='s')
+                self.td_error = tf.compat.v1.placeholder(tf.float32, shape=[None, 1], name='td_error')
+                self.a_log_probs = tf.compat.v1.placeholder(tf.float32, shape=[None, 1], name='a_log_probs')
+                self.a = tf.compat.v1.placeholder(tf.int32, shape=[None, 1], name='a')
 
-                fc1_ac = tf.layers.dense(inputs=self.s, units=self.dnn.fc_layers_dims[0],
-                                         activation='relu')
-                fc2_ac = tf.layers.dense(inputs=fc1_ac, units=self.dnn.fc_layers_dims[1],
-                                         activation='relu')
+                fc1_ac = tf.layers.dense(inputs=self.s, units=self.dnn.fc_layers_dims[0], activation='relu')
+                fc2_ac = tf.layers.dense(inputs=fc1_ac, units=self.dnn.fc_layers_dims[1], activation='relu')
 
                 if self.dnn.network_type == NETWORK_TYPE_SEPARATE:  # build_A_or_C_network
                     self.fc3 = tf.layers.dense(inputs=fc2_ac, units=self.dnn.n_outputs if self.dnn.is_actor else 1)
                     loss = self.get_actor_loss() if self.dnn.is_actor else self.get_critic_loss()
 
-                else:  # self.network_type == NETWORK_TYPE_SHARED  # build_A_and_C_network
+                else:  # self.dnn.network_type == NETWORK_TYPE_SHARED  # build_A_and_C_network
                     self.fc3 = tf.layers.dense(inputs=fc2_ac, units=self.dnn.n_outputs)  # Actor layer
                     self.v = tf.layers.dense(inputs=fc2_ac, units=1)  # Critic layer
                     loss = self.get_actor_loss() + self.get_critic_loss()
@@ -129,7 +127,7 @@ class DNN(object):
                 state_value = self.sess.run(self.fc3, feed_dict={self.s: s})
                 return state_value
 
-            else:  # self.network_type == NETWORK_TYPE_SHARED
+            else:  # self.dnn.network_type == NETWORK_TYPE_SHARED
                 state_value = self.sess.run(self.fc3, feed_dict={self.s: s})  # Actor value
                 v = self.sess.run(self.v, feed_dict={self.s: s})  # Critic value
                 return state_value, v
@@ -247,15 +245,15 @@ class DNN(object):
             torch.save(self.state_dict(), self.model_file)
 
         def build_network(self):
-            self.fc1 = torch.nn.Linear(*self.input_dims, self.fc_layers_dims[0])
-            self.fc2 = torch.nn.Linear(self.fc_layers_dims[0], self.fc_layers_dims[1])
+            self.fc1 = torch.nn.Linear(*self.dnn.input_dims, self.dnn.fc_layers_dims[0])
+            self.fc2 = torch.nn.Linear(self.dnn.fc_layers_dims[0], self.dnn.fc_layers_dims[1])
 
-            if self.network_type == NETWORK_TYPE_SEPARATE:  # build_A_or_C_network
-                self.fc3 = torch.nn.Linear(self.fc_layers_dims[1], self.n_outputs if self.is_actor else 1)
+            if self.dnn.network_type == NETWORK_TYPE_SEPARATE:  # build_A_or_C_network
+                self.fc3 = torch.nn.Linear(self.dnn.fc_layers_dims[1], self.dnn.n_outputs if self.dnn.is_actor else 1)
 
-            else:  # self.network_type == NETWORK_TYPE_SHARED    # build_A_and_C_network
-                self.fc3 = torch.nn.Linear(self.fc_layers_dims[1], self.n_outputs)  # Actor layer
-                self.v = torch.nn.Linear(self.fc_layers_dims[1], 1)  # Critic layer
+            else:  # self.dnn.network_type == NETWORK_TYPE_SHARED    # build_A_and_C_network
+                self.fc3 = torch.nn.Linear(self.dnn.fc_layers_dims[1], self.dnn.n_outputs)  # Actor layer
+                self.v = torch.nn.Linear(self.dnn.fc_layers_dims[1], 1)  # Critic layer
 
         def forward(self, s):
             state_value = torch.tensor(s, dtype=torch.float).to(self.device)
@@ -266,11 +264,11 @@ class DNN(object):
             state_value = self.fc2(state_value)
             state_value = torch_func.relu(state_value)
 
-            if self.network_type == NETWORK_TYPE_SEPARATE:  # forward_A_or_C_network
+            if self.dnn.network_type == NETWORK_TYPE_SEPARATE:  # forward_A_or_C_network
                 state_value = self.fc3(state_value)
                 return state_value
 
-            else:  # self.network_type == NETWORK_TYPE_SHARED    # forward_A_and_C_network
+            else:  # self.dnn.network_type == NETWORK_TYPE_SHARED    # forward_A_and_C_network
                 actor_value = self.fc3(state_value)  # Actor value
                 v = self.v(state_value)  # Critic value
                 return actor_value, v
@@ -332,10 +330,10 @@ class AC(object):
             else:  # self.ac.network_type == NETWORK_TYPE_SHARED
                 self.actor_critic = self.ac.actor_critic_base.create_dnn_tensorflow(self.sess)
 
-            self.saver = tf.train.Saver()
+            self.saver = tf.compat.v1.train.Saver()
             self.checkpoint_file = os.path.join(self.ac.chkpt_dir, 'ac_tf.ckpt')
 
-            self.sess.run(tf.global_variables_initializer())
+            self.sess.run(tf.compat.v1.global_variables_initializer())
 
         def choose_action(self, s):
             s = s[np.newaxis, :]
@@ -593,6 +591,9 @@ class Agent(object):
         sub_dir = ''
         self.chkpt_dir = base_dir + sub_dir
         make_sure_dir_exists(self.chkpt_dir)
+
+        if lib_type == LIBRARY_TF:
+            tf.reset_default_graph()
 
         network_type = NETWORK_TYPE_SHARED if (lr_critic is None or lib_type == LIBRARY_KERAS) else NETWORK_TYPE_SEPARATE
         ac_base = AC(custom_env, fc_layers_dims, optimizer_type, lr_actor, lr_critic, network_type, self.chkpt_dir)

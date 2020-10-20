@@ -1,6 +1,6 @@
 from numpy.random import seed
 seed(28)
-from tensorflow import set_random_seed
+from tensorflow.compat.v1 import set_random_seed
 set_random_seed(28)
 
 from reinforcement_learning.utils.plotter import plot_running_average
@@ -14,7 +14,8 @@ from reinforcement_learning.deep_RL.algorithms.deep_q_learning import Agent, tra
 
 
 def play_dql(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, double_dql, tau,
-             lib_type=LIBRARY_TF, enable_models_saving=False, load_checkpoint=False, perform_random_gameplay=True,
+             lib_type=LIBRARY_TF, enable_models_saving=False, load_checkpoint=False,
+             perform_random_gameplay=True, rnd_gameplay_episodes=None,
              plot=True, test=False):
 
     if not custom_env.is_discrete_action_space:
@@ -33,8 +34,8 @@ def play_dql(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, doub
                   double_dql=double_dql, tau=tau, lib_type=lib_type, base_dir=base_dir)
 
     scores_history = train_agent(custom_env, agent, n_episodes,
-                                 perform_random_gameplay,
-                                 enable_models_saving, load_checkpoint)
+                                 enable_models_saving, load_checkpoint,
+                                 perform_random_gameplay, rnd_gameplay_episodes)
 
     if plot:
         plot_running_average(
@@ -56,7 +57,7 @@ def play_dql(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, doub
     return agent, scores_history, scores_history_test
 
 
-def test_dql_cartpole():
+def run_dql_cartpole(libtype):
     # custom_env = LunarLander()
     custom_env = CartPole()
     fc_layers_dims = [256, 256]
@@ -66,28 +67,68 @@ def test_dql_cartpole():
     tau = None
     n_episodes = 5  # n_episodes = 500  # ~150-200 solves LunarLander
 
-    play_dql(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, double_dql, tau)
+    play_dql(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, double_dql, tau, libtype,
+             rnd_gameplay_episodes=n_episodes)
 
 
-def test_dql_breakout():
+def run_dql_lunar_lander(libtype):
+    custom_env = LunarLander()
+    fc_layers_dims = [256, 256]
+    optimizer_type = OPTIMIZER_Adam
+    alpha = 0.0005  # 0.003 ?
+    double_dql = False
+    tau = None
+    n_episodes = 5  # n_episodes = 500  # ~150-200 solves LunarLander
+
+    play_dql(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, double_dql, tau, libtype,
+             rnd_gameplay_episodes=n_episodes)
+
+
+def run_dql_breakout(libtype):
     custom_env = Breakout()
     fc_layers_dims = [1024, 0]
     optimizer_type = OPTIMIZER_RMSprop  # OPTIMIZER_SGD
     alpha = 0.00025
     double_dql = True
     tau = 10000
-    n_episodes = 5  # n_episodes = 200  # start with 200, then 5000 ?
+    n_episodes = 2  # n_episodes = 200  # start with 200, then 5000 ?
 
-    play_dql(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, double_dql, tau)
+    play_dql(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, double_dql, tau, libtype,
+             rnd_gameplay_episodes=n_episodes)
 
 
-def test_dql_space_invaders():
+def run_dql_space_invaders(libtype):
     custom_env = SpaceInvaders()
     fc_layers_dims = [1024, 0]
     optimizer_type = OPTIMIZER_RMSprop  # OPTIMIZER_SGD
     alpha = 0.003
     double_dql = True
     tau = None
-    n_episodes = 5  # n_episodes = 50
+    n_episodes = 2  # n_episodes = 50
 
-    play_dql(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, double_dql, tau)
+    play_dql(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, double_dql, tau, libtype,
+             rnd_gameplay_episodes=n_episodes)
+
+
+def test_OBSVEC_TF():
+    run_dql_cartpole(LIBRARY_TF)
+
+
+def test_OBSVEC_KERAS():
+    run_dql_cartpole(LIBRARY_KERAS)
+
+
+def test_OBSVEC_TORCH():
+    run_dql_lunar_lander(LIBRARY_TORCH)
+
+
+def test_FRAMES_TF():
+    run_dql_breakout(LIBRARY_TF)
+
+
+def test_FRAMES_KERAS():
+    run_dql_breakout(LIBRARY_KERAS)
+
+
+def test_FRAMES_TORCH():
+    run_dql_space_invaders(LIBRARY_TORCH)

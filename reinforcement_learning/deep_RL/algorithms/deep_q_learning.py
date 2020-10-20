@@ -53,25 +53,23 @@ class DQN(object):
 
             self.sess = tf_get_session_according_to_device(device_map)
             self.build_network()
-            self.sess.run(tf.global_variables_initializer())
+            self.sess.run(tf.compat.v1.global_variables_initializer())
 
-            self.saver = tf.train.Saver()
+            self.saver = tf.compat.v1.train.Saver()
             self.checkpoint_file = os.path.join(dqn.chkpt_dir, 'dqn_tf.ckpt')
 
-            self.params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
+            self.params = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
 
         def build_network(self):
-            with tf.variable_scope(self.name):
-                self.s = tf.placeholder(tf.float32, shape=[None, *self.dqn.input_dims], name='s')
-                self.a_indices_one_hot = tf.placeholder(tf.float32, shape=[None, self.dqn.n_actions],
+            with tf.compat.v1.variable_scope(self.name):
+                self.s = tf.compat.v1.placeholder(tf.float32, shape=[None, *self.dqn.input_dims], name='s')
+                self.a_indices_one_hot = tf.compat.v1.placeholder(tf.float32, shape=[None, self.dqn.n_actions],
                                                         name='a_indices_one_hot')
-                self.q_target = tf.placeholder(tf.float32, shape=[None, self.dqn.n_actions], name='q_target')
+                self.q_target = tf.compat.v1.placeholder(tf.float32, shape=[None, self.dqn.n_actions], name='q_target')
 
                 if self.dqn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
-                    fc1_ac = tf.layers.dense(inputs=self.s, units=self.dqn.fc_layers_dims[0],
-                                             activation='relu')
-                    fc2_ac = tf.layers.dense(inputs=fc1_ac, units=self.dqn.fc_layers_dims[1],
-                                             activation='relu')
+                    fc1_ac = tf.layers.dense(inputs=self.s, units=self.dqn.fc_layers_dims[0], activation='relu')
+                    fc2_ac = tf.layers.dense(inputs=fc1_ac, units=self.dqn.fc_layers_dims[1], activation='relu')
                     self.q = tf.layers.dense(inputs=fc2_ac, units=self.dqn.n_actions)
 
                 else:  # self.input_type == INPUT_TYPE_STACKED_FRAMES
@@ -88,11 +86,10 @@ class DQN(object):
                                              kernel_initializer=tf.variance_scaling_initializer(scale=2))
                     conv3_ac = tf.nn.relu(conv3)
                     flat = tf.layers.flatten(conv3_ac)
-                    fc1_ac = tf.layers.dense(inputs=flat, units=self.dqn.fc_layers_dims[0],
-                                             activation='relu',
+                    fc1_ac = tf.layers.dense(inputs=flat, units=self.dqn.fc_layers_dims[0], activation='relu',
                                              kernel_initializer=tf.variance_scaling_initializer(scale=2))
                     self.q = tf.layers.dense(inputs=fc1_ac, units=self.dqn.n_actions,
-                                             kernel_initializer=tf.variance_scaling_initializer(scale=2))
+                                             kernel_initializer=tf.variance_scaling_initializer(scale=2.0))
                     # self.q = tf.reduce_sum(tf.multiply(self.Q_values, self.actions))  # the actual Q value for each action
 
                 self.loss = tf.reduce_mean(tf.square(self.q - self.q_target))  # self.q - self.q_target
@@ -260,6 +257,7 @@ class DQN(object):
 
         def learn_batch(self, batch_s, batch_a_indices, batch_r, batch_terminal, batch_a_indices_one_hot,
                         input_type, GAMMA, memory_batch_size, q_eval_s, q_eval_s_):
+
             batch_index = torch.tensor(np.arange(memory_batch_size), dtype=torch.long).to(self.device)
             batch_a_indices = torch.tensor(batch_a_indices, dtype=torch.long).to(self.device)
             batch_r = torch.tensor(batch_r, dtype=torch.float).to(self.device)
@@ -344,6 +342,9 @@ class Agent(object):
         sub_dir = ''
         self.chkpt_dir = base_dir + sub_dir
         make_sure_dir_exists(self.chkpt_dir)
+
+        if self.lib_type == LIBRARY_TF:
+            tf.reset_default_graph()
 
         self.policy_dqn = self.init_network(custom_env, 'policy')
 
@@ -471,7 +472,7 @@ class Agent(object):
             self.target_dqn.load_model_file()
 
 
-def load_up_agent_memory_with_random_gameplay(custom_env, agent, n_episodes=None):
+def load_up_agent_memory_with_random_gameplay(custom_env, agent, n_episodes):
     if n_episodes is None or n_episodes > custom_env.memory_size:
         n_episodes = custom_env.memory_size
 
@@ -493,8 +494,8 @@ def load_up_agent_memory_with_random_gameplay(custom_env, agent, n_episodes=None
 
 
 def train_agent(custom_env, agent, n_episodes,
-                perform_random_gameplay,
                 enable_models_saving, load_checkpoint,
+                perform_random_gameplay=True, rnd_gameplay_episodes=None,
                 visualize=False, record=False):
 
     scores_history, learn_episode_index, max_avg = load_training_data(agent, load_checkpoint)
@@ -502,7 +503,7 @@ def train_agent(custom_env, agent, n_episodes,
     if perform_random_gameplay:
         # the agent's memory is originally initialized with zeros (which is perfectly acceptable).
         # however, we can overwrite these zeros with actual gameplay sampled from the environment.
-        load_up_agent_memory_with_random_gameplay(custom_env, agent)
+        load_up_agent_memory_with_random_gameplay(custom_env, agent, rnd_gameplay_episodes)
 
     env = custom_env.env
 

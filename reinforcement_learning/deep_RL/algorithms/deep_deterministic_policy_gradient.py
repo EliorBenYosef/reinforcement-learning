@@ -38,8 +38,8 @@ class DNN:
 
             # relevant for the Actor only:
             self.memory_batch_size = custom_env.memory_batch_size
-            self.action_boundary = custom_env.action_boundary if not custom_env.is_discrete_action_space \
-                else None
+            self.action_boundary = None if custom_env.is_discrete_action_space else \
+                custom_env.action_boundary
 
             self.sess = sess
 
@@ -66,9 +66,9 @@ class DNN:
                 self.optimize = optimizer.apply_gradients(zip(self.normalized_mu_gradients, self.params))  # train_op
 
             def build_network(self):
-                with tf.variable_scope(self.ac.name):
-                    self.s = tf.placeholder(tf.float32, shape=[None, *self.ac.input_dims], name='s')
-                    self.a_grad = tf.placeholder(tf.float32, shape=[None, self.ac.n_actions], name='a_grad')
+                with tf.compat.v1.variable_scope(self.ac.name):
+                    self.s = tf.compat.v1.placeholder(tf.float32, shape=[None, *self.ac.input_dims], name='s')
+                    self.a_grad = tf.compat.v1.placeholder(tf.float32, shape=[None, self.ac.n_actions], name='a_grad')
 
                     f1 = 1. / np.sqrt(self.ac.fc_layers_dims[0])
                     fc1 = tf.layers.dense(inputs=self.s, units=self.ac.fc_layers_dims[0],
@@ -85,8 +85,7 @@ class DNN:
                     fc2_bn_ac = tf.nn.relu(fc2_bn)
 
                     f3 = 0.003
-                    mu = tf.layers.dense(inputs=fc2_bn_ac, units=self.ac.n_actions,
-                                         activation='tanh',
+                    mu = tf.layers.dense(inputs=fc2_bn_ac, units=self.ac.n_actions, activation='tanh',
                                          kernel_initializer=tf_init_uni(-f3, f3),
                                          bias_initializer=tf_init_uni(-f3, f3))
                     self.mu = tf.multiply(mu, self.ac.action_boundary)  # an ndarray of ndarrays
@@ -117,10 +116,10 @@ class DNN:
                 self.action_gradients = tf.gradients(self.q, self.a)  # a list containing an ndarray of ndarrays
 
             def build_network(self):
-                with tf.variable_scope(self.ac.name):
-                    self.s = tf.placeholder(tf.float32, shape=[None, *self.ac.input_dims], name='s')
-                    self.a = tf.placeholder(tf.float32, shape=[None, self.ac.n_actions], name='a')
-                    self.q_target = tf.placeholder(tf.float32, shape=[None, 1], name='q_target')
+                with tf.compat.v1.variable_scope(self.ac.name):
+                    self.s = tf.compat.v1.placeholder(tf.float32, shape=[None, *self.ac.input_dims], name='s')
+                    self.a = tf.compat.v1.placeholder(tf.float32, shape=[None, self.ac.n_actions], name='a')
+                    self.q_target = tf.compat.v1.placeholder(tf.float32, shape=[None, 1], name='q_target')
 
                     f1 = 1. / np.sqrt(self.ac.fc_layers_dims[0])
                     fc1 = tf.layers.dense(inputs=self.s, units=self.ac.fc_layers_dims[0],
@@ -135,8 +134,7 @@ class DNN:
                                           bias_initializer=tf_init_uni(-f2, f2))
                     fc2_bn = tf.layers.batch_normalization(fc2)
 
-                    action_in_ac = tf.layers.dense(inputs=self.a, units=self.ac.fc_layers_dims[1],
-                                                   activation='relu')
+                    action_in_ac = tf.layers.dense(inputs=self.a, units=self.ac.fc_layers_dims[1], activation='relu')
 
                     state_actions = tf.add(fc2_bn, action_in_ac)
                     state_actions_ac = tf.nn.relu(state_actions)
@@ -183,8 +181,8 @@ class DNN:
 
             # relevant for the Actor only:
             # self.memory_batch_size = custom_env.memory_batch_size
-            self.action_boundary = custom_env.action_boundary if not custom_env.is_discrete_action_space \
-                else None
+            self.action_boundary = None if custom_env.is_discrete_action_space else \
+                torch.tensor(custom_env.action_boundary, dtype=torch.float)
 
             self.build_network()
 
@@ -321,7 +319,7 @@ class AC(object):
 
             #############################
 
-            self.saver = tf.train.Saver()
+            self.saver = tf.compat.v1.train.Saver()
             self.checkpoint_file = os.path.join(chkpt_dir, 'ddpg_tf.ckpt')
 
             #############################
@@ -340,7 +338,7 @@ class AC(object):
 
             #############################
 
-            self.sess.run(tf.global_variables_initializer())
+            self.sess.run(tf.compat.v1.global_variables_initializer())
 
             self.update_target_networks_params(first=True)
 
@@ -569,6 +567,7 @@ class Agent(object):
         make_sure_dir_exists(self.chkpt_dir)
 
         if lib_type == LIBRARY_TF:
+            tf.reset_default_graph()
             self.ac = AC.AC_TF(custom_env, fc_layers_dims,
                                optimizer_type, lr_actor, lr_critic,
                                tau, self.chkpt_dir, device_type)
