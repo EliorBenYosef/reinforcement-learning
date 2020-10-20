@@ -60,7 +60,7 @@ Deep Q Learning, Policy Gradient | Deep Deterministic Policy Gradient
 meaning: writing for **every library implementation** (tensorflow, torch, keras) 
 or for **every input type** (observation vector, stacked frames).
 
-### [cmdline_play.py](../master/reinforcement_learning/deep_RL/util/cmdline_play.py)
+### [cmdline_play.py](../master/reinforcement_learning/deep_RL/utils/cmdline_play.py)
 
 Enables **playing from the command-line**.
 
@@ -69,7 +69,7 @@ through the command-line (using the `argparse` module to parse command-line opti
 The major benefit from this is that it enables concatenating multiple independent runs via `&&`
 (so you can run multiple tests in one go).
 
-### [grid_search.py](../master/reinforcement_learning/deep_RL/util/grid_search.py)
+### [grid_search.py](../master/reinforcement_learning/deep_RL/utils/grid_search.py)
 
 Enables **performing grid search**.
 
