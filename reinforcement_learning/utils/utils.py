@@ -88,7 +88,7 @@ def decrement_eps(eps_current, eps_min, eps_dec, eps_dec_type, eps_max=None, t=N
     return max(eps_temp, eps_min)
 
 
-def calculate_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA):
+def calculate_standardized_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA):
     memory_G = np.zeros_like(memory_r, dtype=np.float32)  # np.float64
     G = 0
     for i in reversed(range(len(memory_r))):
@@ -96,7 +96,7 @@ def calculate_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA):
             G = 0
         G = GAMMA * G + memory_r[i]
         memory_G[i] = G
-    memory_G = scale_and_normalize(memory_G)
+    memory_G = standardize(memory_G)
     return memory_G
 
 
@@ -191,7 +191,11 @@ def pickle_save(var, file_name, directory=''):
 
 # General:
 
-def scale_and_normalize(np_array):
+def standardize(np_array):
+    """
+    standardize data to N(0,1)
+    transforming data to have a gaussian distribution of: mean 0 (μ=0), STD 1 (σ=1)
+    """
     mean = np.mean(np_array)
     std = np.std(np_array)
     if std == 0:
@@ -223,6 +227,6 @@ def query_env(env):
     )
 
 
-def make_sure_dir_exists(dir):
-    if not os.path.exists(dir):
-        os.makedirs(dir)
+def make_sure_dir_exists(path_dir):
+    if not os.path.exists(path_dir):
+        os.makedirs(path_dir)

@@ -13,8 +13,7 @@ import torch
 import torch.nn.functional as torch_func
 import torch.distributions as torch_dist
 
-from reinforcement_learning.utils.utils import print_training_progress, pickle_save, make_sure_dir_exists,\
-     calculate_returns_of_consecutive_episodes
+from reinforcement_learning.utils.utils import print_training_progress, pickle_save, make_sure_dir_exists
 from reinforcement_learning.deep_RL.const import LIBRARY_TF, LIBRARY_KERAS, LIBRARY_TORCH,\
     OPTIMIZER_Adam, INPUT_TYPE_OBSERVATION_VECTOR, INPUT_TYPE_STACKED_FRAMES, atari_frames_stack_size
 from reinforcement_learning.deep_RL.utils.saver_loader import load_training_data, save_training_data

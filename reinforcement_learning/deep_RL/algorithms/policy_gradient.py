@@ -13,7 +13,7 @@ import torch.nn.functional as torch_func
 import torch.distributions as torch_dist
 
 from reinforcement_learning.utils.utils import print_training_progress, pickle_save, make_sure_dir_exists,\
-     calculate_returns_of_consecutive_episodes
+     calculate_standardized_returns_of_consecutive_episodes
 from reinforcement_learning.deep_RL.const import LIBRARY_TF, LIBRARY_KERAS, LIBRARY_TORCH,\
     OPTIMIZER_Adam, INPUT_TYPE_OBSERVATION_VECTOR, INPUT_TYPE_STACKED_FRAMES, atari_frames_stack_size
 from reinforcement_learning.deep_RL.utils.utils import calc_conv_layer_output_dims
@@ -119,7 +119,7 @@ class DNN(object):
             memory_r = np.array(memory.memory_r)
             memory_terminal = np.array(memory.memory_terminal, dtype=np.int8)
 
-            memory_G = calculate_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA)
+            memory_G = calculate_standardized_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA)
 
             print('Training Started')
             _ = self.sess.run(self.optimize,
@@ -184,7 +184,7 @@ class DNN(object):
 
             G = keras_layers.Input(shape=(1,), dtype='float32', name='G')  # advantages. batch_shape=[None]
 
-            def custom_loss(y_true, y_pred):  # (a_indices_one_hot, intermediate_model.output)
+            def custom_loss(y_true, y_pred):  # (a_indices_one_hot, actions_probabilities)
                 y_pred_clipped = keras_backend.clip(y_pred, 1e-8, 1 - 1e-8)  # we set boundaries so we won't take log of 0\1
                 log_lik = y_true * keras_backend.log(y_pred_clipped)  # log_probability
                 loss = keras_backend.sum(-log_lik * G)  # keras_backend.mean ?
@@ -205,7 +205,7 @@ class DNN(object):
             memory_r = np.array(memory.memory_r)
             memory_terminal = np.array(memory.memory_terminal, dtype=np.int8)
 
-            memory_G = calculate_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA)
+            memory_G = calculate_standardized_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA)
 
             memory_size = len(memory_a_indices)
             memory_a_indices_one_hot = np.zeros((memory_size, self.dnn.n_actions), dtype=np.int8)
@@ -301,7 +301,7 @@ class DNN(object):
             memory_r = np.array(memory.memory_r)
             memory_terminal = np.array(memory.memory_terminal, dtype=np.uint8)
 
-            memory_G = calculate_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA)
+            memory_G = calculate_standardized_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA)
             memory_G = torch.tensor(memory_G, dtype=torch.float).to(self.device)
 
             self.optimizer.zero_grad()
