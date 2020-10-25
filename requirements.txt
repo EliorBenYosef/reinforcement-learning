@@ -2,7 +2,7 @@ ipython==7.18.1
 numpy==1.19.1
 matplotlib==3.2.2
 gym==0.12.1
-tensorflow==1.14.0
+tensorflow==1.15.4
 tensorflow_probability==0.7.0
 Keras==2.2.4
 torch==1.1.0
