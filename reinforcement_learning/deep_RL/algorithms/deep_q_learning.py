@@ -71,7 +71,7 @@ class DQN(object):
                 if self.dqn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
                     x = tf.layers.dense(self.s, units=self.dqn.fc_layers_dims[0], activation='relu')
                     x = tf.layers.dense(x, units=self.dqn.fc_layers_dims[1], activation='relu')
-                    self.q_values = tf.layers.dense(inputs=x, units=self.dqn.n_actions)
+                    self.q_values = tf.layers.dense(x, units=self.dqn.n_actions)
 
                 else:  # self.input_type == INPUT_TYPE_STACKED_FRAMES
                     x = tf.layers.conv2d(self.s, filters=32, kernel_size=(8, 8), strides=4, name='conv1',
@@ -137,7 +137,7 @@ class DQN(object):
                 x = keras_layers.Flatten()(x)
                 x = keras_layers.Dense(self.dqn.fc_layers_dims[0], activation='relu')(x)
 
-            q_values = keras_layers.Dense(self.dqn.n_actions, name='actions_probabilities')(x)
+            q_values = keras_layers.Dense(self.dqn.n_actions, name='q_values')(x)
 
             q_values_model = keras_models.Model(inputs=s, outputs=q_values)
 
