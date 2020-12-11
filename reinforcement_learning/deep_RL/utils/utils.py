@@ -31,6 +31,37 @@ def eps_greedy_rnd(a, EPS, action_space):
     return a
 
 
+class OUActionNoise(object):
+    """
+    Ornstein-Uhlenbeck Action Noise.
+    used for continuous action-space exploration.
+    https://github.com/openai/baselines/blob/master/baselines/ddpg/noise.py
+    """
+
+    def __init__(self, mu, sigma, theta=.15, dt=1e-2, x0=None):
+        self.mu = mu
+        self.sigma = sigma
+        self.theta = theta
+        self.dt = dt  # differential with respect to time - this is a temporally correlated noise
+        self.x0 = x0  # initial value
+        self.reset()  # resets the temporal correlation
+
+    def reset(self):
+        """
+        sets the previous value for the noise
+        """
+        self.x_prev = self.x0 if self.x0 is not None else np.zeros_like(self.mu)
+
+    def __call__(self):
+        x = self.x_prev + self.theta * (self.mu - self.x_prev) * self.dt + \
+            self.sigma * np.sqrt(self.dt) * np.random.normal(size=self.mu.shape)
+        self.x_prev = x
+        return x
+
+    def __repr__(self):
+        return 'OrnsteinUhlenbeckActionNoise(mu={}, sigma={})'.format(self.mu, self.sigma)
+
+
 # Calculator:
 
 def calc_conv_layer_output_dim(Dimension, Filter, Padding, Stride):
