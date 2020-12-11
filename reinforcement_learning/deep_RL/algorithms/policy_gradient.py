@@ -69,57 +69,51 @@ class DNN(object):
                 self.G = tf.compat.v1.placeholder(tf.float32, shape=[None], name='G')
 
                 if self.dnn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
-                    fc1_ac = tf.layers.dense(inputs=self.s, units=self.dnn.fc_layers_dims[0], activation='relu',
-                                             kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
-                    fc2_ac = tf.layers.dense(inputs=fc1_ac, units=self.dnn.fc_layers_dims[1], activation='relu',
-                                             kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
-                    fc_last = tf.layers.dense(inputs=fc2_ac, units=self.dnn.n_actions, activation=None,
-                                              kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
+                    x = tf.layers.dense(self.s, units=self.dnn.fc_layers_dims[0], activation='relu',
+                                        kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
+                    x = tf.layers.dense(x, units=self.dnn.fc_layers_dims[1], activation='relu',
+                                        kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
+                    a_logits = tf.layers.dense(x, units=self.dnn.n_actions, activation=None,
+                                               kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
 
                 else:  # self.input_type == INPUT_TYPE_STACKED_FRAMES
-                    conv1 = tf.layers.conv2d(inputs=self.s, filters=32,
-                                             kernel_size=(8, 8), strides=4, name='conv1',
-                                             kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
-                    conv1_bn = tf.layers.batch_normalization(inputs=conv1, epsilon=1e-5, name='conv1_bn')
-                    conv1_bn_ac = tf.nn.relu(conv1_bn)
-                    conv2 = tf.layers.conv2d(inputs=conv1_bn_ac, filters=64,
-                                             kernel_size=(4, 4), strides=2, name='conv2',
-                                             kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
-                    conv2_bn = tf.layers.batch_normalization(inputs=conv2, epsilon=1e-5, name='conv2_bn')
-                    conv2_bn_ac = tf.nn.relu(conv2_bn)
-                    conv3 = tf.layers.conv2d(inputs=conv2_bn_ac, filters=128,
-                                             kernel_size=(3, 3), strides=1, name='conv3',
-                                             kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
-                    conv3_bn = tf.layers.batch_normalization(inputs=conv3, epsilon=1e-5, name='conv3_bn')
-                    conv3_bn_ac = tf.nn.relu(conv3_bn)
+                    x = tf.layers.conv2d(self.s, filters=32, kernel_size=(8, 8), strides=4, name='conv1',
+                                         kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
+                    x = tf.layers.batch_normalization(x, epsilon=1e-5, name='conv1_bn')
+                    x = tf.nn.relu(x)
 
-                    flat = tf.layers.flatten(conv3_bn_ac)
-                    fc1_ac = tf.layers.dense(inputs=flat, units=self.dnn.fc_layers_dims[0], activation='relu',
-                                             kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
-                    fc_last = tf.layers.dense(inputs=fc1_ac, units=self.dnn.n_actions, activation=None,
-                                              kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
+                    x = tf.layers.conv2d(x, filters=64, kernel_size=(4, 4), strides=2, name='conv2',
+                                         kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
+                    x = tf.layers.batch_normalization(x, epsilon=1e-5, name='conv2_bn')
+                    x = tf.nn.relu(x)
 
-                self.actions_probabilities = tf.nn.softmax(fc_last, name='actions_probabilities')
+                    x = tf.layers.conv2d(x, filters=128, kernel_size=(3, 3), strides=1, name='conv3',
+                                         kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
+                    x = tf.layers.batch_normalization(x, epsilon=1e-5, name='conv3_bn')
+                    x = tf.nn.relu(x)
+
+                    flat = tf.layers.flatten(x)
+                    x = tf.layers.dense(flat, units=self.dnn.fc_layers_dims[0], activation='relu',
+                                        kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
+                    a_logits = tf.layers.dense(x, units=self.dnn.n_actions, activation=None,
+                                               kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
+
+                self.a_probs = tf.nn.softmax(a_logits, name='actions_probabilities')
 
                 negative_log_probability = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                    labels=self.a_index, logits=fc_last)
+                    labels=self.a_index, logits=a_logits)
                 loss = negative_log_probability * self.G
-                if self.dnn.input_type == INPUT_TYPE_STACKED_FRAMES:
-                    loss = tf.reduce_mean(loss)
 
                 optimizer = tf_get_optimizer(self.dnn.optimizer_type, self.dnn.ALPHA)
                 self.optimize = optimizer.minimize(loss)  # train_op
 
         def get_actions_probabilities(self, batch_s):
-            return self.sess.run(self.actions_probabilities, feed_dict={self.s: batch_s})[0]
+            a_probs = self.sess.run(self.a_probs, feed_dict={self.s: batch_s})[0]
+            return a_probs
 
-        def learn_entire_batch(self, memory, GAMMA):
+        def learn_entire_batch(self, memory, memory_G):
             memory_s = np.array(memory.memory_s)
             memory_a_indices = np.array(memory.memory_a_indices)
-            memory_r = np.array(memory.memory_r)
-            memory_terminal = np.array(memory.memory_terminal, dtype=np.int8)
-
-            memory_G = calculate_standardized_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA)
 
             print('Training Started')
             _ = self.sess.run(self.optimize,
@@ -148,7 +142,6 @@ class DNN(object):
             self.model, self.policy = self.build_networks()
 
         def build_networks(self):
-
             s = keras_layers.Input(shape=self.dnn.input_dims, dtype='float32', name='s')
 
             if self.dnn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
@@ -158,7 +151,6 @@ class DNN(object):
                                        kernel_initializer=keras_init.glorot_uniform(seed=None))(x)
 
             else:  # self.input_type == INPUT_TYPE_STACKED_FRAMES
-
                 x = keras_layers.Conv2D(filters=32, kernel_size=(8, 8), strides=4, name='conv1',
                                         kernel_initializer=keras_init.glorot_uniform(seed=None))(s)
                 x = keras_layers.BatchNormalization(epsilon=1e-5, name='conv1_bn')(x)
@@ -175,38 +167,35 @@ class DNN(object):
                 x = keras_layers.Dense(self.dnn.fc_layers_dims[0], activation='relu',
                                        kernel_initializer=keras_init.glorot_uniform(seed=None))(x)
 
-            actions_probabilities = keras_layers.Dense(self.dnn.n_actions, activation='softmax', name='actions_probabilities',
-                                                       kernel_initializer=keras_init.glorot_uniform(seed=None))(x)
+            a_probs = keras_layers.Dense(self.dnn.n_actions, activation='softmax', name='actions_probabilities',
+                                         kernel_initializer=keras_init.glorot_uniform(seed=None))(x)
 
-            policy = keras_models.Model(inputs=s, outputs=actions_probabilities)
+            policy = keras_models.Model(inputs=s, outputs=a_probs)
 
             #############################
 
-            G = keras_layers.Input(shape=(1,), dtype='float32', name='G')  # advantages. batch_shape=[None]
+            G = keras_layers.Input(shape=(1,), dtype='float32', name='G')
 
-            def custom_loss(y_true, y_pred):  # (a_indices_one_hot, actions_probabilities)
-                y_pred_clipped = keras_backend.clip(y_pred, 1e-8, 1 - 1e-8)  # we set boundaries so we won't take log of 0\1
-                log_lik = y_true * keras_backend.log(y_pred_clipped)  # log_probability
-                loss = keras_backend.sum(-log_lik * G)  # keras_backend.mean ?
+            def custom_loss(y_true, y_pred):  # (a_indices_one_hot, a_probs)
+                prob_chosen_a = keras_backend.sum(y_pred * y_true)
+                prob_chosen_a = keras_backend.clip(prob_chosen_a, 1e-8, 1 - 1e-8)  # boundaries to prevent from taking log of 0\1
+                log_lik = keras_backend.log(prob_chosen_a)  # log_probability, negative value (since prob<1)
+                loss = -log_lik * G
                 return loss
 
-            model = keras_models.Model(inputs=[s, G], outputs=actions_probabilities)  # policy_model
+            model = keras_models.Model(inputs=[s, G], outputs=a_probs)  # policy_model
             model.compile(optimizer=self.optimizer, loss=custom_loss)
 
             return model, policy
 
         def get_actions_probabilities(self, batch_s):
-            actions_probabilities = self.policy.predict(batch_s)[0]
-            return actions_probabilities
+            a_probs = self.policy.predict(batch_s)[0]
+            return a_probs
 
-        def learn_entire_batch(self, memory, GAMMA):
+        def learn_entire_batch(self, memory, memory_G):
             memory_s = np.array(memory.memory_s)
+
             memory_a_indices = np.array(memory.memory_a_indices)
-            memory_r = np.array(memory.memory_r)
-            memory_terminal = np.array(memory.memory_terminal, dtype=np.int8)
-
-            memory_G = calculate_standardized_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA)
-
             memory_size = len(memory_a_indices)
             memory_a_indices_one_hot = np.zeros((memory_size, self.dnn.n_actions), dtype=np.int8)
             memory_a_indices_one_hot[np.arange(memory_size), memory_a_indices] = 1
@@ -277,13 +266,11 @@ class DNN(object):
             input = torch.tensor(s, dtype=torch.float).to(self.device)
 
             if self.dnn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
-
                 fc1_ac = torch_func.relu(self.fc1(input))
                 fc2_ac = torch_func.relu(self.fc2(fc1_ac))
                 fc_last = self.fc3(fc2_ac)
 
             else:  # self.input_type == INPUT_TYPE_STACKED_FRAMES
-
                 input = input.view(-1, self.in_channels, *self.relevant_screen_size)
                 conv1_ac = torch_func.relu(self.conv1(input))
                 conv2_ac = torch_func.relu(self.conv2(conv1_ac))
@@ -292,21 +279,16 @@ class DNN(object):
                 fc1_ac = torch_func.relu(self.fc1(flat))
                 fc_last = self.fc2(fc1_ac)
 
-            actions_probabilities = torch_func.softmax(fc_last).to(self.device)
+            a_probs = torch_func.softmax(fc_last).to(self.device)
 
-            return actions_probabilities
+            return a_probs
 
-        def learn_entire_batch(self, memory, GAMMA):
-            memory_a_log_probs = np.array(memory.memory_a_log_probs)
-            memory_r = np.array(memory.memory_r)
-            memory_terminal = np.array(memory.memory_terminal, dtype=np.uint8)
-
-            memory_G = calculate_standardized_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA)
+        def learn_entire_batch(self, memory, memory_G):
             memory_G = torch.tensor(memory_G, dtype=torch.float).to(self.device)
 
             self.optimizer.zero_grad()
             loss = 0
-            for G, a_log_prob in zip(memory_G, memory_a_log_probs):
+            for G, a_log_prob in zip(memory_G, memory.memory_a_log_probs):
                 loss += -a_log_prob * G
             loss.backward()
             print('Training Started')
@@ -440,7 +422,11 @@ class Agent(object):
     def learn(self):
         print('Learning Session')
 
-        self.policy_dnn.learn_entire_batch(self.memory, self.GAMMA)
+        memory_r = np.array(self.memory.memory_r)
+        memory_terminal = np.array(self.memory.memory_terminal, dtype=np.int8)
+        memory_G = calculate_standardized_returns_of_consecutive_episodes(memory_r, memory_terminal, self.GAMMA)
+
+        self.policy_dnn.learn_entire_batch(self.memory, memory_G)
         self.memory.reset_memory()
 
     def save_models(self):
