@@ -6,6 +6,7 @@ from gym import wrappers
 import tensorflow as tf
 import keras.models as keras_models
 import keras.layers as keras_layers
+import keras.backend as keras_backend
 import torch
 import torch.nn.functional as torch_func
 
@@ -13,7 +14,7 @@ from reinforcement_learning.utils.utils import print_training_progress, pickle_s
     decrement_eps, EPS_DEC_LINEAR
 from reinforcement_learning.deep_RL.const import LIBRARY_TF, LIBRARY_KERAS, LIBRARY_TORCH,\
     OPTIMIZER_Adam, INPUT_TYPE_OBSERVATION_VECTOR, INPUT_TYPE_STACKED_FRAMES, atari_frames_stack_size
-from reinforcement_learning.deep_RL.utils.utils import calc_conv_layer_output_dims
+from reinforcement_learning.deep_RL.utils.utils import calc_conv_layer_output_dims, eps_greedy
 from reinforcement_learning.deep_RL.utils.saver_loader import load_training_data, save_training_data
 from reinforcement_learning.deep_RL.utils.optimizers import tf_get_optimizer, keras_get_optimizer, torch_get_optimizer
 from reinforcement_learning.deep_RL.utils.devices import tf_get_session_according_to_device, \
@@ -63,57 +64,44 @@ class DQN(object):
         def build_network(self):
             with tf.compat.v1.variable_scope(self.name):
                 self.s = tf.compat.v1.placeholder(tf.float32, shape=[None, *self.dqn.input_dims], name='s')
-                self.a_indices_one_hot = tf.compat.v1.placeholder(tf.float32, shape=[None, self.dqn.n_actions],
-                                                        name='a_indices_one_hot')
-                self.q_target = tf.compat.v1.placeholder(tf.float32, shape=[None, self.dqn.n_actions], name='q_target')
+                self.a_indices_one_hot = tf.compat.v1.placeholder(
+                    tf.float32, shape=[None, self.dqn.n_actions], name='a_indices_one_hot')
+                self.q_target_chosen_a = tf.compat.v1.placeholder(tf.float32, shape=[None], name='q_target_chosen_a')
 
                 if self.dqn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
-                    fc1_ac = tf.layers.dense(inputs=self.s, units=self.dqn.fc_layers_dims[0], activation='relu')
-                    fc2_ac = tf.layers.dense(inputs=fc1_ac, units=self.dqn.fc_layers_dims[1], activation='relu')
-                    self.q = tf.layers.dense(inputs=fc2_ac, units=self.dqn.n_actions)
+                    x = tf.layers.dense(self.s, units=self.dqn.fc_layers_dims[0], activation='relu')
+                    x = tf.layers.dense(x, units=self.dqn.fc_layers_dims[1], activation='relu')
+                    self.q_values = tf.layers.dense(inputs=x, units=self.dqn.n_actions)
 
                 else:  # self.input_type == INPUT_TYPE_STACKED_FRAMES
-                    conv1 = tf.layers.conv2d(inputs=self.s, filters=32,
-                                             kernel_size=(8, 8), strides=4, name='conv1',
-                                             kernel_initializer=tf.variance_scaling_initializer(scale=2))
-                    conv1_ac = tf.nn.relu(conv1)
-                    conv2 = tf.layers.conv2d(inputs=conv1_ac, filters=64,
-                                             kernel_size=(4, 4), strides=2, name='conv2',
-                                             kernel_initializer=tf.variance_scaling_initializer(scale=2))
-                    conv2_ac = tf.nn.relu(conv2)
-                    conv3 = tf.layers.conv2d(inputs=conv2_ac, filters=128,
-                                             kernel_size=(3, 3), strides=1, name='conv3',
-                                             kernel_initializer=tf.variance_scaling_initializer(scale=2))
-                    conv3_ac = tf.nn.relu(conv3)
-                    flat = tf.layers.flatten(conv3_ac)
-                    fc1_ac = tf.layers.dense(inputs=flat, units=self.dqn.fc_layers_dims[0], activation='relu',
-                                             kernel_initializer=tf.variance_scaling_initializer(scale=2))
-                    self.q = tf.layers.dense(inputs=fc1_ac, units=self.dqn.n_actions,
-                                             kernel_initializer=tf.variance_scaling_initializer(scale=2.0))
-                    # self.q = tf.reduce_sum(tf.multiply(self.Q_values, self.actions))  # the actual Q value for each action
+                    x = tf.layers.conv2d(self.s, filters=32, kernel_size=(8, 8), strides=4, name='conv1',
+                                         activation='relu', kernel_initializer=tf.variance_scaling_initializer(scale=2))
+                    x = tf.layers.conv2d(x, filters=64, kernel_size=(4, 4), strides=2, name='conv2',
+                                         activation='relu', kernel_initializer=tf.variance_scaling_initializer(scale=2))
+                    x = tf.layers.conv2d(x, filters=128, kernel_size=(3, 3), strides=1, name='conv3',
+                                         activation='relu', kernel_initializer=tf.variance_scaling_initializer(scale=2))
+                    x = tf.layers.flatten(x)
+                    x = tf.layers.dense(x, units=self.dqn.fc_layers_dims[0], activation='relu',
+                                        kernel_initializer=tf.variance_scaling_initializer(scale=2))
+                    self.q_values = tf.layers.dense(x, units=self.dqn.n_actions,
+                                                    kernel_initializer=tf.variance_scaling_initializer(scale=2))
 
-                self.loss = tf.reduce_mean(tf.square(self.q - self.q_target))  # self.q - self.q_target
+                q_chosen_a = tf.reduce_sum(tf.multiply(self.q_values, self.a_indices_one_hot))
+                loss = tf.reduce_mean(tf.square(q_chosen_a - self.q_target_chosen_a))  # MSE
 
                 optimizer = tf_get_optimizer(self.dqn.optimizer_type, self.dqn.ALPHA)
-                self.optimize = optimizer.minimize(self.loss)  # train_op
+                self.optimize = optimizer.minimize(loss)  # train_op
 
         def forward(self, batch_s):
-            q_eval_s = self.sess.run(self.q, feed_dict={self.s: batch_s})
+            q_eval_s = self.sess.run(self.q_values, feed_dict={self.s: batch_s})
             return q_eval_s
 
-        def learn_batch(self, batch_s, batch_a_indices, batch_r, batch_terminal, batch_a_indices_one_hot,
-                        input_type, GAMMA, memory_batch_size, q_eval_s, q_eval_s_):
-
-            q_target = q_eval_s.copy()
-            batch_index = np.arange(memory_batch_size, dtype=np.int32)
-            q_target[batch_index, batch_a_indices] = \
-                batch_r + GAMMA * np.max(q_eval_s_, axis=1) * batch_terminal
-
+        def learn_batch(self, batch_s, batch_a_indices_one_hot, q_target_chosen_a):
             # print('Training Started')
             _ = self.sess.run(self.optimize,
                               feed_dict={self.s: batch_s,
                                          self.a_indices_one_hot: batch_a_indices_one_hot,
-                                         self.q_target: q_target})
+                                         self.q_target_chosen_a: q_target_chosen_a})
             # print('Training Finished')
 
         def load_model_file(self):
@@ -133,43 +121,46 @@ class DQN(object):
 
             self.optimizer = keras_get_optimizer(self.dqn.optimizer_type, self.dqn.ALPHA)
 
-            self.model = self.build_network()
+            self.model, self.q_values_model = self.build_network()
 
         def build_network(self):
+            s = keras_layers.Input(shape=self.dqn.input_dims, dtype='float32', name='s')
 
             if self.dqn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
-                model = keras_models.Sequential([
-                    keras_layers.Dense(self.dqn.fc_layers_dims[0], activation='relu', input_shape=self.dqn.input_dims),
-                    keras_layers.Dense(self.dqn.fc_layers_dims[1], activation='relu'),
-                    keras_layers.Dense(self.dqn.n_actions)])
+                x = keras_layers.Dense(self.dqn.fc_layers_dims[0], activation='relu')(s)
+                x = keras_layers.Dense(self.dqn.fc_layers_dims[1], activation='relu')(x)
 
             else:  # self.input_type == INPUT_TYPE_STACKED_FRAMES
-                model = keras_models.Sequential([
-                    keras_layers.Conv2D(filters=32, kernel_size=(8, 8), strides=4, activation='relu', input_shape=self.dqn.input_dims),
-                    keras_layers.Conv2D(filters=64, kernel_size=(4, 4), strides=2, activation='relu'),
-                    keras_layers.Conv2D(filters=128, kernel_size=(3, 3), strides=1, activation='relu'),
-                    keras_layers.Flatten(),
-                    keras_layers.Dense(self.dqn.fc_layers_dims[0], activation='relu'),
-                    keras_layers.Dense(self.dqn.n_actions)])
+                x = keras_layers.Conv2D(filters=32, kernel_size=(8, 8), strides=4, activation='relu', name='conv1')(s)
+                x = keras_layers.Conv2D(filters=64, kernel_size=(4, 4), strides=2, activation='relu', name='conv2')(x)
+                x = keras_layers.Conv2D(filters=128, kernel_size=(3, 3), strides=1, activation='relu', name='conv3')(x)
+                x = keras_layers.Flatten()(x)
+                x = keras_layers.Dense(self.dqn.fc_layers_dims[0], activation='relu')(x)
 
+            q_values = keras_layers.Dense(self.dqn.n_actions, name='actions_probabilities')(x)
+
+            q_values_model = keras_models.Model(inputs=s, outputs=q_values)
+
+            #############################
+
+            a_indices_one_hot = keras_layers.Input(
+                shape=(self.dqn.n_actions,), dtype='float32', name='a_indices_one_hot')
+
+            x = keras_layers.Multiply()([q_values, a_indices_one_hot])
+            q_chosen_a = keras_layers.Lambda(lambda z: keras_backend.sum(z), output_shape=(1,))(x)
+
+            model = keras_models.Model(inputs=[s, a_indices_one_hot], outputs=q_chosen_a)
             model.compile(optimizer=self.optimizer, loss='mse')
 
-            return model
+            return model, q_values_model
 
         def forward(self, batch_s):
-            q_eval_s = self.model.predict(batch_s)
+            q_eval_s = self.q_values_model.predict(batch_s)
             return q_eval_s
 
-        def learn_batch(self, batch_s, batch_a_indices, batch_r, batch_terminal, batch_a_indices_one_hot,
-                        input_type, GAMMA, memory_batch_size, q_eval_s, q_eval_s_):
-
-            q_target = q_eval_s.copy()
-            batch_index = np.arange(memory_batch_size, dtype=np.int32)
-            q_target[batch_index, batch_a_indices] = \
-                batch_r + GAMMA * np.max(q_eval_s_, axis=1) * batch_terminal
-
+        def learn_batch(self, batch_s, batch_a_indices_one_hot, q_target_chosen_a):
             # print('Training Started')
-            _ = self.model.fit(batch_s, q_target, verbose=0)
+            _ = self.model.fit([batch_s, batch_a_indices_one_hot], q_target_chosen_a, verbose=0)
             # print('Training Finished')
 
         def load_model_file(self):
@@ -217,11 +208,11 @@ class DQN(object):
                 conv3_fps = 3, 0, 1
 
                 self.conv1 = torch.nn.Conv2d(self.in_channels, conv1_filters, conv1_fps[0],
-                                       padding=conv1_fps[1], stride=conv1_fps[2])
+                                             padding=conv1_fps[1], stride=conv1_fps[2])
                 self.conv2 = torch.nn.Conv2d(conv1_filters, conv2_filters, conv2_fps[0],
-                                       padding=conv2_fps[1], stride=conv2_fps[2])
+                                             padding=conv2_fps[1], stride=conv2_fps[2])
                 self.conv3 = torch.nn.Conv2d(conv2_filters, conv3_filters, conv3_fps[0],
-                                       padding=conv3_fps[1], stride=conv3_fps[2])
+                                             padding=conv3_fps[1], stride=conv3_fps[2])
 
                 i_H, i_W = self.dqn.input_dims[0], self.dqn.input_dims[1]
                 conv1_o_H, conv1_o_W = calc_conv_layer_output_dims(i_H, i_W, *conv1_fps)
@@ -236,13 +227,11 @@ class DQN(object):
             input = torch.tensor(s, dtype=torch.float).to(self.device)
 
             if self.dqn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
-
                 fc1_ac = torch_func.relu(self.fc1(input))
                 fc2_ac = torch_func.relu(self.fc2(fc1_ac))
                 actions_q_values = self.fc3(fc2_ac)
 
             else:  # self.input_type == INPUT_TYPE_STACKED_FRAMES
-
                 input = input.view(-1, self.in_channels, *self.relevant_screen_size)
                 conv1_ac = torch_func.relu(self.conv1(input))
                 conv2_ac = torch_func.relu(self.conv2(conv1_ac))
@@ -255,15 +244,15 @@ class DQN(object):
 
             return actions_q_values
 
-        def learn_batch(self, batch_s, batch_a_indices, batch_r, batch_terminal, batch_a_indices_one_hot,
-                        input_type, GAMMA, memory_batch_size, q_eval_s, q_eval_s_):
+        def learn_batch(self, batch_a_indices, batch_r, batch_terminal,
+                        GAMMA, memory_batch_size, q_eval_s, q_eval_s_):
 
-            batch_index = torch.tensor(np.arange(memory_batch_size), dtype=torch.long).to(self.device)
-            batch_a_indices = torch.tensor(batch_a_indices, dtype=torch.long).to(self.device)
+            batch_a_indices = torch.tensor(batch_a_indices, dtype=torch.int64).to(self.device)
             batch_r = torch.tensor(batch_r, dtype=torch.float).to(self.device)
-            batch_terminal = torch.tensor(batch_terminal, dtype=torch.float).to(self.device)
+            batch_terminal = torch.tensor(batch_terminal, dtype=torch.float32).to(self.device)
 
-            q_target = self.forward(batch_s)  # there's no copy() in torch... need to feed-forward again.
+            q_target = q_eval_s.clone().detach().to(self.device)
+            batch_index = torch.tensor(np.arange(memory_batch_size), dtype=torch.int64).to(self.device)
             q_target[batch_index, batch_a_indices] = \
                 batch_r + GAMMA * torch.max(q_eval_s_, dim=1)[0] * batch_terminal
 
@@ -387,32 +376,9 @@ class Agent(object):
             a_index = np.argmax(actions_q_values)
         a = self.action_space[a_index]
 
-        rand = np.random.random()
-        if rand < self.EPS:
-            # pure exploration, no chance to get the greedy action
-            modified_action_space = self.action_space.copy()
-            modified_action_space.remove(a)
-            a = np.random.choice(modified_action_space)
+        a = eps_greedy(a, self.EPS, self.action_space)
 
         return a
-
-    # def choose_action(self, s):
-    #     s = s[np.newaxis, :]
-    #
-    #     rand = np.random.random()
-    #     if rand < self.EPS:
-    #         # here there's also a chance to get the greedy action
-    #         a = np.random.choice(self.action_space)
-    #     else:
-    #         actions_q_values = self.policy_dqn.forward(s)
-    #         if self.lib_type == LIBRARY_TORCH:
-    #             action_tensor = torch.argmax(actions_q_values)
-    #             a_index = action_tensor.item()
-    #         else:  # LIBRARY_TF \ LIBRARY_KERAS
-    #             a_index = np.argmax(actions_q_values)
-    #         a = self.action_space[a_index]
-    #
-    #     return a
 
     def store_transition(self, s, a, r, s_, is_terminal):
         self.memory.store_transition(s, a, r, s_, is_terminal)
@@ -446,15 +412,14 @@ class Agent(object):
             self.memory.sample_batch(self.memory_batch_size)
 
         q_eval_s = self.policy_dqn.forward(batch_s)
-        if self.target_dqn is not None:
-            q_eval_s_ = self.target_dqn.forward(batch_s_)
-        else:
-            q_eval_s_ = self.policy_dqn.forward(batch_s_)
+        q_eval_s_ = self.policy_dqn.forward(batch_s_) if self.target_dqn is None else self.target_dqn.forward(batch_s_)
 
-        self.policy_dqn.learn_batch(
-            batch_s, batch_a_indices, batch_r, batch_terminal, batch_a_indices_one_hot,
-            self.input_type, self.GAMMA, self.memory_batch_size, q_eval_s, q_eval_s_
-        )
+        if self.lib_type == LIBRARY_TORCH:
+            self.policy_dqn.learn_batch(batch_a_indices, batch_r, batch_terminal,
+                                        self.GAMMA, self.memory_batch_size, q_eval_s, q_eval_s_)
+        else:
+            q_target_chosen_a = batch_r + self.GAMMA * np.max(q_eval_s_, axis=1) * batch_terminal
+            self.policy_dqn.learn_batch(batch_s, batch_a_indices_one_hot, q_target_chosen_a)
 
         self.learn_step_counter += 1
 
@@ -473,6 +438,10 @@ class Agent(object):
 
 
 def load_up_agent_memory_with_random_gameplay(custom_env, agent, n_episodes):
+    """
+    the agent's memory is originally initialized with zeros (which is perfectly acceptable).
+    however, we can overwrite these zeros with actual gameplay sampled from the environment.
+    """
     if n_episodes is None or n_episodes > custom_env.memory_size:
         n_episodes = custom_env.memory_size
 
@@ -501,8 +470,6 @@ def train_agent(custom_env, agent, n_episodes,
     scores_history, learn_episode_index, max_avg = load_training_data(agent, load_checkpoint)
 
     if perform_random_gameplay:
-        # the agent's memory is originally initialized with zeros (which is perfectly acceptable).
-        # however, we can overwrite these zeros with actual gameplay sampled from the environment.
         load_up_agent_memory_with_random_gameplay(custom_env, agent, rnd_gameplay_episodes)
 
     env = custom_env.env
