@@ -145,5 +145,5 @@ The test files contain examples of how to use:
 * Deep RL Algorithms:
   * [DQL](../master/tests/test_deep_rl/test_dql.py)
   * [PG](../master/tests/test_deep_rl/test_pg.py)
-  * [DDPG](../master/tests/test_deep_rl/test_ddpg.py)
   * [AC](../master/tests/test_deep_rl/test_ac.py)
+  * [DDPG](../master/tests/test_deep_rl/test_ddpg.py)
