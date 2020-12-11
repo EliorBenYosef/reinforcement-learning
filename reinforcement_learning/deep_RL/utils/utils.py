@@ -1,7 +1,34 @@
+import numpy as np
 import torch
 
 from reinforcement_learning.deep_RL.const import OPTIMIZER_Adam, OPTIMIZER_RMSprop, OPTIMIZER_Adadelta, OPTIMIZER_Adagrad
 from reinforcement_learning.utils.utils import run_method, watch_method, pickle_save
+
+
+# Action Selection:
+
+def eps_greedy(a, EPS, action_space):
+    """
+    epsilon greedy strategy.
+    pure exploration, no chance to get the greedy action.
+    """
+    rand = np.random.random()
+    if rand < EPS:
+        modified_action_space = action_space.copy()
+        modified_action_space.remove(a)
+        a = np.random.choice(modified_action_space)
+    return a
+
+
+def eps_greedy_rnd(a, EPS, action_space):
+    """
+    epsilon greedy strategy.
+    here there's also a chance to get the greedy action.
+    """
+    rand = np.random.random()
+    if rand < EPS:
+        a = np.random.choice(action_space)
+    return a
 
 
 # Calculator:
