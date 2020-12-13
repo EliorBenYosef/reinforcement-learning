@@ -100,6 +100,6 @@ class ReplayBuffer(object):  # aka 'ReplayMemory'
 
             return batch_s, batch_s_, batch_r, batch_terminal, batch_a_indices_one_hot, batch_a_indices,
         else:
-            batch_a = self.memory_a[batch]
+            batch_a_continuous = self.memory_a[batch]
 
-            return batch_s, batch_s_, batch_r, batch_terminal, batch_a
+            return batch_s, batch_s_, batch_r, batch_terminal, batch_a_continuous
