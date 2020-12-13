@@ -10,12 +10,13 @@ import keras.initializers as keras_init
 import keras.backend as keras_backend
 import torch
 import torch.nn.functional as torch_func
+import torch.nn.init as torch_init
 import torch.distributions as torch_dist
 
 from reinforcement_learning.utils.utils import print_training_progress, pickle_save, make_sure_dir_exists,\
      calculate_standardized_returns_of_consecutive_episodes
 from reinforcement_learning.deep_RL.const import LIBRARY_TF, LIBRARY_KERAS, LIBRARY_TORCH,\
-    OPTIMIZER_Adam, INPUT_TYPE_OBSERVATION_VECTOR, INPUT_TYPE_STACKED_FRAMES, atari_frames_stack_size
+    OPTIMIZER_Adam, INPUT_TYPE_OBSERVATION_VECTOR, INPUT_TYPE_STACKED_FRAMES, ATARI_FRAMES_STACK_SIZE
 from reinforcement_learning.deep_RL.utils.utils import calc_conv_layer_output_dims
 from reinforcement_learning.deep_RL.utils.saver_loader import load_training_data, save_training_data
 from reinforcement_learning.deep_RL.utils.optimizers import tf_get_optimizer, keras_get_optimizer, torch_get_optimizer
@@ -23,7 +24,10 @@ from reinforcement_learning.deep_RL.utils.devices import tf_get_session_accordin
     torch_get_device_according_to_device_type
 
 
-class DNN(object):
+class NN(object):
+    """
+    Policy NN
+    """
 
     def __init__(self, custom_env, fc_layers_dims, optimizer_type, alpha, chkpt_dir):
         self.input_type = custom_env.input_type
@@ -37,19 +41,19 @@ class DNN(object):
 
         self.chkpt_dir = chkpt_dir
 
-    def create_dnn_tensorflow(self, name):
-        return DNN.DNN_TensorFlow(self, name)
+    def create_nn_tensorflow(self, name):
+        return NN.NN_TensorFlow(self, name)
 
-    def create_dnn_keras(self):
-        return DNN.DNN_Keras(self)
+    def create_nn_keras(self):
+        return NN.NN_Keras(self)
 
-    def create_dnn_torch(self, relevant_screen_size, image_channels):
-        return DNN.DNN_Torch(self, relevant_screen_size, image_channels)
+    def create_nn_torch(self, relevant_screen_size, image_channels):
+        return NN.NN_Torch(self, relevant_screen_size, image_channels)
 
-    class DNN_TensorFlow(object):
+    class NN_TensorFlow(object):
 
-        def __init__(self, dnn, name, device_map=None):
-            self.dnn = dnn
+        def __init__(self, nn, name, device_map=None):
+            self.nn = nn
 
             self.name = name
 
@@ -58,69 +62,67 @@ class DNN(object):
             self.sess.run(tf.compat.v1.global_variables_initializer())
 
             self.saver = tf.compat.v1.train.Saver()
-            self.checkpoint_file = os.path.join(dnn.chkpt_dir, 'dnn_tf.ckpt')
+            self.checkpoint_file = os.path.join(nn.chkpt_dir, 'policy_nn_tf.ckpt')
 
             self.params = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
 
         def build_network(self):
             with tf.compat.v1.variable_scope(self.name):
-                self.s = tf.compat.v1.placeholder(tf.float32, shape=[None, *self.dnn.input_dims], name='s')
+                self.s = tf.compat.v1.placeholder(tf.float32, shape=[None, *self.nn.input_dims], name='s')
                 self.a_index = tf.compat.v1.placeholder(tf.int32, shape=[None], name='a_index')
                 self.G = tf.compat.v1.placeholder(tf.float32, shape=[None], name='G')
 
-                if self.dnn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
-                    x = tf.layers.dense(self.s, units=self.dnn.fc_layers_dims[0], activation='relu',
-                                        kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
-                    x = tf.layers.dense(x, units=self.dnn.fc_layers_dims[1], activation='relu',
-                                        kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
-                    a_logits = tf.layers.dense(x, units=self.dnn.n_actions, activation=None,
-                                               kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
+                if self.nn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
+                    x = tf.layers.dense(self.s, units=self.nn.fc_layers_dims[0], activation='relu',
+                                        kernel_initializer=tf.initializers.he_normal())
+                    x = tf.layers.dense(x, units=self.nn.fc_layers_dims[1], activation='relu',
+                                        kernel_initializer=tf.initializers.he_normal())
 
                 else:  # self.input_type == INPUT_TYPE_STACKED_FRAMES
                     x = tf.layers.conv2d(self.s, filters=32, kernel_size=(8, 8), strides=4, name='conv1',
-                                         kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
+                                         kernel_initializer=tf.initializers.he_normal())
                     x = tf.layers.batch_normalization(x, epsilon=1e-5, name='conv1_bn')
                     x = tf.nn.relu(x)
 
                     x = tf.layers.conv2d(x, filters=64, kernel_size=(4, 4), strides=2, name='conv2',
-                                         kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
+                                         kernel_initializer=tf.initializers.he_normal())
                     x = tf.layers.batch_normalization(x, epsilon=1e-5, name='conv2_bn')
                     x = tf.nn.relu(x)
 
                     x = tf.layers.conv2d(x, filters=128, kernel_size=(3, 3), strides=1, name='conv3',
-                                         kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
+                                         kernel_initializer=tf.initializers.he_normal())
                     x = tf.layers.batch_normalization(x, epsilon=1e-5, name='conv3_bn')
                     x = tf.nn.relu(x)
 
-                    flat = tf.layers.flatten(x)
-                    x = tf.layers.dense(flat, units=self.dnn.fc_layers_dims[0], activation='relu',
-                                        kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
-                    a_logits = tf.layers.dense(x, units=self.dnn.n_actions, activation=None,
-                                               kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=True))
+                    x = tf.layers.flatten(x)
+                    x = tf.layers.dense(x, units=self.nn.fc_layers_dims[0], activation='relu',
+                                        kernel_initializer=tf.initializers.he_normal())
 
+                a_logits = tf.layers.dense(x, units=self.nn.n_actions,
+                                           kernel_initializer=tf.initializers.glorot_normal())
                 self.a_probs = tf.nn.softmax(a_logits, name='actions_probabilities')
 
                 negative_log_probability = tf.nn.sparse_softmax_cross_entropy_with_logits(
                     labels=self.a_index, logits=a_logits)
                 loss = negative_log_probability * self.G
 
-                optimizer = tf_get_optimizer(self.dnn.optimizer_type, self.dnn.ALPHA)
+                optimizer = tf_get_optimizer(self.nn.optimizer_type, self.nn.ALPHA)
                 self.optimize = optimizer.minimize(loss)  # train_op
 
-        def get_actions_probabilities(self, batch_s):
-            a_probs = self.sess.run(self.a_probs, feed_dict={self.s: batch_s})[0]
+        def forward(self, batch_s):
+            a_probs = self.sess.run(self.a_probs, feed_dict={self.s: batch_s})
             return a_probs
 
-        def learn_entire_batch(self, memory, memory_G):
+        def learn_batch(self, memory, memory_G):
             memory_s = np.array(memory.memory_s)
             memory_a_indices = np.array(memory.memory_a_indices)
 
-            print('Training Started')
+            # print('Training Started')
             _ = self.sess.run(self.optimize,
                               feed_dict={self.s: memory_s,
                                          self.a_index: memory_a_indices,
                                          self.G: memory_G})
-            print('Training Finished')
+            # print('Training Finished')
 
         def load_model_file(self):
             print("...Loading TF checkpoint...")
@@ -130,45 +132,48 @@ class DNN(object):
             print("...Saving TF checkpoint...")
             self.saver.save(self.sess, self.checkpoint_file)
 
-    class DNN_Keras(object):
+    class NN_Keras(object):
 
-        def __init__(self, dnn):
-            self.dnn = dnn
+        def __init__(self, nn):
+            self.nn = nn
 
-            self.h5_file = os.path.join(dnn.chkpt_dir, 'dnn_keras.h5')
+            self.h5_file = os.path.join(nn.chkpt_dir, 'policy_nn_keras.h5')
 
-            self.optimizer = keras_get_optimizer(self.dnn.optimizer_type, self.dnn.ALPHA)
+            self.optimizer = keras_get_optimizer(self.nn.optimizer_type, self.nn.ALPHA)
 
-            self.model, self.policy = self.build_networks()
+            self.model, self.policy = self.build_network()
 
-        def build_networks(self):
-            s = keras_layers.Input(shape=self.dnn.input_dims, dtype='float32', name='s')
+        def build_network(self):
+            s = keras_layers.Input(shape=self.nn.input_dims, dtype='float32', name='s')
 
-            if self.dnn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
-                x = keras_layers.Dense(self.dnn.fc_layers_dims[0], activation='relu',
-                                       kernel_initializer=keras_init.glorot_uniform(seed=None))(s)
-                x = keras_layers.Dense(self.dnn.fc_layers_dims[1], activation='relu',
-                                       kernel_initializer=keras_init.glorot_uniform(seed=None))(x)
+            if self.nn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
+                x = keras_layers.Dense(self.nn.fc_layers_dims[0], activation='relu',
+                                       kernel_initializer=keras_init.glorot_uniform())(s)
+                x = keras_layers.Dense(self.nn.fc_layers_dims[1], activation='relu',
+                                       kernel_initializer=keras_init.glorot_uniform())(x)
 
             else:  # self.input_type == INPUT_TYPE_STACKED_FRAMES
                 x = keras_layers.Conv2D(filters=32, kernel_size=(8, 8), strides=4, name='conv1',
-                                        kernel_initializer=keras_init.glorot_uniform(seed=None))(s)
+                                        kernel_initializer=keras_init.glorot_uniform())(s)
                 x = keras_layers.BatchNormalization(epsilon=1e-5, name='conv1_bn')(x)
-                x = keras_layers.Activation(activation='relu', name='conv1_bn_ac')(x)
-                x = keras_layers.Conv2D(filters=64, kernel_size=(4, 4), strides=2, name='conv2',
-                                        kernel_initializer=keras_init.glorot_uniform(seed=None))(x)
-                x = keras_layers.BatchNormalization(epsilon=1e-5, name='conv2_bn')(x)
-                x = keras_layers.Activation(activation='relu', name='conv2_bn_ac')(x)
-                x = keras_layers.Conv2D(filters=128, kernel_size=(3, 3), strides=1, name='conv3',
-                                        kernel_initializer=keras_init.glorot_uniform(seed=None))(x)
-                x = keras_layers.BatchNormalization(epsilon=1e-5, name='conv3_bn')(x)
-                x = keras_layers.Activation(activation='relu', name='conv3_bn_ac')(x)
-                x = keras_layers.Flatten()(x)
-                x = keras_layers.Dense(self.dnn.fc_layers_dims[0], activation='relu',
-                                       kernel_initializer=keras_init.glorot_uniform(seed=None))(x)
+                x = keras_layers.Activation('relu', name='conv1_bn_ac')(x)
 
-            a_probs = keras_layers.Dense(self.dnn.n_actions, activation='softmax', name='actions_probabilities',
-                                         kernel_initializer=keras_init.glorot_uniform(seed=None))(x)
+                x = keras_layers.Conv2D(filters=64, kernel_size=(4, 4), strides=2, name='conv2',
+                                        kernel_initializer=keras_init.glorot_uniform())(x)
+                x = keras_layers.BatchNormalization(epsilon=1e-5, name='conv2_bn')(x)
+                x = keras_layers.Activation('relu', name='conv2_bn_ac')(x)
+
+                x = keras_layers.Conv2D(filters=128, kernel_size=(3, 3), strides=1, name='conv3',
+                                        kernel_initializer=keras_init.glorot_uniform())(x)
+                x = keras_layers.BatchNormalization(epsilon=1e-5, name='conv3_bn')(x)
+                x = keras_layers.Activation('relu', name='conv3_bn_ac')(x)
+
+                x = keras_layers.Flatten()(x)
+                x = keras_layers.Dense(self.nn.fc_layers_dims[0], activation='relu',
+                                       kernel_initializer=keras_init.glorot_uniform())(x)
+
+            a_probs = keras_layers.Dense(self.nn.n_actions, activation='softmax', name='actions_probabilities',
+                                         kernel_initializer=keras_init.glorot_uniform())(x)
 
             policy = keras_models.Model(inputs=s, outputs=a_probs)
 
@@ -188,21 +193,21 @@ class DNN(object):
 
             return model, policy
 
-        def get_actions_probabilities(self, batch_s):
-            a_probs = self.policy.predict(batch_s)[0]
+        def forward(self, batch_s):
+            a_probs = self.policy.predict(batch_s)
             return a_probs
 
-        def learn_entire_batch(self, memory, memory_G):
+        def learn_batch(self, memory, memory_G):
             memory_s = np.array(memory.memory_s)
 
             memory_a_indices = np.array(memory.memory_a_indices)
             memory_size = len(memory_a_indices)
-            memory_a_indices_one_hot = np.zeros((memory_size, self.dnn.n_actions), dtype=np.int8)
+            memory_a_indices_one_hot = np.zeros((memory_size, self.nn.n_actions), dtype=np.int8)
             memory_a_indices_one_hot[np.arange(memory_size), memory_a_indices] = 1
 
-            print('Training Started')
+            # print('Training Started')
             _ = self.model.fit([memory_s, memory_G], memory_a_indices_one_hot, verbose=0)
-            print('Training Finished')
+            # print('Training Finished')
 
         def load_model_file(self):
             print("...Loading Keras h5...")
@@ -212,88 +217,107 @@ class DNN(object):
             print("...Saving Keras h5...")
             self.model.save(self.h5_file)
 
-    class DNN_Torch(torch.nn.Module):
+    class NN_Torch(torch.nn.Module):
 
-        def __init__(self, dnn, relevant_screen_size, image_channels, device_str='cuda'):
+        def __init__(self, nn, relevant_screen_size, image_channels, device_str='cuda'):
 
-            super(DNN.DNN_Torch, self).__init__()
+            super(NN.NN_Torch, self).__init__()
 
-            self.dnn = dnn
+            self.nn = nn
             self.relevant_screen_size = relevant_screen_size
             self.image_channels = image_channels
 
-            self.model_file = os.path.join(dnn.chkpt_dir, 'dnn_torch')
+            self.model_file = os.path.join(nn.chkpt_dir, 'policy_nn_torch')
 
             self.build_network()
 
-            self.optimizer = torch_get_optimizer(self.dnn.optimizer_type, self.parameters(), self.dnn.ALPHA)
+            self.optimizer = torch_get_optimizer(self.nn.optimizer_type, self.parameters(), self.nn.ALPHA)
 
             self.device = torch_get_device_according_to_device_type(device_str)
             self.to(self.device)
 
         def build_network(self):
-            if self.dnn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
-                self.fc1 = torch.nn.Linear(*self.dnn.input_dims, self.dnn.fc_layers_dims[0])
-                self.fc2 = torch.nn.Linear(self.dnn.fc_layers_dims[0], self.dnn.fc_layers_dims[1])
-                self.fc3 = torch.nn.Linear(self.dnn.fc_layers_dims[1], self.dnn.n_actions)
+            if self.nn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
+                self.fc1 = torch.nn.Linear(*self.nn.input_dims, self.nn.fc_layers_dims[0])
+                torch_init.kaiming_normal_(self.fc1.weight.data)
+                torch_init.zeros_(self.fc1.bias.data)
+
+                self.fc2 = torch.nn.Linear(self.nn.fc_layers_dims[0], self.nn.fc_layers_dims[1])
+                torch_init.kaiming_normal_(self.fc2.weight.data)
+                torch_init.zeros_(self.fc2.bias.data)
+
+                self.fc_last = torch.nn.Linear(self.nn.fc_layers_dims[1], self.nn.n_actions)
+                torch_init.kaiming_normal_(self.fc_last.weight.data)
+                torch_init.zeros_(self.fc_last.bias.data)
 
             else:  # self.input_type == INPUT_TYPE_STACKED_FRAMES
-                frames_stack_size = atari_frames_stack_size
+                frames_stack_size = ATARI_FRAMES_STACK_SIZE
                 self.in_channels = frames_stack_size * self.image_channels
 
-                conv1_filters, conv2_filters, conv3_filters = 32, 64, 128
-                conv1_fps = 8, 1, 4
-                conv2_fps = 4, 0, 2
-                conv3_fps = 3, 0, 1
+                # filters, kernel_size, stride, padding
+                conv1_fksp = (32, 8, 4, 1)
+                conv2_fksp = (64, 4, 2, 0)
+                conv3_fksp = (128, 3, 1, 0)
 
-                self.conv1 = torch.nn.Conv2d(self.in_channels, conv1_filters, conv1_fps[0],
-                                             padding=conv1_fps[1], stride=conv1_fps[2])
-                self.conv2 = torch.nn.Conv2d(conv1_filters, conv2_filters, conv2_fps[0],
-                                             padding=conv2_fps[1], stride=conv2_fps[2])
-                self.conv3 = torch.nn.Conv2d(conv2_filters, conv3_filters, conv3_fps[0],
-                                             padding=conv3_fps[1], stride=conv3_fps[2])
+                i_H, i_W = self.nn.input_dims[0], self.nn.input_dims[1]
+                conv1_o_H, conv1_o_W = calc_conv_layer_output_dims(i_H, i_W, *conv1_fksp[1:])
+                conv2_o_H, conv2_o_W = calc_conv_layer_output_dims(conv1_o_H, conv1_o_W, *conv2_fksp[1:])
+                conv3_o_H, conv3_o_W = calc_conv_layer_output_dims(conv2_o_H, conv2_o_W, *conv3_fksp[1:])
+                self.flat_dims = conv3_fksp[0] * conv3_o_H * conv3_o_W
 
-                i_H, i_W = self.dnn.input_dims[0], self.dnn.input_dims[1]
-                conv1_o_H, conv1_o_W = calc_conv_layer_output_dims(i_H, i_W, *conv1_fps)
-                conv2_o_H, conv2_o_W = calc_conv_layer_output_dims(conv1_o_H, conv1_o_W, *conv2_fps)
-                conv3_o_H, conv3_o_W = calc_conv_layer_output_dims(conv2_o_H, conv2_o_W, *conv3_fps)
-                self.flat_dims = conv3_filters * conv3_o_H * conv3_o_W
+                self.conv1 = torch.nn.Conv2d(self.in_channels, *conv1_fksp)
+                torch_init.kaiming_normal_(self.conv1.weight.data)
+                torch_init.zeros_(self.conv1.bias.data)
+                self.conv1_bn = torch.nn.LayerNorm([conv1_fksp[0], conv1_o_H, conv1_o_W])
 
-                self.fc1 = torch.nn.Linear(self.flat_dims, self.dnn.fc_layers_dims[0])
-                self.fc2 = torch.nn.Linear(self.dnn.fc_layers_dims[0], self.dnn.n_actions)
+                self.conv2 = torch.nn.Conv2d(conv1_fksp[0], *conv2_fksp)
+                torch_init.kaiming_normal_(self.conv2.weight.data)
+                torch_init.zeros_(self.conv2.bias.data)
+                self.conv2_bn = torch.nn.LayerNorm([conv2_fksp[0], conv2_o_H, conv2_o_W])
 
-        def forward(self, s):
-            input = torch.tensor(s, dtype=torch.float).to(self.device)
+                self.conv3 = torch.nn.Conv2d(conv2_fksp[0], *conv3_fksp)
+                torch_init.kaiming_normal_(self.conv3.weight.data)
+                torch_init.zeros_(self.conv3.bias.data)
+                self.conv3_bn = torch.nn.LayerNorm([conv3_fksp[0], conv3_o_H, conv3_o_W])
 
-            if self.dnn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
-                fc1_ac = torch_func.relu(self.fc1(input))
-                fc2_ac = torch_func.relu(self.fc2(fc1_ac))
-                fc_last = self.fc3(fc2_ac)
+                self.fc1 = torch.nn.Linear(self.flat_dims, self.nn.fc_layers_dims[0])
+                torch_init.kaiming_normal_(self.fc1.weight.data)
+                torch_init.zeros_(self.fc1.bias.data)
+
+                self.fc_last = torch.nn.Linear(self.nn.fc_layers_dims[0], self.nn.n_actions)
+                torch_init.xavier_normal_(self.fc_last.weight.data, gain=torch_init.calculate_gain('linear'))
+                torch_init.zeros_(self.fc_last.bias.data)
+
+        def forward(self, batch_s):
+            x = torch.tensor(batch_s, dtype=torch.float32).to(self.device)
+
+            if self.nn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
+                x = torch_func.relu(self.fc1(x))
+                x = torch_func.relu(self.fc2(x))
 
             else:  # self.input_type == INPUT_TYPE_STACKED_FRAMES
-                input = input.view(-1, self.in_channels, *self.relevant_screen_size)
-                conv1_ac = torch_func.relu(self.conv1(input))
-                conv2_ac = torch_func.relu(self.conv2(conv1_ac))
-                conv3_ac = torch_func.relu(self.conv3(conv2_ac))
-                flat = conv3_ac.view(-1, self.flat_dims).to(self.device)
-                fc1_ac = torch_func.relu(self.fc1(flat))
-                fc_last = self.fc2(fc1_ac)
+                x = x.view(-1, self.in_channels, *self.relevant_screen_size)
+                x = torch_func.relu(self.conv1_bn(self.conv1(x)))
+                x = torch_func.relu(self.conv2_bn(self.conv2(x)))
+                x = torch_func.relu(self.conv3_bn(self.conv3(x)))
+                x = x.view(-1, self.flat_dims).to(self.device)  # Flatten
+                x = torch_func.relu(self.fc1(x))
 
-            a_probs = torch_func.softmax(fc_last).to(self.device)
-
+            a_probs = torch_func.softmax(self.fc_last(x)).to(self.device)
             return a_probs
 
-        def learn_entire_batch(self, memory, memory_G):
-            memory_G = torch.tensor(memory_G, dtype=torch.float).to(self.device)
+        def learn_batch(self, memory, memory_G):
+            memory_G = torch.tensor(memory_G, dtype=torch.float32).to(self.device)
 
             self.optimizer.zero_grad()
             loss = 0
             for G, a_log_prob in zip(memory_G, memory.memory_a_log_probs):
                 loss += -a_log_prob * G
+
+            # print('Training Started')
             loss.backward()
-            print('Training Started')
             self.optimizer.step()
-            print('Training Finished')
+            # print('Training Finished')
 
         def load_model_file(self):
             print("...Loading Torch file...")
@@ -372,19 +396,21 @@ class Agent(object):
         self.chkpt_dir = base_dir + sub_dir
         make_sure_dir_exists(self.chkpt_dir)
 
-        if lib_type == LIBRARY_TF:
+        if self.lib_type == LIBRARY_TF:
             tf.reset_default_graph()
+        elif self.lib_type == LIBRARY_KERAS:
+            keras_backend.clear_session()
 
-        self.policy_dnn = self.init_network(custom_env)
+        self.policy_nn = self.init_network(custom_env)
 
     def init_network(self, custom_env):
-        dnn_base = DNN(custom_env, self.fc_layers_dims, self.optimizer_type, self.ALPHA, self.chkpt_dir)
+        nn_base = NN(custom_env, self.fc_layers_dims, self.optimizer_type, self.ALPHA, self.chkpt_dir)
 
         if self.lib_type == LIBRARY_TF:
-            dnn = dnn_base.create_dnn_tensorflow(name='q_policy')
+            nn = nn_base.create_nn_tensorflow(name='q_policy')
 
         elif self.lib_type == LIBRARY_KERAS:
-            dnn = dnn_base.create_dnn_keras()
+            nn = nn_base.create_nn_keras()
 
         else:  # self.lib_type == LIBRARY_TORCH
             if custom_env.input_type == INPUT_TYPE_STACKED_FRAMES:
@@ -394,25 +420,25 @@ class Agent(object):
                 relevant_screen_size = None
                 image_channels = None
 
-            dnn = dnn_base.create_dnn_torch(relevant_screen_size, image_channels)
+            nn = nn_base.create_nn_torch(relevant_screen_size, image_channels)
 
-        return dnn
+        return nn
 
     def choose_action(self, s):
         s = s[np.newaxis, :]
 
         if self.lib_type == LIBRARY_TORCH:
-            probabilities = self.policy_dnn.forward(s)
-            actions_probs = torch_dist.Categorical(probabilities)
-            action_tensor = actions_probs.sample()
-            a_log_probs = actions_probs.log_prob(action_tensor)
+            a_probs = self.policy_nn.forward(s)[0]
+            a_probs_dist = torch_dist.Categorical(a_probs)
+            action_tensor = a_probs_dist.sample()
+            a_log_probs = a_probs_dist.log_prob(action_tensor)
             self.memory.store_a_log_probs(a_log_probs)
             a_index = action_tensor.item()
             a = self.action_space[a_index]
 
         else:  # LIBRARY_TF \ LIBRARY_KERAS
-            probabilities = self.policy_dnn.get_actions_probabilities(s)
-            a = np.random.choice(self.action_space, p=probabilities)
+            a_probs = self.policy_nn.forward(s)[0]
+            a = np.random.choice(self.action_space, p=a_probs)
 
         return a
 
@@ -420,20 +446,20 @@ class Agent(object):
         self.memory.store_transition(s, a, r, is_terminal)
 
     def learn(self):
-        print('Learning Session')
+        # print('Learning Session')
 
         memory_r = np.array(self.memory.memory_r)
         memory_terminal = np.array(self.memory.memory_terminal, dtype=np.int8)
         memory_G = calculate_standardized_returns_of_consecutive_episodes(memory_r, memory_terminal, self.GAMMA)
 
-        self.policy_dnn.learn_entire_batch(self.memory, memory_G)
+        self.policy_nn.learn_batch(self.memory, memory_G)
         self.memory.reset_memory()
 
     def save_models(self):
-        self.policy_dnn.save_model_file()
+        self.policy_nn.save_model_file()
 
     def load_models(self):
-        self.policy_dnn.load_model_file()
+        self.policy_nn.load_model_file()
 
 
 def train_agent(custom_env, agent, n_episodes,

@@ -6,14 +6,16 @@ from gym import wrappers
 import tensorflow as tf
 import keras.models as keras_models
 import keras.layers as keras_layers
+import keras.initializers as keras_init
 import keras.backend as keras_backend
 import torch
 import torch.nn.functional as torch_func
+import torch.nn.init as torch_init
 
 from reinforcement_learning.utils.utils import print_training_progress, pickle_save, make_sure_dir_exists,\
     decrement_eps, EPS_DEC_LINEAR
 from reinforcement_learning.deep_RL.const import LIBRARY_TF, LIBRARY_KERAS, LIBRARY_TORCH,\
-    OPTIMIZER_Adam, INPUT_TYPE_OBSERVATION_VECTOR, INPUT_TYPE_STACKED_FRAMES, atari_frames_stack_size
+    OPTIMIZER_Adam, INPUT_TYPE_OBSERVATION_VECTOR, INPUT_TYPE_STACKED_FRAMES, ATARI_FRAMES_STACK_SIZE
 from reinforcement_learning.deep_RL.utils.utils import calc_conv_layer_output_dims, eps_greedy
 from reinforcement_learning.deep_RL.utils.saver_loader import load_training_data, save_training_data
 from reinforcement_learning.deep_RL.utils.optimizers import tf_get_optimizer, keras_get_optimizer, torch_get_optimizer
@@ -22,7 +24,10 @@ from reinforcement_learning.deep_RL.utils.devices import tf_get_session_accordin
 from reinforcement_learning.deep_RL.utils.replay_buffer import ReplayBuffer
 
 
-class DQN(object):
+class NN(object):
+    """
+    Q NN \ Deep Q-Network (DQN)
+    """
 
     def __init__(self, custom_env, fc_layers_dims, optimizer_type, alpha, chkpt_dir):
         self.input_type = custom_env.input_type
@@ -36,19 +41,19 @@ class DQN(object):
 
         self.chkpt_dir = chkpt_dir
 
-    def create_dqn_tensorflow(self, name):
-        return DQN.DQN_TensorFlow(self, name)
+    def create_nn_tensorflow(self, name):
+        return NN.NN_TensorFlow(self, name)
 
-    def create_dqn_keras(self):
-        return DQN.DQN_Keras(self)
+    def create_nn_keras(self):
+        return NN.NN_Keras(self)
 
-    def create_dqn_torch(self, relevant_screen_size, image_channels):
-        return DQN.DQN_Torch(self, relevant_screen_size, image_channels)
+    def create_nn_torch(self, relevant_screen_size, image_channels):
+        return NN.NN_Torch(self, relevant_screen_size, image_channels)
 
-    class DQN_TensorFlow(object):
+    class NN_TensorFlow(object):
 
-        def __init__(self, dqn, name, device_map=None):
-            self.dqn = dqn
+        def __init__(self, nn, name, device_map=None):
+            self.nn = nn
 
             self.name = name
 
@@ -57,39 +62,50 @@ class DQN(object):
             self.sess.run(tf.compat.v1.global_variables_initializer())
 
             self.saver = tf.compat.v1.train.Saver()
-            self.checkpoint_file = os.path.join(dqn.chkpt_dir, 'dqn_tf.ckpt')
+            self.checkpoint_file = os.path.join(nn.chkpt_dir, 'q_nn_tf.ckpt')
 
             self.params = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
 
         def build_network(self):
             with tf.compat.v1.variable_scope(self.name):
-                self.s = tf.compat.v1.placeholder(tf.float32, shape=[None, *self.dqn.input_dims], name='s')
-                self.a_indices_one_hot = tf.compat.v1.placeholder(
-                    tf.float32, shape=[None, self.dqn.n_actions], name='a_indices_one_hot')
+                self.s = tf.compat.v1.placeholder(tf.float32, shape=[None, *self.nn.input_dims], name='s')
+                self.a_indices_one_hot = tf.compat.v1.placeholder(tf.float32, shape=[None, self.nn.n_actions],
+                                                                  name='a_indices_one_hot')
                 self.q_target_chosen_a = tf.compat.v1.placeholder(tf.float32, shape=[None], name='q_target_chosen_a')
 
-                if self.dqn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
-                    x = tf.layers.dense(self.s, units=self.dqn.fc_layers_dims[0], activation='relu')
-                    x = tf.layers.dense(x, units=self.dqn.fc_layers_dims[1], activation='relu')
-                    self.q_values = tf.layers.dense(x, units=self.dqn.n_actions)
+                if self.nn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
+                    x = tf.layers.dense(self.s, units=self.nn.fc_layers_dims[0], activation='relu',
+                                        kernel_initializer=tf.initializers.he_normal())
+                    x = tf.layers.dense(x, units=self.nn.fc_layers_dims[1], activation='relu',
+                                        kernel_initializer=tf.initializers.he_normal())
 
                 else:  # self.input_type == INPUT_TYPE_STACKED_FRAMES
                     x = tf.layers.conv2d(self.s, filters=32, kernel_size=(8, 8), strides=4, name='conv1',
-                                         activation='relu', kernel_initializer=tf.variance_scaling_initializer(scale=2))
+                                         kernel_initializer=tf.initializers.he_normal())
+                    x = tf.layers.batch_normalization(x, epsilon=1e-5, name='conv1_bn')
+                    x = tf.nn.relu(x)
+
                     x = tf.layers.conv2d(x, filters=64, kernel_size=(4, 4), strides=2, name='conv2',
-                                         activation='relu', kernel_initializer=tf.variance_scaling_initializer(scale=2))
+                                         kernel_initializer=tf.initializers.he_normal())
+                    x = tf.layers.batch_normalization(x, epsilon=1e-5, name='conv2_bn')
+                    x = tf.nn.relu(x)
+
                     x = tf.layers.conv2d(x, filters=128, kernel_size=(3, 3), strides=1, name='conv3',
-                                         activation='relu', kernel_initializer=tf.variance_scaling_initializer(scale=2))
+                                         kernel_initializer=tf.initializers.he_normal())
+                    x = tf.layers.batch_normalization(x, epsilon=1e-5, name='conv3_bn')
+                    x = tf.nn.relu(x)
+
                     x = tf.layers.flatten(x)
-                    x = tf.layers.dense(x, units=self.dqn.fc_layers_dims[0], activation='relu',
-                                        kernel_initializer=tf.variance_scaling_initializer(scale=2))
-                    self.q_values = tf.layers.dense(x, units=self.dqn.n_actions,
-                                                    kernel_initializer=tf.variance_scaling_initializer(scale=2))
+                    x = tf.layers.dense(x, units=self.nn.fc_layers_dims[0], activation='relu',
+                                        kernel_initializer=tf.initializers.he_normal())
+
+                self.q_values = tf.layers.dense(x, units=self.nn.n_actions,
+                                                kernel_initializer=tf.initializers.glorot_normal())
 
                 q_chosen_a = tf.reduce_sum(tf.multiply(self.q_values, self.a_indices_one_hot))
                 loss = tf.reduce_mean(tf.square(q_chosen_a - self.q_target_chosen_a))  # MSE
 
-                optimizer = tf_get_optimizer(self.dqn.optimizer_type, self.dqn.ALPHA)
+                optimizer = tf_get_optimizer(self.nn.optimizer_type, self.nn.ALPHA)
                 self.optimize = optimizer.minimize(loss)  # train_op
 
         def forward(self, batch_s):
@@ -112,39 +128,55 @@ class DQN(object):
             print("...Saving TF checkpoint...")
             self.saver.save(self.sess, self.checkpoint_file)
 
-    class DQN_Keras(object):
+    class NN_Keras(object):
 
-        def __init__(self, dqn):
-            self.dqn = dqn
+        def __init__(self, nn):
+            self.nn = nn
 
-            self.h5_file = os.path.join(dqn.chkpt_dir, 'dqn_keras.h5')
+            self.h5_file = os.path.join(nn.chkpt_dir, 'q_nn_keras.h5')
 
-            self.optimizer = keras_get_optimizer(self.dqn.optimizer_type, self.dqn.ALPHA)
+            self.optimizer = keras_get_optimizer(self.nn.optimizer_type, self.nn.ALPHA)
 
             self.model, self.q_values_model = self.build_network()
 
         def build_network(self):
-            s = keras_layers.Input(shape=self.dqn.input_dims, dtype='float32', name='s')
+            s = keras_layers.Input(shape=self.nn.input_dims, dtype='float32', name='s')
 
-            if self.dqn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
-                x = keras_layers.Dense(self.dqn.fc_layers_dims[0], activation='relu')(s)
-                x = keras_layers.Dense(self.dqn.fc_layers_dims[1], activation='relu')(x)
+            if self.nn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
+                x = keras_layers.Dense(self.nn.fc_layers_dims[0], activation='relu',
+                                       kernel_initializer=keras_init.he_normal())(s)
+                x = keras_layers.Dense(self.nn.fc_layers_dims[1], activation='relu',
+                                       kernel_initializer=keras_init.he_normal())(x)
 
             else:  # self.input_type == INPUT_TYPE_STACKED_FRAMES
-                x = keras_layers.Conv2D(filters=32, kernel_size=(8, 8), strides=4, activation='relu', name='conv1')(s)
-                x = keras_layers.Conv2D(filters=64, kernel_size=(4, 4), strides=2, activation='relu', name='conv2')(x)
-                x = keras_layers.Conv2D(filters=128, kernel_size=(3, 3), strides=1, activation='relu', name='conv3')(x)
-                x = keras_layers.Flatten()(x)
-                x = keras_layers.Dense(self.dqn.fc_layers_dims[0], activation='relu')(x)
+                x = keras_layers.Conv2D(filters=32, kernel_size=(8, 8), strides=4, name='conv1',
+                                        kernel_initializer=keras_init.he_normal())(s)
+                x = keras_layers.BatchNormalization(epsilon=1e-5, name='conv1_bn')(x)
+                x = keras_layers.Activation('relu', name='conv1_bn_ac')(x)
 
-            q_values = keras_layers.Dense(self.dqn.n_actions, name='q_values')(x)
+                x = keras_layers.Conv2D(filters=64, kernel_size=(4, 4), strides=2, name='conv2',
+                                        kernel_initializer=keras_init.he_normal())(x)
+                x = keras_layers.BatchNormalization(epsilon=1e-5, name='conv2_bn')(x)
+                x = keras_layers.Activation('relu', name='conv2_bn_ac')(x)
+
+                x = keras_layers.Conv2D(filters=128, kernel_size=(3, 3), strides=1, name='conv3',
+                                        kernel_initializer=keras_init.he_normal())(x)
+                x = keras_layers.BatchNormalization(epsilon=1e-5, name='conv3_bn')(x)
+                x = keras_layers.Activation('relu', name='conv3_bn_ac')(x)
+
+                x = keras_layers.Flatten()(x)
+                x = keras_layers.Dense(self.nn.fc_layers_dims[0], activation='relu',
+                                       kernel_initializer=keras_init.he_normal())(x)
+
+            q_values = keras_layers.Dense(self.nn.n_actions, name='q_values',
+                                          kernel_initializer=keras_init.he_normal())(x)
 
             q_values_model = keras_models.Model(inputs=s, outputs=q_values)
 
             #############################
 
             a_indices_one_hot = keras_layers.Input(
-                shape=(self.dqn.n_actions,), dtype='float32', name='a_indices_one_hot')
+                shape=(self.nn.n_actions,), dtype='float32', name='a_indices_one_hot')
 
             x = keras_layers.Multiply()([q_values, a_indices_one_hot])
             q_chosen_a = keras_layers.Lambda(lambda z: keras_backend.sum(z), output_shape=(1,))(x)
@@ -171,21 +203,21 @@ class DQN(object):
             print("...Saving Keras h5...")
             self.model.save(self.h5_file)
 
-    class DQN_Torch(torch.nn.Module):
+    class NN_Torch(torch.nn.Module):
 
-        def __init__(self, dqn, relevant_screen_size, image_channels, device_str='cuda'):
+        def __init__(self, nn, relevant_screen_size, image_channels, device_str='cuda'):
 
-            super(DQN.DQN_Torch, self).__init__()
+            super(NN.NN_Torch, self).__init__()
 
-            self.dqn = dqn
+            self.nn = nn
             self.relevant_screen_size = relevant_screen_size
             self.image_channels = image_channels
 
-            self.model_file = os.path.join(dqn.chkpt_dir, 'dqn_torch')
+            self.model_file = os.path.join(nn.chkpt_dir, 'q_nn_torch')
 
             self.build_network()
 
-            self.optimizer = torch_get_optimizer(self.dqn.optimizer_type, self.parameters(), self.dqn.ALPHA)
+            self.optimizer = torch_get_optimizer(self.nn.optimizer_type, self.parameters(), self.nn.ALPHA)
 
             self.loss = torch.nn.MSELoss()
 
@@ -193,62 +225,80 @@ class DQN(object):
             self.to(self.device)
 
         def build_network(self):
-            if self.dqn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
-                self.fc1 = torch.nn.Linear(*self.dqn.input_dims, self.dqn.fc_layers_dims[0])
-                self.fc2 = torch.nn.Linear(self.dqn.fc_layers_dims[0], self.dqn.fc_layers_dims[1])
-                self.fc3 = torch.nn.Linear(self.dqn.fc_layers_dims[1], self.dqn.n_actions)
+            if self.nn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
+                self.fc1 = torch.nn.Linear(*self.nn.input_dims, self.nn.fc_layers_dims[0])
+                torch_init.kaiming_normal_(self.fc1.weight.data)
+                torch_init.zeros_(self.fc1.bias.data)
+
+                self.fc2 = torch.nn.Linear(self.nn.fc_layers_dims[0], self.nn.fc_layers_dims[1])
+                torch_init.kaiming_normal_(self.fc2.weight.data)
+                torch_init.zeros_(self.fc2.bias.data)
+
+                self.fc_last = torch.nn.Linear(self.nn.fc_layers_dims[1], self.nn.n_actions)
+                torch_init.kaiming_normal_(self.fc_last.weight.data)
+                torch_init.zeros_(self.fc_last.bias.data)
 
             else:  # self.input_type == INPUT_TYPE_STACKED_FRAMES
-                frames_stack_size = atari_frames_stack_size
+                frames_stack_size = ATARI_FRAMES_STACK_SIZE
                 self.in_channels = frames_stack_size * self.image_channels
 
-                conv1_filters, conv2_filters, conv3_filters = 32, 64, 128
-                conv1_fps = 8, 1, 4
-                conv2_fps = 4, 0, 2
-                conv3_fps = 3, 0, 1
+                # filters, kernel_size, stride, padding
+                conv1_fksp = (32, 8, 4, 1)
+                conv2_fksp = (64, 4, 2, 0)
+                conv3_fksp = (128, 3, 1, 0)
 
-                self.conv1 = torch.nn.Conv2d(self.in_channels, conv1_filters, conv1_fps[0],
-                                             padding=conv1_fps[1], stride=conv1_fps[2])
-                self.conv2 = torch.nn.Conv2d(conv1_filters, conv2_filters, conv2_fps[0],
-                                             padding=conv2_fps[1], stride=conv2_fps[2])
-                self.conv3 = torch.nn.Conv2d(conv2_filters, conv3_filters, conv3_fps[0],
-                                             padding=conv3_fps[1], stride=conv3_fps[2])
+                i_H, i_W = self.nn.input_dims[0], self.nn.input_dims[1]
+                conv1_o_H, conv1_o_W = calc_conv_layer_output_dims(i_H, i_W, *conv1_fksp[1:])
+                conv2_o_H, conv2_o_W = calc_conv_layer_output_dims(conv1_o_H, conv1_o_W, *conv2_fksp[1:])
+                conv3_o_H, conv3_o_W = calc_conv_layer_output_dims(conv2_o_H, conv2_o_W, *conv3_fksp[1:])
+                self.flat_dims = conv3_fksp[0] * conv3_o_H * conv3_o_W
 
-                i_H, i_W = self.dqn.input_dims[0], self.dqn.input_dims[1]
-                conv1_o_H, conv1_o_W = calc_conv_layer_output_dims(i_H, i_W, *conv1_fps)
-                conv2_o_H, conv2_o_W = calc_conv_layer_output_dims(conv1_o_H, conv1_o_W, *conv2_fps)
-                conv3_o_H, conv3_o_W = calc_conv_layer_output_dims(conv2_o_H, conv2_o_W, *conv3_fps)
-                self.flat_dims = conv3_filters * conv3_o_H * conv3_o_W
+                self.conv1 = torch.nn.Conv2d(self.in_channels, *conv1_fksp)
+                torch_init.kaiming_normal_(self.conv1.weight.data)
+                torch_init.zeros_(self.conv1.bias.data)
+                self.conv1_bn = torch.nn.LayerNorm([conv1_fksp[0], conv1_o_H, conv1_o_W])
 
-                self.fc1 = torch.nn.Linear(self.flat_dims, self.dqn.fc_layers_dims[0])
-                self.fc2 = torch.nn.Linear(self.dqn.fc_layers_dims[0], self.dqn.n_actions)
+                self.conv2 = torch.nn.Conv2d(conv1_fksp[0], *conv2_fksp)
+                torch_init.kaiming_normal_(self.conv2.weight.data)
+                torch_init.zeros_(self.conv2.bias.data)
+                self.conv2_bn = torch.nn.LayerNorm([conv2_fksp[0], conv2_o_H, conv2_o_W])
 
-        def forward(self, s):
-            input = torch.tensor(s, dtype=torch.float).to(self.device)
+                self.conv3 = torch.nn.Conv2d(conv2_fksp[0], *conv3_fksp)
+                torch_init.kaiming_normal_(self.conv3.weight.data)
+                torch_init.zeros_(self.conv3.bias.data)
+                self.conv3_bn = torch.nn.LayerNorm([conv3_fksp[0], conv3_o_H, conv3_o_W])
 
-            if self.dqn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
-                fc1_ac = torch_func.relu(self.fc1(input))
-                fc2_ac = torch_func.relu(self.fc2(fc1_ac))
-                actions_q_values = self.fc3(fc2_ac)
+                self.fc1 = torch.nn.Linear(self.flat_dims, self.nn.fc_layers_dims[0])
+                torch_init.kaiming_normal_(self.fc1.weight.data)
+                torch_init.zeros_(self.fc1.bias.data)
+
+                self.fc_last = torch.nn.Linear(self.nn.fc_layers_dims[0], self.nn.n_actions)
+                torch_init.xavier_normal_(self.fc_last.weight.data, gain=torch_init.calculate_gain('linear'))
+                torch_init.zeros_(self.fc_last.bias.data)
+
+        def forward(self, batch_s):
+            x = torch.tensor(batch_s, dtype=torch.float32).to(self.device)
+
+            if self.nn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
+                x = torch_func.relu(self.fc1(x))
+                x = torch_func.relu(self.fc2(x))
 
             else:  # self.input_type == INPUT_TYPE_STACKED_FRAMES
-                input = input.view(-1, self.in_channels, *self.relevant_screen_size)
-                conv1_ac = torch_func.relu(self.conv1(input))
-                conv2_ac = torch_func.relu(self.conv2(conv1_ac))
-                conv3_ac = torch_func.relu(self.conv3(conv2_ac))
-                flat = conv3_ac.view(-1, self.flat_dims).to(self.device)
-                fc1_ac = torch_func.relu(self.fc1(flat))
-                actions_q_values = self.fc2(fc1_ac)
+                x = x.view(-1, self.in_channels, *self.relevant_screen_size)
+                x = torch_func.relu(self.conv1_bn(self.conv1(x)))
+                x = torch_func.relu(self.conv2_bn(self.conv2(x)))
+                x = torch_func.relu(self.conv3_bn(self.conv3(x)))
+                x = x.view(-1, self.flat_dims).to(self.device)  # Flatten
+                x = torch_func.relu(self.fc1(x))
 
-            actions_q_values = actions_q_values.to(self.device)
-
-            return actions_q_values
+            q_values = self.fc_last(x).to(self.device)
+            return q_values
 
         def learn_batch(self, batch_a_indices, batch_r, batch_terminal,
                         GAMMA, memory_batch_size, q_eval_s, q_eval_s_):
 
             batch_a_indices = torch.tensor(batch_a_indices, dtype=torch.int64).to(self.device)
-            batch_r = torch.tensor(batch_r, dtype=torch.float).to(self.device)
+            batch_r = torch.tensor(batch_r, dtype=torch.float32).to(self.device)
             batch_terminal = torch.tensor(batch_terminal, dtype=torch.float32).to(self.device)
 
             q_target = q_eval_s.clone().detach().to(self.device)
@@ -256,9 +306,10 @@ class DQN(object):
             q_target[batch_index, batch_a_indices] = \
                 batch_r + GAMMA * torch.max(q_eval_s_, dim=1)[0] * batch_terminal
 
-            # print('Training Started')
             self.optimizer.zero_grad()
             loss = self.loss(q_target, q_eval_s).to(self.device)
+
+            # print('Training Started')
             loss.backward()
             self.optimizer.step()
             # print('Training Finished')
@@ -334,24 +385,26 @@ class Agent(object):
 
         if self.lib_type == LIBRARY_TF:
             tf.reset_default_graph()
+        elif self.lib_type == LIBRARY_KERAS:
+            keras_backend.clear_session()
 
-        self.policy_dqn = self.init_network(custom_env, 'policy')
+        self.policy_nn = self.init_network(custom_env, 'policy')
 
         if double_dql:
-            self.target_dqn = self.init_network(custom_env, 'target')
+            self.target_nn = self.init_network(custom_env, 'target')
             self.tau = tau
         else:
-            self.target_dqn = None
+            self.target_nn = None
             self.tau = None
 
     def init_network(self, custom_env, name):
-        dqn_base = DQN(custom_env, self.fc_layers_dims, self.optimizer_type, self.ALPHA, self.chkpt_dir)
+        nn_base = NN(custom_env, self.fc_layers_dims, self.optimizer_type, self.ALPHA, self.chkpt_dir)
 
         if self.lib_type == LIBRARY_TF:
-            dqn = dqn_base.create_dqn_tensorflow(name='q_' + name)
+            nn = nn_base.create_nn_tensorflow(name='q_' + name)
 
         elif self.lib_type == LIBRARY_KERAS:
-            dqn = dqn_base.create_dqn_keras()
+            nn = nn_base.create_nn_keras()
 
         else:  # self.lib_type == LIBRARY_TORCH:
             if custom_env.input_type == INPUT_TYPE_STACKED_FRAMES:
@@ -361,17 +414,16 @@ class Agent(object):
                 relevant_screen_size = None
                 image_channels = None
 
-            dqn = dqn_base.create_dqn_torch(relevant_screen_size, image_channels)
+            nn = nn_base.create_nn_torch(relevant_screen_size, image_channels)
 
-        return dqn
+        return nn
 
     def choose_action(self, s):
         s = s[np.newaxis, :]
 
-        actions_q_values = self.policy_dqn.forward(s)
+        actions_q_values = self.policy_nn.forward(s)[0]
         if self.lib_type == LIBRARY_TORCH:
-            action_tensor = torch.argmax(actions_q_values)
-            a_index = action_tensor.item()
+            a_index = torch.argmax(actions_q_values).item()
         else:  # LIBRARY_TF \ LIBRARY_KERAS
             a_index = np.argmax(actions_q_values)
         a = self.action_space[a_index]
@@ -384,7 +436,7 @@ class Agent(object):
         self.memory.store_transition(s, a, r, s_, is_terminal)
 
     def learn_wrapper(self):
-        if self.target_dqn is not None \
+        if self.target_nn is not None \
                 and self.tau is not None \
                 and self.learn_step_counter % self.tau == 0:
             self.update_target_network()
@@ -394,16 +446,16 @@ class Agent(object):
 
     def update_target_network(self):
         if self.lib_type == LIBRARY_TF:
-            target_network_params = self.target_dqn.params
-            policy_network_params = self.policy_dqn.params
+            target_network_params = self.target_nn.params
+            policy_network_params = self.policy_nn.params
             for t_n_param, p_n_param in zip(target_network_params, policy_network_params):
-                self.policy_dqn.sess.run(tf.assign(t_n_param, p_n_param))
+                self.policy_nn.sess.run(tf.assign(t_n_param, p_n_param))
 
         elif self.lib_type == LIBRARY_KERAS:
-            self.target_dqn.model.set_weights(self.policy_dqn.model.get_weights())
+            self.target_nn.model.set_weights(self.policy_nn.model.get_weights())
 
         else:  # self.lib_type == LIBRARY_TORCH:
-            self.target_dqn.load_state_dict(self.policy_dqn.state_dict())
+            self.target_nn.load_state_dict(self.policy_nn.state_dict())
 
     def learn(self):
         # print('Learning Session')
@@ -411,15 +463,15 @@ class Agent(object):
         batch_s, batch_s_, batch_r, batch_terminal, batch_a_indices_one_hot, batch_a_indices = \
             self.memory.sample_batch(self.memory_batch_size)
 
-        q_eval_s = self.policy_dqn.forward(batch_s)
-        q_eval_s_ = self.policy_dqn.forward(batch_s_) if self.target_dqn is None else self.target_dqn.forward(batch_s_)
+        q_eval_s = self.policy_nn.forward(batch_s)
+        q_eval_s_ = self.policy_nn.forward(batch_s_) if self.target_nn is None else self.target_nn.forward(batch_s_)
 
         if self.lib_type == LIBRARY_TORCH:
-            self.policy_dqn.learn_batch(batch_a_indices, batch_r, batch_terminal,
-                                        self.GAMMA, self.memory_batch_size, q_eval_s, q_eval_s_)
+            self.policy_nn.learn_batch(batch_a_indices, batch_r, batch_terminal,
+                                       self.GAMMA, self.memory_batch_size, q_eval_s, q_eval_s_)
         else:
             q_target_chosen_a = batch_r + self.GAMMA * np.max(q_eval_s_, axis=1) * batch_terminal
-            self.policy_dqn.learn_batch(batch_s, batch_a_indices_one_hot, q_target_chosen_a)
+            self.policy_nn.learn_batch(batch_s, batch_a_indices_one_hot, q_target_chosen_a)
 
         self.learn_step_counter += 1
 
@@ -427,14 +479,14 @@ class Agent(object):
             self.EPS = decrement_eps(self.EPS, self.eps_min, self.eps_dec, self.eps_dec_type)
 
     def save_models(self):
-        self.policy_dqn.save_model_file()
-        if self.target_dqn is not None:
-            self.target_dqn.save_model_file()
+        self.policy_nn.save_model_file()
+        if self.target_nn is not None:
+            self.target_nn.save_model_file()
 
     def load_models(self):
-        self.policy_dqn.load_model_file()
-        if self.target_dqn is not None:
-            self.target_dqn.load_model_file()
+        self.policy_nn.load_model_file()
+        if self.target_nn is not None:
+            self.target_nn.load_model_file()
 
 
 def load_up_agent_memory_with_random_gameplay(custom_env, agent, n_episodes):
