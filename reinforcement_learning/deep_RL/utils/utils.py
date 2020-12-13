@@ -64,11 +64,11 @@ class OUActionNoise(object):
 
 # Calculator:
 
-def calc_conv_layer_output_dim(Dimension, Filter, Padding, Stride):
+def calc_conv_layer_output_dim(Dimension, Filter, Stride, Padding):
     return (Dimension - Filter + 2 * Padding) // Stride + 1
 
 
-def calc_conv_layer_output_dims(Height, Width, Filter, Padding, Stride):
+def calc_conv_layer_output_dims(Height, Width, Filter, Stride, Padding):
     h = (Height - Filter + 2 * Padding) // Stride + 1
     w = (Width - Filter + 2 * Padding) // Stride + 1
     return h, w
