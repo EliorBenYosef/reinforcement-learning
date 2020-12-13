@@ -31,7 +31,8 @@ import numpy as np
 import gym
 
 from reinforcement_learning.deep_RL.const import INPUT_TYPE_OBSERVATION_VECTOR, INPUT_TYPE_STACKED_FRAMES, \
-    atari_frames_stack_size, ATARI_IMAGE_CHANNELS_GRAYSCALE, ATARI_IMAGE_CHANNELS_RGB
+    ATARI_FRAMES_STACK_SIZE, ATARI_IMAGE_CHANNELS_GRAYSCALE
+from reinforcement_learning.utils.utils import normalize
 
 
 class BaseEnv:
@@ -271,7 +272,7 @@ class BipedalWalker(BaseEnv):
 
 def stack_frames(stacked_frames, frame):  # to get a sense of motion. observation == frame, prev s == stacked_frames
     if stacked_frames is None:  # start of the episode: duplicate frame
-        return np.repeat(frame, repeats=atari_frames_stack_size, axis=2)
+        return np.repeat(frame, repeats=ATARI_FRAMES_STACK_SIZE, axis=2)
     else:  # remove first frame, and add frame to the end
         return np.concatenate((stacked_frames[:, :, 1:], frame), axis=2)
 
@@ -292,10 +293,10 @@ class Breakout(BaseEnv):
         self.input_type = INPUT_TYPE_STACKED_FRAMES
         self.image_channels = ATARI_IMAGE_CHANNELS_GRAYSCALE
         self.relevant_screen_size = (180, 160)
-        self.input_dims = (*self.relevant_screen_size, atari_frames_stack_size)    # Box(210,160,3)
+        self.input_dims = (*self.relevant_screen_size, ATARI_FRAMES_STACK_SIZE)     # Box(210,160,3)
 
         self.is_discrete_action_space = True
-        self.n_actions = 3                                                              # Discrete(4)
+        self.n_actions = 3                                                          # Discrete(4)
         self.action_space = [1, 2, 3]
 
         self.GAMMA = 0.99
@@ -305,16 +306,16 @@ class Breakout(BaseEnv):
         self.memory_batch_size = 32
 
     def get_state(self, observation, prev_s):
-        observation_pre_processed = self.preprocess(observation)
-        s = stack_frames(prev_s, observation_pre_processed)
+        pre_processed_o = self.preprocess_image(observation)
+        s = stack_frames(prev_s, pre_processed_o)
         return s
 
-    def preprocess(self, observation):
-        cropped_observation = observation[30:, :]
-        if self.image_channels == ATARI_IMAGE_CHANNELS_RGB:
-            return cropped_observation
-        else:
-            return np.mean(cropped_observation, axis=2)[:, :, np.newaxis]  # .reshape((*self.relevant_screen_size, 1))
+    def preprocess_image(self, o):
+        o = o[30:, :]  # crop
+        if self.image_channels == ATARI_IMAGE_CHANNELS_GRAYSCALE:  # adjust channels from RGB to Grayscale
+            o = np.mean(o, axis=2)[:, :, np.newaxis]  # .reshape((*self.relevant_screen_size, 1))
+        o = normalize(o)
+        return o
 
 
 class SpaceInvaders(BaseEnv):
@@ -333,10 +334,10 @@ class SpaceInvaders(BaseEnv):
         self.input_type = INPUT_TYPE_STACKED_FRAMES
         self.image_channels = ATARI_IMAGE_CHANNELS_GRAYSCALE
         self.relevant_screen_size = (185, 95)
-        self.input_dims = (*self.relevant_screen_size, atari_frames_stack_size)    # Box(210,160,3)
+        self.input_dims = (*self.relevant_screen_size, ATARI_FRAMES_STACK_SIZE)     # Box(210,160,3)
 
         self.is_discrete_action_space = True
-        self.n_actions = 6                                                              # Discrete(6)
+        self.n_actions = 6                                                          # Discrete(6)
         self.action_space = [i for i in range(self.n_actions)]
 
         self.GAMMA = 0.95  # 0.9 in PG tf.
@@ -346,16 +347,16 @@ class SpaceInvaders(BaseEnv):
         self.memory_batch_size = 32
 
     def get_state(self, observation, prev_s):
-        observation_pre_processed = self.preprocess(observation)
-        s = stack_frames(prev_s, observation_pre_processed)  # here it should be 3 frames?
+        pre_processed_o = self.preprocess_image(observation)
+        s = stack_frames(prev_s, pre_processed_o)
         return s
 
-    def preprocess(self, observation):
-        cropped_observation = observation[15:200, 30:125]
-        if self.image_channels == ATARI_IMAGE_CHANNELS_RGB:
-            return cropped_observation
-        else:
-            return np.mean(cropped_observation, axis=2)[:, :, np.newaxis]  # .reshape((*self.relevant_screen_size, 1))
+    def preprocess_image(self, o):
+        o = o[15:200, 30:125]  # crop
+        if self.image_channels == ATARI_IMAGE_CHANNELS_GRAYSCALE:  # adjust channels from RGB to Grayscale
+            o = np.mean(o, axis=2)[:, :, np.newaxis]  # .reshape((*self.relevant_screen_size, 1))
+        o = normalize(o)
+        return o
 
     @staticmethod
     def update_reward(reward, done, info):
