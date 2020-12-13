@@ -191,9 +191,25 @@ def pickle_save(var, file_name, directory=''):
 
 # General:
 
+def rescale(np_array, max_value=1, min_value=-1, x_max=255, x_min=0):
+    """
+    Rescale data to a scale of: [min,max]
+    Default: rescaling pixel values [0,255] to a scale of: [-1,1].
+    """
+    return ((np_array - x_min) / (x_max - x_min)) * (max_value - min_value) + min_value
+
+
+def normalize(np_array, x_max=255, x_min=0):
+    """
+    Normalize data to a scale of: [0,1]
+    Default: normalizing pixel values [0,255].
+    """
+    return (np_array - x_min) / (x_max - x_min)
+
+
 def standardize(np_array):
     """
-    standardize data to N(0,1)
+    Standardize data to a normal distribution of: N(0,1)
     transforming data to have a gaussian distribution of: mean 0 (μ=0), STD 1 (σ=1)
     """
     mean = np.mean(np_array)
