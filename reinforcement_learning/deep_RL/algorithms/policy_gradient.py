@@ -184,8 +184,8 @@ class NN(object):
             def custom_loss(y_true, y_pred):  # (a_indices_one_hot, a_probs)
                 prob_chosen_a = keras_backend.sum(y_pred * y_true)
                 prob_chosen_a = keras_backend.clip(prob_chosen_a, 1e-8, 1 - 1e-8)  # boundaries to prevent from taking log of 0\1
-                log_lik = keras_backend.log(prob_chosen_a)  # log_probability, negative value (since prob<1)
-                loss = -log_lik * G
+                log_prob_chosen_a = keras_backend.log(prob_chosen_a)  # log_probability, negative value (since prob<1)
+                loss = -log_prob_chosen_a * G
                 return loss
 
             model = keras_models.Model(inputs=[s, G], outputs=a_probs)  # policy_model
