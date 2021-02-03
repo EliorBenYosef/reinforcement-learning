@@ -40,7 +40,7 @@ def keras_get_optimizer(optimizer_type, lr, momentum=0., rho=None, epsilon=None,
         return keras_opt.Adam(lr, beta_1, beta_2, epsilon, decay)
 
 
-def torch_get_optimizer(optimizer_type, params, lr, momentum=None):  # momentum=0.9
+def torch_get_optimizer(optimizer_type, lr, params, momentum=None):  # momentum=0.9
     if optimizer_type == OPTIMIZER_SGD:
         if momentum is None:
             return torch.optim.SGD(params, lr)

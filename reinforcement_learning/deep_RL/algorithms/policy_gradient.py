@@ -220,7 +220,6 @@ class NN(object):
     class NN_Torch(torch.nn.Module):
 
         def __init__(self, nn, relevant_screen_size, image_channels, device_str='cuda'):
-
             super(NN.NN_Torch, self).__init__()
 
             self.nn = nn
@@ -231,7 +230,7 @@ class NN(object):
 
             self.build_network()
 
-            self.optimizer = torch_get_optimizer(self.nn.optimizer_type, self.parameters(), self.nn.ALPHA)
+            self.optimizer = torch_get_optimizer(self.nn.optimizer_type, self.nn.ALPHA, self.parameters())
 
             self.device = torch_get_device_according_to_device_type(device_str)
             self.to(self.device)
@@ -247,7 +246,7 @@ class NN(object):
                 torch_init.zeros_(self.fc2.bias.data)
 
                 self.fc_last = torch.nn.Linear(self.nn.fc_layers_dims[1], self.nn.n_actions)
-                torch_init.kaiming_normal_(self.fc_last.weight.data)
+                torch_init.xavier_normal_(self.fc_last.weight.data)
                 torch_init.zeros_(self.fc_last.bias.data)
 
             else:  # self.input_type == INPUT_TYPE_STACKED_FRAMES
@@ -285,7 +284,7 @@ class NN(object):
                 torch_init.zeros_(self.fc1.bias.data)
 
                 self.fc_last = torch.nn.Linear(self.nn.fc_layers_dims[0], self.nn.n_actions)
-                torch_init.xavier_normal_(self.fc_last.weight.data, gain=torch_init.calculate_gain('linear'))
+                torch_init.xavier_normal_(self.fc_last.weight.data)
                 torch_init.zeros_(self.fc_last.bias.data)
 
         def forward(self, batch_s):
