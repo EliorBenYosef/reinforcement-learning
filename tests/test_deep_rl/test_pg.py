@@ -96,7 +96,7 @@ def run_pg_lunar_lander(lib_type):
 
 def run_pg_breakout(lib_type):
     custom_env = Breakout()
-    fc_layers_dims = [256, 0]
+    fc_layers_dims = [256]
     optimizer_type = OPTIMIZER_RMSprop  # OPTIMIZER_SGD
     alpha = 0.00025
     ep_batch_num = 1  # REINFORCE algorithm (MC PG)
@@ -107,7 +107,7 @@ def run_pg_breakout(lib_type):
 
 def run_pg_space_invaders(lib_type):
     custom_env = SpaceInvaders()
-    fc_layers_dims = [256, 0]
+    fc_layers_dims = [256]
     optimizer_type = OPTIMIZER_RMSprop  # OPTIMIZER_SGD
     alpha = 0.001  # 0.003
     ep_batch_num = 2  # ep_batch_num = 10

@@ -76,8 +76,6 @@ class NN(object):
                 if self.nn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
                     x = tf.layers.dense(self.s, units=self.nn.fc_layers_dims[0], activation='relu',
                                         kernel_initializer=tf.initializers.he_normal())
-                    x = tf.layers.dense(x, units=self.nn.fc_layers_dims[1], activation='relu',
-                                        kernel_initializer=tf.initializers.he_normal())
 
                 else:  # self.input_type == INPUT_TYPE_STACKED_FRAMES
                     x = tf.layers.conv2d(self.s, filters=32, kernel_size=(8, 8), strides=4, name='conv1',
@@ -96,8 +94,9 @@ class NN(object):
                     x = tf.nn.relu(x)
 
                     x = tf.layers.flatten(x)
-                    x = tf.layers.dense(x, units=self.nn.fc_layers_dims[0], activation='relu',
-                                        kernel_initializer=tf.initializers.he_normal())
+
+                x = tf.layers.dense(x, units=self.nn.fc_layers_dims[-1], activation='relu',
+                                    kernel_initializer=tf.initializers.he_normal())
 
                 self.q_values = tf.layers.dense(x, units=self.nn.n_actions,
                                                 kernel_initializer=tf.initializers.glorot_normal())
@@ -143,8 +142,6 @@ class NN(object):
             if self.nn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
                 x = keras_layers.Dense(self.nn.fc_layers_dims[0], activation='relu',
                                        kernel_initializer=keras_init.he_normal())(s)
-                x = keras_layers.Dense(self.nn.fc_layers_dims[1], activation='relu',
-                                       kernel_initializer=keras_init.he_normal())(x)
 
             else:  # self.input_type == INPUT_TYPE_STACKED_FRAMES
                 x = keras_layers.Conv2D(filters=32, kernel_size=(8, 8), strides=4, name='conv1',
@@ -163,11 +160,12 @@ class NN(object):
                 x = keras_layers.Activation('relu', name='conv3_bn_ac')(x)
 
                 x = keras_layers.Flatten()(x)
-                x = keras_layers.Dense(self.nn.fc_layers_dims[0], activation='relu',
-                                       kernel_initializer=keras_init.he_normal())(x)
+
+            x = keras_layers.Dense(self.nn.fc_layers_dims[-1], activation='relu',
+                                   kernel_initializer=keras_init.he_normal())(x)
 
             q_values = keras_layers.Dense(self.nn.n_actions, name='q_values',
-                                          kernel_initializer=keras_init.he_normal())(x)
+                                          kernel_initializer=keras_init.glorot_normal())(x)
 
             q_values_model = keras_models.Model(inputs=s, outputs=q_values)
 
@@ -232,10 +230,6 @@ class NN(object):
                 torch_init.kaiming_normal_(self.fc2.weight.data)
                 torch_init.zeros_(self.fc2.bias.data)
 
-                self.fc_last = torch.nn.Linear(self.nn.fc_layers_dims[1], self.nn.n_actions)
-                torch_init.xavier_normal_(self.fc_last.weight.data)
-                torch_init.zeros_(self.fc_last.bias.data)
-
             else:  # self.input_type == INPUT_TYPE_STACKED_FRAMES
                 frames_stack_size = ATARI_FRAMES_STACK_SIZE
                 self.in_channels = frames_stack_size * self.image_channels
@@ -270,9 +264,9 @@ class NN(object):
                 torch_init.kaiming_normal_(self.fc1.weight.data)
                 torch_init.zeros_(self.fc1.bias.data)
 
-                self.fc_last = torch.nn.Linear(self.nn.fc_layers_dims[0], self.nn.n_actions)
-                torch_init.xavier_normal_(self.fc_last.weight.data)
-                torch_init.zeros_(self.fc_last.bias.data)
+            self.fc_last = torch.nn.Linear(self.nn.fc_layers_dims[-1], self.nn.n_actions)
+            torch_init.xavier_normal_(self.fc_last.weight.data)
+            torch_init.zeros_(self.fc_last.bias.data)
 
         def forward(self, batch_s):
             x = torch.tensor(batch_s, dtype=torch.float32).to(self.device)

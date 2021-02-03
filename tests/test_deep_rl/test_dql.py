@@ -86,7 +86,7 @@ def run_dql_lunar_lander(libtype):
 
 def run_dql_breakout(libtype):
     custom_env = Breakout()
-    fc_layers_dims = [1024, 0]
+    fc_layers_dims = [1024]
     optimizer_type = OPTIMIZER_RMSprop  # OPTIMIZER_SGD
     alpha = 0.00025
     double_dql = True
@@ -99,7 +99,7 @@ def run_dql_breakout(libtype):
 
 def run_dql_space_invaders(libtype):
     custom_env = SpaceInvaders()
-    fc_layers_dims = [1024, 0]
+    fc_layers_dims = [1024]
     optimizer_type = OPTIMIZER_RMSprop  # OPTIMIZER_SGD
     alpha = 0.003
     double_dql = True
