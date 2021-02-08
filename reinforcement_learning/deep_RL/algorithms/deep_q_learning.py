@@ -64,7 +64,7 @@ class NN(object):
             self.saver = tf.compat.v1.train.Saver()
             self.checkpoint_file = os.path.join(nn.chkpt_dir, 'q_nn_tf.ckpt')
 
-            self.params = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
+            self.params = tf.trainable_variables(scope=self.name)
 
         def build_network(self):
             with tf.compat.v1.variable_scope(self.name):

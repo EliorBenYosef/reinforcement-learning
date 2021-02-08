@@ -64,7 +64,7 @@ class NN(object):
             self.saver = tf.compat.v1.train.Saver()
             self.checkpoint_file = os.path.join(nn.chkpt_dir, 'policy_nn_tf.ckpt')
 
-            self.params = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
+            self.params = tf.trainable_variables(scope=self.name)
 
         def build_network(self):
             with tf.compat.v1.variable_scope(self.name):
@@ -101,9 +101,9 @@ class NN(object):
                                            kernel_initializer=tf.initializers.glorot_normal())
                 self.a_probs = tf.nn.softmax(a_logits, name='actions_probabilities')
 
-                negative_log_probability = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                    labels=self.a_index, logits=a_logits)
-                loss = negative_log_probability * self.G
+                neg_a_log_probs = tf.nn.sparse_softmax_cross_entropy_with_logits(
+                    logits=a_logits, labels=self.a_index)
+                loss = neg_a_log_probs * self.G
 
                 optimizer = tf_get_optimizer(self.nn.optimizer_type, self.nn.ALPHA)
                 self.optimize = optimizer.minimize(loss)  # train_op
@@ -423,10 +423,10 @@ class Agent(object):
         if self.lib_type == LIBRARY_TORCH:
             a_probs = self.policy_nn.forward(s)[0]
             a_probs_dist = torch_dist.Categorical(a_probs)
-            action_tensor = a_probs_dist.sample()
-            a_log_probs = a_probs_dist.log_prob(action_tensor)
+            a_tensor = a_probs_dist.sample()
+            a_log_probs = a_probs_dist.log_prob(a_tensor)
             self.memory.store_a_log_probs(a_log_probs)
-            a_index = action_tensor.item()
+            a_index = a_tensor.item()
             a = self.action_space[a_index]
 
         else:  # LIBRARY_TF \ LIBRARY_KERAS
