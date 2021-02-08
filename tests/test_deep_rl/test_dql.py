@@ -57,6 +57,10 @@ def play_dql(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, doub
     return agent, scores_history, scores_history_test
 
 
+#################################
+
+# Discrete AS:
+
 def run_dql_cartpole(libtype):
     # custom_env = LunarLander()
     custom_env = CartPole()
@@ -110,25 +114,39 @@ def run_dql_space_invaders(libtype):
              rnd_gameplay_episodes=n_episodes)
 
 
+#################################
+
+def run_test_OBSVEC_DISCRETE(lib_type):
+    run_dql_cartpole(lib_type)
+    run_dql_lunar_lander(lib_type)
+
+
+def run_test_FRAMES_DISCRETE(lib_type):
+    run_dql_breakout(lib_type)
+    run_dql_space_invaders(lib_type)
+
+
+#################################
+
 def test_OBSVEC_TF():
-    run_dql_cartpole(LIBRARY_TF)
+    run_test_OBSVEC_DISCRETE(LIBRARY_TF)
 
 
 def test_OBSVEC_KERAS():
-    run_dql_cartpole(LIBRARY_KERAS)
+    run_test_OBSVEC_DISCRETE(LIBRARY_KERAS)
 
 
 def test_OBSVEC_TORCH():
-    run_dql_lunar_lander(LIBRARY_TORCH)
+    run_test_OBSVEC_DISCRETE(LIBRARY_TORCH)
 
 
 def test_FRAMES_TF():
-    run_dql_breakout(LIBRARY_TF)
+    run_test_FRAMES_DISCRETE(LIBRARY_TF)
 
 
 def test_FRAMES_KERAS():
-    run_dql_breakout(LIBRARY_KERAS)
+    run_test_FRAMES_DISCRETE(LIBRARY_KERAS)
 
 
 def test_FRAMES_TORCH():
-    run_dql_space_invaders(LIBRARY_TORCH)
+    run_test_FRAMES_DISCRETE(LIBRARY_TORCH)

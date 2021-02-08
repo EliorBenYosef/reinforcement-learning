@@ -11,12 +11,8 @@ class ReplayBuffer(object):  # aka 'ReplayMemory'
             else custom_env.is_discrete_action_space
 
         self.n_actions = custom_env.n_actions
-        if self.is_discrete_action_space:
-            self.action_space = custom_env.action_space
-            # self.action_boundary = None
-        else:
-            self.action_space = None
-            # self.action_boundary = custom_env.action_boundary
+        self.action_space = custom_env.action_space if self.is_discrete_action_space else None
+        # self.action_boundary = None if self.is_discrete_action_space else custom_env.action_boundary
 
         self.memory_size = memory_size
         self.memory_counter = 0

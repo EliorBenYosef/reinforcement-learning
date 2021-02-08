@@ -6,7 +6,8 @@ set_random_seed(28)
 from reinforcement_learning.utils.plotter import plot_running_average
 from reinforcement_learning.deep_RL.const import LIBRARY_TF, LIBRARY_KERAS, LIBRARY_TORCH, \
     OPTIMIZER_Adam, OPTIMIZER_RMSprop, OPTIMIZER_Adadelta, OPTIMIZER_Adagrad, OPTIMIZER_SGD, \
-    INPUT_TYPE_OBSERVATION_VECTOR
+    INPUT_TYPE_OBSERVATION_VECTOR, INPUT_TYPE_STACKED_FRAMES, ATARI_FRAMES_STACK_SIZE, \
+    NETWORK_TYPE_SEPARATE, NETWORK_TYPE_SHARED
 from reinforcement_learning.deep_RL.utils.utils import get_file_name, run_trained_agent
 from reinforcement_learning.deep_RL.utils.devices import set_device
 from reinforcement_learning.deep_RL.envs import CartPole, Pendulum, MountainCarContinuous, \
@@ -14,21 +15,14 @@ from reinforcement_learning.deep_RL.envs import CartPole, Pendulum, MountainCarC
 from reinforcement_learning.deep_RL.algorithms.actor_critic import Agent, train_agent
 
 
-def play_ac(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta,
+def play_ac(custom_env, n_episodes, fc_layers_dims, network_type, optimizer_type, alpha, beta,
             lib_type=LIBRARY_TORCH, enable_models_saving=False, load_checkpoint=False,
             plot=True, test=False):
-
-    if lib_type == LIBRARY_TF:
-        print('\n', "Algorithm currently doesn't work with TensorFlow", '\n')
-        return
-
-    # SHARED vs SEPARATE explanation:
-    #   SHARED is very helpful in more complex environments (like LunarLander)
-    #   you can get away with SEPARATE in less complex environments (like MountainCar)
-
-    if lib_type == LIBRARY_TORCH and custom_env.input_type != INPUT_TYPE_OBSERVATION_VECTOR:
-        print('\n', 'the Torch implementation of the Algorithm currently works only with INPUT_TYPE_OBSERVATION_VECTOR!', '\n')
-        return
+    """
+    :param network_type:
+        NETWORK_TYPE_SHARED - very helpful in more complex environments (like LunarLander)
+        NETWORK_TYPE_SEPARATE - suitable in less complex environments (like MountainCar)
+    """
 
     custom_env.env.seed(28)
 
@@ -37,7 +31,7 @@ def play_ac(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta,
     method_name = 'AC'
     base_dir = 'tmp/' + custom_env.file_name + '/' + method_name + '/'
 
-    agent = Agent(custom_env, fc_layers_dims,
+    agent = Agent(custom_env, fc_layers_dims, network_type,
                   optimizer_type, lr_actor=alpha, lr_critic=beta,
                   lib_type=lib_type, base_dir=base_dir)
 
@@ -64,7 +58,11 @@ def play_ac(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta,
     return agent, scores_history, scores_history_test
 
 
-def run_ac_cartpole(lib_type):
+#################################
+
+# Discrete AS:
+
+def run_ac_cartpole(lib_type, network_type):
     custom_env = CartPole()
     fc_layers_dims = [32, 32]
     optimizer_type = OPTIMIZER_Adam
@@ -72,10 +70,50 @@ def run_ac_cartpole(lib_type):
     beta = alpha * 5
     n_episodes = 2  # n_episodes = 2500
 
-    play_ac(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta, lib_type)
+    play_ac(custom_env, n_episodes, fc_layers_dims, network_type, optimizer_type, alpha, beta, lib_type)
 
 
-def run_ac_pendulum(lib_type):
+def run_ac_lunar_lander(lib_type, network_type):
+    custom_env = LunarLander()
+
+    fc_layers_dims = [2048, 512]  # Keras: [1024, 512]
+    optimizer_type = OPTIMIZER_Adam
+    alpha = 0.00001
+    beta = alpha * 5 if lib_type == LIBRARY_KERAS else None
+    n_episodes = 2  # n_episodes = 2000
+
+    play_ac(custom_env, n_episodes, fc_layers_dims, network_type, optimizer_type, alpha, beta, lib_type)
+
+
+def run_ac_breakout(libtype, network_type):
+    custom_env = Breakout()
+    fc_layers_dims = [1024]
+    optimizer_type = OPTIMIZER_RMSprop  # OPTIMIZER_SGD
+    # alpha = 0.00025
+    alpha = 0.000005
+    beta = alpha * 2
+    n_episodes = 2  # n_episodes = 200  # start with 200, then 5000 ?
+
+    play_ac(custom_env, n_episodes, fc_layers_dims, network_type, optimizer_type, alpha, beta, libtype)
+
+
+def run_ac_space_invaders(libtype, network_type):
+    custom_env = SpaceInvaders()
+    fc_layers_dims = [1024]
+    optimizer_type = OPTIMIZER_RMSprop  # OPTIMIZER_SGD
+    # alpha = 0.003
+    alpha = 0.000005
+    beta = alpha * 2
+    n_episodes = 2  # n_episodes = 50
+
+    play_ac(custom_env, n_episodes, fc_layers_dims, network_type, optimizer_type, alpha, beta, libtype)
+
+
+#################################
+
+# Continuous AS:
+
+def run_ac_pendulum(lib_type, network_type):
     # custom_env = LunarLander()
     custom_env = Pendulum()
 
@@ -85,22 +123,10 @@ def run_ac_pendulum(lib_type):
     beta = alpha * 5 if lib_type == LIBRARY_KERAS else None
     n_episodes = 2  # n_episodes = 2000
 
-    play_ac(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta, lib_type)
+    play_ac(custom_env, n_episodes, fc_layers_dims, network_type, optimizer_type, alpha, beta, lib_type)
 
 
-def run_ac_lunar_lander(lib_type):
-    custom_env = LunarLander()
-
-    fc_layers_dims = [2048, 512]  # Keras: [1024, 512]
-    optimizer_type = OPTIMIZER_Adam
-    alpha = 0.00001
-    beta = alpha * 5 if lib_type == LIBRARY_KERAS else None
-    n_episodes = 2  # n_episodes = 2000
-
-    play_ac(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta, lib_type)
-
-
-def run_ac_mountain_car_continuous(lib_type):
+def run_ac_mountain_car_continuous(lib_type, network_type):
     custom_env = MountainCarContinuous()
     fc_layers_dims = [256, 256]
     optimizer_type = OPTIMIZER_Adam
@@ -108,18 +134,83 @@ def run_ac_mountain_car_continuous(lib_type):
     beta = alpha * 2
     n_episodes = 2  # n_episodes = 100  # > 100 --> instability (because the value function estimation is unstable)
 
-    play_ac(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta, lib_type)
+    play_ac(custom_env, n_episodes, fc_layers_dims, network_type, optimizer_type, alpha, beta, lib_type)
 
 
-# def test_OBSVEC_TF():
-#     pass
+def run_ac_lunar_lander_continuous(lib_type, network_type):
+    custom_env = LunarLanderContinuous()
+    fc_layers_dims = [400, 300]
+    optimizer_type = OPTIMIZER_Adam
+    alpha = 0.000025
+    beta = 0.00025
+    n_episodes = 2  # n_episodes = 1000
+
+    play_ac(custom_env, n_episodes, fc_layers_dims, network_type, optimizer_type, alpha, beta, lib_type)
 
 
-def test_OBSVEC_KERAS():
-    run_ac_cartpole(LIBRARY_KERAS)
-    run_ac_lunar_lander(LIBRARY_KERAS)
+def run_ac_bipedal_walker(lib_type, network_type):
+    custom_env = BipedalWalker()
+    fc_layers_dims = [400, 300]
+    optimizer_type = OPTIMIZER_Adam
+    alpha = 0.00005
+    beta = 0.0005
+    n_episodes = 2  # n_episodes = 5000
+
+    play_ac(custom_env, n_episodes, fc_layers_dims, network_type, optimizer_type, alpha, beta, lib_type)
 
 
-def test_OBSVEC_TORCH():
-    run_ac_pendulum(LIBRARY_TORCH)
-    run_ac_mountain_car_continuous(LIBRARY_TORCH)
+#################################
+
+def run_test_OBSVEC_DISCRETE(lib_type):
+    run_ac_cartpole(lib_type, network_type=NETWORK_TYPE_SEPARATE)
+    run_ac_lunar_lander(lib_type, network_type=NETWORK_TYPE_SHARED)
+
+
+def run_test_FRAMES_DISCRETE(lib_type):
+    run_ac_breakout(lib_type, network_type=NETWORK_TYPE_SEPARATE)
+    run_ac_space_invaders(lib_type, network_type=NETWORK_TYPE_SHARED)
+
+
+def run_test_OBSVEC_CONTINUOUS(lib_type):
+    run_ac_pendulum(lib_type, network_type=NETWORK_TYPE_SEPARATE)  # n_actions = 1
+    # run_ac_mountain_car_continuous(lib_type, network_type=NETWORK_TYPE_SHARED)  # n_actions = 1  # takes too long...
+    run_ac_lunar_lander_continuous(lib_type, network_type=NETWORK_TYPE_SEPARATE)  # n_actions = 2
+    run_ac_bipedal_walker(lib_type, network_type=NETWORK_TYPE_SHARED)  # n_actions = 4
+
+
+#################################
+
+def test_OBSVEC_DISCRETE_TF():
+    run_test_OBSVEC_DISCRETE(LIBRARY_TF)
+
+
+def test_FRAMES_TF():
+    run_test_FRAMES_DISCRETE(LIBRARY_TF)
+
+
+def test_OBSVEC_CONTINUOUS_TF():
+    run_test_OBSVEC_CONTINUOUS(LIBRARY_TF)
+
+
+def test_OBSVEC_DISCRETE_KERAS():
+    run_test_OBSVEC_DISCRETE(LIBRARY_KERAS)
+
+
+def test_FRAMES_KERAS():
+    run_test_FRAMES_DISCRETE(LIBRARY_KERAS)
+
+
+def test_OBSVEC_CONTINUOUS_KERAS():
+    run_test_OBSVEC_CONTINUOUS(LIBRARY_KERAS)
+
+
+def test_OBSVEC_DISCRETE_TORCH():
+    run_test_OBSVEC_DISCRETE(LIBRARY_TORCH)
+
+
+def test_FRAMES_TORCH():
+    run_test_FRAMES_DISCRETE(LIBRARY_TORCH)
+
+
+def test_OBSVEC_CONTINUOUS_TORCH():
+    run_test_OBSVEC_CONTINUOUS(LIBRARY_TORCH)

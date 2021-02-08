@@ -23,3 +23,7 @@ OPTIMIZER_Adadelta = 2
 OPTIMIZER_Adagrad = 3
 OPTIMIZER_SGD = 4
 
+########################
+
+NETWORK_TYPE_SEPARATE = 0
+NETWORK_TYPE_SHARED = 1

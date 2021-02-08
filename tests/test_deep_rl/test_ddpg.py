@@ -66,6 +66,10 @@ def play_ddpg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, bet
     return agent, scores_history, scores_history_test
 
 
+#################################
+
+# Continuous AS:
+
 def run_ddpg_pendulum(lib_type):
     custom_env = Pendulum()
     fc_layers_dims = [800, 600]
@@ -73,17 +77,6 @@ def run_ddpg_pendulum(lib_type):
     alpha = 0.00005
     beta = 0.0005
     n_episodes = 2  # n_episodes = 1000
-
-    play_ddpg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta, lib_type)
-
-
-def run_ddpg_bipedal_walker(lib_type):
-    custom_env = BipedalWalker()
-    fc_layers_dims = [400, 300]
-    optimizer_type = OPTIMIZER_Adam
-    alpha = 0.00005
-    beta = 0.0005
-    n_episodes = 2  # n_episodes = 5000
 
     play_ddpg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta, lib_type)
 
@@ -110,15 +103,35 @@ def run_ddpg_lunar_lander_continuous(lib_type):
     play_ddpg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta, lib_type)
 
 
-def test_OBSVEC_TF():
-    run_ddpg_pendulum(LIBRARY_TF)
-    run_ddpg_mountain_car_continuous(LIBRARY_TF)
+def run_ddpg_bipedal_walker(lib_type):
+    custom_env = BipedalWalker()
+    fc_layers_dims = [400, 300]
+    optimizer_type = OPTIMIZER_Adam
+    alpha = 0.00005
+    beta = 0.0005
+    n_episodes = 2  # n_episodes = 5000
+
+    play_ddpg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta, lib_type)
 
 
-# def test_OBSVEC_KERAS():
-#     pass
+#################################
+
+def run_test_OBSVEC_CONTINUOUS(lib_type):
+    run_ddpg_pendulum(lib_type)  # n_actions = 1
+    run_ddpg_mountain_car_continuous(lib_type)  # n_actions = 1
+    run_ddpg_lunar_lander_continuous(lib_type)  # n_actions = 2
+    run_ddpg_bipedal_walker(lib_type)  # n_actions = 4
 
 
-def test_OBSVEC_TORCH():
-    run_ddpg_bipedal_walker(LIBRARY_TORCH)
-    run_ddpg_lunar_lander_continuous(LIBRARY_TORCH)
+#################################
+
+def test_OBSVEC_CONTINUOUS_TF():
+    run_test_OBSVEC_CONTINUOUS(LIBRARY_TF)
+
+
+# def test_OBSVEC_CONTINUOUS_KERAS():
+#     run_test_OBSVEC_CONTINUOUS(LIBRARY_KERAS)
+
+
+def test_OBSVEC_CONTINUOUS_TORCH():
+    run_test_OBSVEC_CONTINUOUS(LIBRARY_TORCH)
