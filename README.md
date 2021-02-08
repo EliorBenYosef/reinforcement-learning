@@ -57,8 +57,10 @@ Discrete Action Space | Continuous Action Space
 Deep Q Learning, Policy Gradient | Deep Deterministic Policy Gradient
 
 * Some current restrictions are due to the fact that there's more work to be done (code-wise), 
-meaning: writing for **every library implementation** (tensorflow, torch, keras) 
-or for **every input type** (observation vector, stacked frames).
+meaning: writing for **every** -
+  * **library implementation** (tensorflow, torch, keras).
+  * **input (state) type** (observation vector, stacked frames).
+  * **action space type** (discrete, continuous).
 
 ### [cmdline_play.py](../master/reinforcement_learning/deep_RL/utils/cmdline_play.py)
 
