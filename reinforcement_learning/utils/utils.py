@@ -1,5 +1,6 @@
 import os
 from IPython.display import clear_output
+import math
 import time
 import datetime
 import numpy as np
@@ -26,7 +27,7 @@ def print_training_progress(i, ep_score, scores_history, window=100, trailing=Tr
     time_string = ''
     if ep_start_time is not None:
         time_string = '; runtime: %s' % str(datetime.datetime.now() - ep_start_time).split('.')[0]
-    print('Episode: %d ;' % (i + 1), 'score: %d' % ep_score, time_string)  # score: %.2f
+    print('Episode: %d ;' % (i + 1), 'score: %.2f' % ep_score, time_string)  # score: %d - crashes when float NaN
 
     eps_string = ''
     if eps is not None:
