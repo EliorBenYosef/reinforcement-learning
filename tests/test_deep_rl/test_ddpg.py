@@ -18,12 +18,6 @@ def play_ddpg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, bet
               lib_type=LIBRARY_TF, enable_models_saving=False, load_checkpoint=False,
               plot=True, test=False):
 
-    if lib_type == LIBRARY_KERAS:
-        print('\n', "Algorithm currently doesn't work with Keras", '\n')
-        return
-
-    tau = 0.001
-
     if custom_env.is_discrete_action_space:
         print('\n', "Environment's Action Space should be continuous!", '\n')
         return
@@ -31,6 +25,12 @@ def play_ddpg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, bet
     if custom_env.input_type != INPUT_TYPE_OBSERVATION_VECTOR:
         print('\n', 'Algorithm currently works only with INPUT_TYPE_OBSERVATION_VECTOR!', '\n')
         return
+
+    if lib_type == LIBRARY_KERAS:
+        print('\n', "Algorithm currently doesn't work with Keras", '\n')
+        return
+
+    tau = 0.001
 
     custom_env.env.seed(28)
 
@@ -75,7 +75,7 @@ def run_ddpg_pendulum(lib_type):
     fc_layers_dims = [800, 600]
     optimizer_type = OPTIMIZER_Adam
     alpha = 0.00005
-    beta = 0.0005
+    beta = alpha * 10
     n_episodes = 2  # n_episodes = 1000
 
     play_ddpg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta, lib_type)
@@ -86,7 +86,7 @@ def run_ddpg_mountain_car_continuous(lib_type):
     fc_layers_dims = [400, 300]
     optimizer_type = OPTIMIZER_Adam
     alpha = 0.000025
-    beta = 0.00025
+    beta = alpha * 10
     n_episodes = 2  # n_episodes = 1000
 
     play_ddpg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta, lib_type)
@@ -97,7 +97,7 @@ def run_ddpg_lunar_lander_continuous(lib_type):
     fc_layers_dims = [400, 300]
     optimizer_type = OPTIMIZER_Adam
     alpha = 0.000025
-    beta = 0.00025
+    beta = alpha * 10
     n_episodes = 2  # n_episodes = 1000
 
     play_ddpg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta, lib_type)
@@ -108,7 +108,7 @@ def run_ddpg_bipedal_walker(lib_type):
     fc_layers_dims = [400, 300]
     optimizer_type = OPTIMIZER_Adam
     alpha = 0.00005
-    beta = 0.0005
+    beta = alpha * 10
     n_episodes = 2  # n_episodes = 5000
 
     play_ddpg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta, lib_type)
