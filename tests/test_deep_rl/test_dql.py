@@ -62,7 +62,6 @@ def play_dql(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, doub
 # Discrete AS:
 
 def run_dql_cartpole(libtype):
-    # custom_env = LunarLander()
     custom_env = CartPole()
     fc_layers_dims = [256, 256]
     optimizer_type = OPTIMIZER_Adam

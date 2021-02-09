@@ -62,7 +62,6 @@ def play_pg(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, ep_ba
 # Discrete AS:
 
 def run_pg_cartpole(lib_type):
-    # custom_env = LunarLander()
     custom_env = CartPole()
 
     if lib_type == LIBRARY_TORCH:
