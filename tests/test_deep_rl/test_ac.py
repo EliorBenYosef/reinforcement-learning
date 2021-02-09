@@ -79,7 +79,7 @@ def run_ac_lunar_lander(lib_type, network_type):
     fc_layers_dims = [2048, 512]  # Keras: [1024, 512]
     optimizer_type = OPTIMIZER_Adam
     alpha = 0.00001
-    beta = alpha * 5 if lib_type == LIBRARY_KERAS else None
+    beta = alpha * 5
     n_episodes = 2  # n_episodes = 2000
 
     play_ac(custom_env, n_episodes, fc_layers_dims, network_type, optimizer_type, alpha, beta, lib_type)
@@ -114,13 +114,11 @@ def run_ac_space_invaders(libtype, network_type):
 # Continuous AS:
 
 def run_ac_pendulum(lib_type, network_type):
-    # custom_env = LunarLander()
     custom_env = Pendulum()
-
     fc_layers_dims = [2048, 512]  # Keras: [1024, 512]
     optimizer_type = OPTIMIZER_Adam
     alpha = 0.00001
-    beta = alpha * 5 if lib_type == LIBRARY_KERAS else None
+    beta = alpha * 5
     n_episodes = 2  # n_episodes = 2000
 
     play_ac(custom_env, n_episodes, fc_layers_dims, network_type, optimizer_type, alpha, beta, lib_type)
@@ -128,9 +126,9 @@ def run_ac_pendulum(lib_type, network_type):
 
 def run_ac_mountain_car_continuous(lib_type, network_type):
     custom_env = MountainCarContinuous()
-    fc_layers_dims = [256, 256]
+    fc_layers_dims = [512, 512]
     optimizer_type = OPTIMIZER_Adam
-    alpha = 0.000005
+    alpha = 0.00001
     beta = alpha * 2
     n_episodes = 2  # n_episodes = 100  # > 100 --> instability (because the value function estimation is unstable)
 
@@ -142,7 +140,7 @@ def run_ac_lunar_lander_continuous(lib_type, network_type):
     fc_layers_dims = [400, 300]
     optimizer_type = OPTIMIZER_Adam
     alpha = 0.000025
-    beta = 0.00025
+    beta = alpha * 10
     n_episodes = 2  # n_episodes = 1000
 
     play_ac(custom_env, n_episodes, fc_layers_dims, network_type, optimizer_type, alpha, beta, lib_type)
@@ -153,7 +151,7 @@ def run_ac_bipedal_walker(lib_type, network_type):
     fc_layers_dims = [400, 300]
     optimizer_type = OPTIMIZER_Adam
     alpha = 0.00005
-    beta = 0.0005
+    beta = alpha * 10
     n_episodes = 2  # n_episodes = 5000
 
     play_ac(custom_env, n_episodes, fc_layers_dims, network_type, optimizer_type, alpha, beta, lib_type)
@@ -166,16 +164,16 @@ def run_test_OBSVEC_DISCRETE(lib_type):
     run_ac_lunar_lander(lib_type, network_type=NETWORK_TYPE_SHARED)
 
 
-def run_test_FRAMES_DISCRETE(lib_type):
-    run_ac_breakout(lib_type, network_type=NETWORK_TYPE_SEPARATE)
-    run_ac_space_invaders(lib_type, network_type=NETWORK_TYPE_SHARED)
-
-
 def run_test_OBSVEC_CONTINUOUS(lib_type):
     run_ac_pendulum(lib_type, network_type=NETWORK_TYPE_SEPARATE)  # n_actions = 1
     # run_ac_mountain_car_continuous(lib_type, network_type=NETWORK_TYPE_SHARED)  # n_actions = 1  # takes too long...
     run_ac_lunar_lander_continuous(lib_type, network_type=NETWORK_TYPE_SEPARATE)  # n_actions = 2
     run_ac_bipedal_walker(lib_type, network_type=NETWORK_TYPE_SHARED)  # n_actions = 4
+
+
+def run_test_FRAMES_DISCRETE(lib_type):
+    run_ac_breakout(lib_type, network_type=NETWORK_TYPE_SEPARATE)
+    run_ac_space_invaders(lib_type, network_type=NETWORK_TYPE_SHARED)
 
 
 #################################
@@ -184,33 +182,33 @@ def test_OBSVEC_DISCRETE_TF():
     run_test_OBSVEC_DISCRETE(LIBRARY_TF)
 
 
-def test_FRAMES_TF():
-    run_test_FRAMES_DISCRETE(LIBRARY_TF)
-
-
-def test_OBSVEC_CONTINUOUS_TF():
-    run_test_OBSVEC_CONTINUOUS(LIBRARY_TF)
-
-
 def test_OBSVEC_DISCRETE_KERAS():
     run_test_OBSVEC_DISCRETE(LIBRARY_KERAS)
-
-
-def test_FRAMES_KERAS():
-    run_test_FRAMES_DISCRETE(LIBRARY_KERAS)
-
-
-def test_OBSVEC_CONTINUOUS_KERAS():
-    run_test_OBSVEC_CONTINUOUS(LIBRARY_KERAS)
 
 
 def test_OBSVEC_DISCRETE_TORCH():
     run_test_OBSVEC_DISCRETE(LIBRARY_TORCH)
 
 
-def test_FRAMES_TORCH():
-    run_test_FRAMES_DISCRETE(LIBRARY_TORCH)
+def test_OBSVEC_CONTINUOUS_TF():
+    run_test_OBSVEC_CONTINUOUS(LIBRARY_TF)
+
+
+def test_OBSVEC_CONTINUOUS_KERAS():
+    run_test_OBSVEC_CONTINUOUS(LIBRARY_KERAS)
 
 
 def test_OBSVEC_CONTINUOUS_TORCH():
     run_test_OBSVEC_CONTINUOUS(LIBRARY_TORCH)
+
+
+def test_FRAMES_DISCRETE_TF():
+    run_test_FRAMES_DISCRETE(LIBRARY_TF)
+
+
+def test_FRAMES_DISCRETE_KERAS():
+    run_test_FRAMES_DISCRETE(LIBRARY_KERAS)
+
+
+def test_FRAMES_DISCRETE_TORCH():
+    run_test_FRAMES_DISCRETE(LIBRARY_TORCH)

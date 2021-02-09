@@ -1,4 +1,3 @@
-import sys
 import datetime
 import os
 import numpy as np
@@ -356,6 +355,11 @@ class NN(object):
                 torch_init.kaiming_normal_(self.fc1.weight.data)
                 torch_init.zeros_(self.fc1.bias.data)
 
+            if self.nn.network_type == NETWORK_TYPE_SHARED or not self.nn.is_actor:
+                self.v = torch.nn.Linear(self.nn.fc_layers_dims[-1], 1)  # Critic layer
+                torch_init.xavier_normal_(self.v.weight.data)
+                torch_init.zeros_(self.v.bias.data)
+
             if self.nn.network_type == NETWORK_TYPE_SHARED or self.nn.is_actor:
 
                 if self.nn.is_discrete_action_space:
@@ -372,11 +376,6 @@ class NN(object):
                     torch_init.xavier_normal_(self.sigma_unactivated.weight.data)
                     torch_init.zeros_(self.sigma_unactivated.bias.data)
 
-            if self.nn.network_type == NETWORK_TYPE_SHARED or not self.nn.is_actor:
-                self.v = torch.nn.Linear(self.nn.fc_layers_dims[-1], 1)  # Critic layer
-                torch_init.xavier_normal_(self.v.weight.data)
-                torch_init.zeros_(self.v.bias.data)
-
         def forward(self, batch_s, is_actor):
             x = torch.tensor(batch_s, dtype=torch.float32).to(self.device)
 
@@ -391,6 +390,10 @@ class NN(object):
                 x = torch_func.relu(self.conv3_bn(self.conv3(x)))
                 x = x.view(-1, self.flat_dims).to(self.device)  # Flatten
                 x = torch_func.relu(self.fc1(x))
+
+            if not is_actor:
+                v = torch_func.linear(self.v(x))  # Critic value
+                return v
 
             if is_actor:
                 if self.nn.is_discrete_action_space:
@@ -412,10 +415,6 @@ class NN(object):
                     action_boundary = torch.tensor(self.nn.action_boundary, dtype=torch.float32).to(self.device)
                     a_tensor_act_mul = torch.mul(a_tensor_act, action_boundary)
                     return a_tensor_act_mul, a_log_prob
-
-            if not is_actor:
-                v = self.v(x)  # Critic value
-                return v
 
         def load_model_file(self):
             print("...Loading Torch file...")
