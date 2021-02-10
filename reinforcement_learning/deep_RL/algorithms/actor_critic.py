@@ -128,11 +128,10 @@ class NN(object):
                         self.mu = tf.layers.dense(x, units=self.nn.n_actions, name='mu',  # Mean (μ)
                                                   kernel_initializer=tf.initializers.glorot_normal())
                         sigma_unactivated = tf.layers.dense(x, units=self.nn.n_actions, name='sigma_unactivated',  # unactivated STD (σ) - can be a negative number
-                                                                 kernel_initializer=tf.initializers.glorot_normal())
+                                                            kernel_initializer=tf.initializers.glorot_normal())
                         # Element-wise exponential: e^(sigma_unactivated):
                         #   we activate sigma since STD (σ) is strictly real-valued (positive, non-zero - it's not a Dirac delta function).
                         self.sigma = tf.exp(sigma_unactivated, name='sigma')  # STD (σ)
-                        self.ms_concat = tf.concat([self.mu, self.sigma], axis=1)
 
                         gaussian_dist = tfp.distributions.Normal(loc=self.mu, scale=self.sigma)
                         a_log_prob = gaussian_dist.log_prob(self.a_sampled)
@@ -148,7 +147,6 @@ class NN(object):
                 actor_value = self.sess.run(self.pi, feed_dict={self.s: s})  # Actor value
             else:
                 actor_value = self.sess.run([self.mu, self.sigma], feed_dict={self.s: s})  # Actor value
-                # actor_value = self.sess.run(self.ms_concat, feed_dict={self.s: s})  # Actor value
             return actor_value
 
         def predict_value(self, s):
@@ -241,14 +239,7 @@ class NN(object):
                                                 name='sigma')(sigma_unactivated)
                     ms_concat = keras_layers.Concatenate(axis=1)([mu, sigma])
 
-                    a_sampled = keras_layers.Lambda(
-                        lambda ms: keras_backend.random_normal((1,), mean=ms[0], stddev=ms[1]),
-                        name='a_sampled')([mu, sigma])
-                    a_activated = keras_layers.Activation('tanh', name='a_activated')(a_sampled)
-                    action_boundary = keras_backend.constant(self.nn.action_boundary, dtype='float32')
-                    a = keras_layers.Lambda(lambda x: x * action_boundary, name='a')(a_activated)
-
-                    self.policy = keras_models.Model(inputs=s, outputs=a)
+                    self.policy = keras_models.Model(inputs=s, outputs=ms_concat)
                     self.actor = keras_models.Model(inputs=[s, td_error], outputs=ms_concat)  # policy_model
 
                 is_discrete_action_space = self.nn.is_discrete_action_space
@@ -399,22 +390,22 @@ class NN(object):
                 if self.nn.is_discrete_action_space:
                     pi = torch_func.softmax(self.pi_unactivated(x))  # a_probs = the stochastic policy (π)
                     categorical_dist = torch_dist.Categorical(pi)  # a_probs_dist
-                    a_tensor = categorical_dist.sample()
-                    a_log_prob = categorical_dist.log_prob(a_tensor)
-                    return a_tensor, a_log_prob
+                    a_sampled = categorical_dist.sample()
+                    a_log_prob = categorical_dist.log_prob(a_sampled)
+                    return a_sampled, a_log_prob
                 else:
                     mu = self.mu(x)  # Mean (μ)
                     # sigma = self.sigma_unactivated(x)  # unactivated STD (σ) - can be a negative number
                     # STD (σ) is strictly real-valued (positive, non-zero - it's not a Dirac delta function):
                     sigma = torch.exp(self.sigma_unactivated(x))  # Element-wise exponential: e^(sigma_unactivated)
                     gaussian_dist = torch_dist.Normal(mu, sigma)
-                    a_tensor = gaussian_dist.sample()
-                    a_log_prob = gaussian_dist.log_prob(a_tensor)
+                    a_sampled = gaussian_dist.sample()
+                    a_log_prob = gaussian_dist.log_prob(a_sampled)
 
-                    a_tensor_act = torch.tanh(a_tensor)
+                    a_sampled_act = torch.tanh(a_sampled)
                     action_boundary = torch.tensor(self.nn.action_boundary, dtype=torch.float32).to(self.device)
-                    a_tensor_act_mul = torch.mul(a_tensor_act, action_boundary)
-                    return a_tensor_act_mul, a_log_prob
+                    a = torch.mul(a_sampled_act, action_boundary)
+                    return a, a_log_prob
 
         def load_model_file(self):
             print("...Loading Torch file...")
@@ -428,10 +419,7 @@ class NN(object):
 class AC(object):
 
     def __init__(self, custom_env, fc_layers_dims, optimizer_type, lr_actor, lr_critic, network_type, chkpt_dir):
-
         self.GAMMA = custom_env.GAMMA
-
-        self.a_log_prob = None
 
         self.is_discrete_action_space = custom_env.is_discrete_action_space
         self.n_actions = custom_env.n_actions
@@ -467,6 +455,8 @@ class AC(object):
         def __init__(self, ac, device_map):
             self.ac = ac
 
+            self.a_sampled = None
+
             self.sess = tf_get_session_according_to_device(device_map)
 
             if self.ac.network_type == NETWORK_TYPE_SEPARATE:
@@ -490,18 +480,18 @@ class AC(object):
 
             if self.ac.is_discrete_action_space:
                 a = np.random.choice(self.ac.action_space, p=actor_value[0])
-                return a
             else:
-                return self.choose_action_continuous(actor_value)
+                a = self.choose_action_continuous(actor_value)
+
+            return a
 
         def choose_action_continuous(self, actor_value):
             mu, sigma = actor_value[0][0], actor_value[1][0]
             gaussian_dist = tfp.distributions.Normal(loc=mu, scale=sigma)
-
             self.a_sampled = gaussian_dist.sample()
-            a_activated = tf.nn.tanh(self.a_sampled, name='a_activated')
+            a_activated = tf.nn.tanh(self.a_sampled)
             action_boundary = tf.constant(self.ac.action_boundary, dtype='float32')
-            a_tensor = tf.multiply(a_activated, action_boundary, name='a')
+            a_tensor = tf.multiply(a_activated, action_boundary)
             a = a_tensor.eval(session=self.sess)
             return a
 
@@ -521,8 +511,8 @@ class AC(object):
             td_error = np.squeeze(v_target - v, axis=1)
 
             if self.ac.is_discrete_action_space:
-                a_value = self.ac.action_space.index(a)  # a_index
-                a_value = np.expand_dims(np.array(a_value), axis=0)
+                a_index = self.ac.action_space.index(a)
+                a_value = np.expand_dims(np.array(a_index), axis=0)
             else:
                 a_value = self.a_sampled.eval(session=self.sess)
 
@@ -545,6 +535,8 @@ class AC(object):
         def __init__(self, ac):
             self.ac = ac
 
+            self.a_sampled = None
+
             if self.ac.network_type == NETWORK_TYPE_SEPARATE:
                 self.actor = self.ac.actor_base.create_nn_keras()
                 self.critic = self.ac.critic_base.create_nn_keras()
@@ -562,8 +554,18 @@ class AC(object):
             if self.ac.is_discrete_action_space:
                 a = np.random.choice(self.ac.action_space, p=actor_value[0])
             else:
-                a = actor_value[0]
+                a = self.choose_action_continuous(actor_value[0])
 
+            return a
+
+        def choose_action_continuous(self, actor_value):
+            mu, sigma = actor_value[:self.ac.n_actions], actor_value[self.ac.n_actions:]  # Mean (μ), STD (σ)
+            a_sampled = keras_backend.random_normal((1,), mean=mu, stddev=sigma)
+            self.a_sampled = keras_backend.get_value(a_sampled)
+            a_activated = keras_backend.tanh(self.a_sampled)
+            action_boundary = keras_backend.constant(self.ac.action_boundary, dtype='float32')
+            a_tensor = a_activated * action_boundary
+            a = keras_backend.get_value(a_tensor)
             return a
 
         def learn(self, s, a, r, s_, is_terminal):
@@ -586,17 +588,17 @@ class AC(object):
                 a_indices_one_hot = np.zeros(self.ac.n_actions, dtype=np.int8)
                 a_index = self.ac.action_space.index(a)
                 a_indices_one_hot[a_index] = 1
-                a = a_indices_one_hot
+                a_value = a_indices_one_hot
+            else:
+                a_value = np.tile(self.a_sampled, reps=2)  # done to match the output's shape
 
-            a = a[np.newaxis, :]
+            a_value = a_value[np.newaxis, :]
 
             if self.ac.network_type == NETWORK_TYPE_SEPARATE:
-                self.actor.actor.fit(
-                    [s, td_error], a if self.ac.is_discrete_action_space else np.tile(a, reps=2), verbose=0)
+                self.actor.actor.fit([s, td_error], a_value, verbose=0)
                 self.critic.critic.fit(s, v_target, verbose=0)
             else:  # self.ac.network_type == NETWORK_TYPE_SHARED
-                self.actor_critic.actor.fit(
-                    [s, td_error], a if self.ac.is_discrete_action_space else np.tile(a, reps=2), verbose=0)
+                self.actor_critic.actor.fit([s, td_error], a_value, verbose=0)
                 self.actor_critic.critic.fit(s, v_target, verbose=0)
 
         def load_model_file(self):
@@ -619,6 +621,8 @@ class AC(object):
 
         def __init__(self, ac, custom_env):
             self.ac = ac
+
+            self.a_log_prob = None
 
             if custom_env.input_type == INPUT_TYPE_STACKED_FRAMES:
                 relevant_screen_size = custom_env.relevant_screen_size
