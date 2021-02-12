@@ -4,6 +4,7 @@ import numpy as np
 from gym import wrappers
 
 import tensorflow as tf
+import tensorflow_probability as tfp
 import keras.models as keras_models
 import keras.layers as keras_layers
 import keras.initializers as keras_init
@@ -34,7 +35,10 @@ class NN(object):
 
         self.input_dims = custom_env.input_dims
         self.fc_layers_dims = fc_layers_dims
+        self.is_discrete_action_space = custom_env.is_discrete_action_space
         self.n_actions = custom_env.n_actions
+        # self.action_space = custom_env.action_space if self.is_discrete_action_space else None
+        self.action_boundary = None if self.is_discrete_action_space else custom_env.action_boundary
 
         self.optimizer_type = optimizer_type
         self.ALPHA = alpha
@@ -47,7 +51,7 @@ class NN(object):
     def create_nn_keras(self):
         return NN.NN_Keras(self)
 
-    def create_nn_torch(self, relevant_screen_size, image_channels):
+    def create_nn_torch(self, relevant_screen_size=None, image_channels=None):
         return NN.NN_Torch(self, relevant_screen_size, image_channels)
 
     class NN_TensorFlow(object):
@@ -69,7 +73,6 @@ class NN(object):
         def build_network(self):
             with tf.compat.v1.variable_scope(self.name):
                 self.s = tf.compat.v1.placeholder(tf.float32, shape=[None, *self.nn.input_dims], name='s')
-                self.a_index = tf.compat.v1.placeholder(tf.int32, shape=[None], name='a_index')
                 self.G = tf.compat.v1.placeholder(tf.float32, shape=[None], name='G')
 
                 if self.nn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
@@ -97,30 +100,53 @@ class NN(object):
                 x = tf.layers.dense(x, units=self.nn.fc_layers_dims[-1], activation='relu',
                                     kernel_initializer=tf.initializers.he_normal())
 
-                a_logits = tf.layers.dense(x, units=self.nn.n_actions,
-                                           kernel_initializer=tf.initializers.glorot_normal())
-                self.a_probs = tf.nn.softmax(a_logits, name='actions_probabilities')
+                if self.nn.is_discrete_action_space:
+                    self.a_index = tf.compat.v1.placeholder(tf.int32, shape=[None], name='a_index')
 
-                neg_a_log_probs = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                    logits=a_logits, labels=self.a_index)
-                loss = neg_a_log_probs * self.G
+                    a_logits = tf.layers.dense(x, units=self.nn.n_actions,
+                                               kernel_initializer=tf.initializers.glorot_normal())
+                    self.pi = tf.nn.softmax(a_logits, name='pi')  # a_probs
+
+                    neg_a_log_probs = tf.nn.sparse_softmax_cross_entropy_with_logits(
+                        logits=a_logits, labels=self.a_index)
+                    loss = neg_a_log_probs * self.G
+
+                else:
+                    self.a_sampled = tf.compat.v1.placeholder(tf.float32, shape=[None, self.nn.n_actions],
+                                                              name='a_sampled')
+
+                    self.mu = tf.layers.dense(x, units=self.nn.n_actions, name='mu',  # Mean (μ)
+                                              kernel_initializer=tf.initializers.glorot_normal())
+                    sigma_unactivated = tf.layers.dense(x, units=self.nn.n_actions, name='sigma_unactivated',  # unactivated STD (σ) - can be a negative number
+                                                        kernel_initializer=tf.initializers.glorot_normal())
+                    # Element-wise exponential: e^(sigma_unactivated):
+                    #   we activate sigma since STD (σ) is strictly real-valued (positive, non-zero - it's not a Dirac delta function).
+                    self.sigma = tf.exp(sigma_unactivated, name='sigma')  # STD (σ)
+
+                    gaussian_dist = tfp.distributions.Normal(loc=self.mu, scale=self.sigma)
+                    a_log_prob = gaussian_dist.log_prob(self.a_sampled)
+                    loss = -tf.reduce_mean(a_log_prob) * self.G
 
                 optimizer = tf_get_optimizer(self.nn.optimizer_type, self.nn.ALPHA)
                 self.optimize = optimizer.minimize(loss)  # train_op
 
         def forward(self, batch_s):
-            a_probs = self.sess.run(self.a_probs, feed_dict={self.s: batch_s})
-            return a_probs
+            if self.nn.is_discrete_action_space:
+                actor_value = self.sess.run(self.pi, feed_dict={self.s: batch_s})
+            else:
+                actor_value = self.sess.run([self.mu, self.sigma], feed_dict={self.s: batch_s})
+            return actor_value
 
         def learn_batch(self, memory, memory_G):
-            memory_s = np.array(memory.memory_s)
-            memory_a_indices = np.array(memory.memory_a_indices)
+            feed_dict = {self.s: np.array(memory.memory_s),
+                         self.G: memory_G}
+            if self.nn.is_discrete_action_space:
+                feed_dict[self.a_index] = np.array(memory.memory_a_indices)
+            else:
+                feed_dict[self.a_sampled] = np.array(memory.memory_a_sampled)
 
             # print('Training Started')
-            _ = self.sess.run(self.optimize,
-                              feed_dict={self.s: memory_s,
-                                         self.a_index: memory_a_indices,
-                                         self.G: memory_G})
+            self.sess.run(self.optimize, feed_dict=feed_dict)
             # print('Training Finished')
 
         def load_model_file(self):
@@ -138,12 +164,11 @@ class NN(object):
 
             self.h5_file = os.path.join(nn.chkpt_dir, 'policy_nn_keras.h5')
 
-            self.optimizer = keras_get_optimizer(self.nn.optimizer_type, self.nn.ALPHA)
-
-            self.model, self.policy = self.build_network()
+            self.build_network()
 
         def build_network(self):
             s = keras_layers.Input(shape=self.nn.input_dims, dtype='float32', name='s')
+            G = keras_layers.Input(shape=(1,), dtype='float32', name='G')
 
             if self.nn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
                 x = keras_layers.Dense(self.nn.fc_layers_dims[0], activation='relu',
@@ -170,42 +195,66 @@ class NN(object):
             x = keras_layers.Dense(self.nn.fc_layers_dims[-1], activation='relu',
                                    kernel_initializer=keras_init.he_normal())(x)
 
-            a_probs = keras_layers.Dense(self.nn.n_actions, activation='softmax', name='actions_probabilities',
-                                         kernel_initializer=keras_init.glorot_normal())(x)
+            if self.nn.is_discrete_action_space:
+                pi = keras_layers.Dense(self.nn.n_actions, activation='softmax', name='pi',  # a_probs = the stochastic policy (π)
+                                        kernel_initializer=keras_init.glorot_normal())(x)
+                self.policy = keras_models.Model(inputs=s, outputs=pi)
+                self.model = keras_models.Model(inputs=[s, G], outputs=pi)  # policy_model
+            else:
+                mu = keras_layers.Dense(self.nn.n_actions, name='mu',  # Mean (μ)
+                                        kernel_initializer=keras_init.glorot_normal())(x)
+                sigma_unactivated = keras_layers.Dense(self.nn.n_actions, name='sigma_unactivated',  # unactivated STD (σ) - can be a negative number
+                                                       kernel_initializer=keras_init.glorot_normal())(x)
+                # Element-wise exponential: e^(sigma_unactivated):
+                #   we activate sigma since STD (σ) is strictly real-valued (positive, non-zero - it's not a Dirac delta function).
+                sigma = keras_layers.Lambda(lambda sig: keras_backend.exp(sig),  # STD (σ)
+                                            name='sigma')(sigma_unactivated)
 
-            policy = keras_models.Model(inputs=s, outputs=a_probs)
+                self.policy = keras_models.Model(inputs=s, outputs=[mu, sigma])
+                self.model = keras_models.Model(inputs=[s, G], outputs=[mu, sigma])  # policy_model
 
-            #############################
+            is_discrete_action_space = self.nn.is_discrete_action_space
 
-            G = keras_layers.Input(shape=(1,), dtype='float32', name='G')
+            def custom_loss(y_true, y_pred):  # (a_indices_one_hot, actor.output - pi \ [mu, sigma])
+                if is_discrete_action_space:
+                    prob_chosen_a = keras_backend.sum(y_pred * y_true)  # outputs the prob of the chosen a
+                    prob_chosen_a = keras_backend.clip(prob_chosen_a, 1e-8, 1 - 1e-8)  # boundaries to prevent from taking log of 0\1
+                    log_prob_chosen_a = keras_backend.log(prob_chosen_a)  # log_probability, negative value (since prob<1)
+                    loss = -log_prob_chosen_a * G
+                else:
+                    mu_pred, sigma_pred = y_pred[0], y_pred[1]  # Mean (μ), STD (σ)
+                    gaussian_dist = tfp.distributions.Normal(loc=mu_pred, scale=sigma_pred)
+                    a_log_prob = gaussian_dist.log_prob(y_true[0])
+                    loss = -keras_backend.mean(a_log_prob) * G
 
-            def custom_loss(y_true, y_pred):  # (a_indices_one_hot, a_probs)
-                prob_chosen_a = keras_backend.sum(y_pred * y_true)
-                prob_chosen_a = keras_backend.clip(prob_chosen_a, 1e-8, 1 - 1e-8)  # boundaries to prevent from taking log of 0\1
-                log_prob_chosen_a = keras_backend.log(prob_chosen_a)  # log_probability, negative value (since prob<1)
-                loss = -log_prob_chosen_a * G
                 return loss
 
-            model = keras_models.Model(inputs=[s, G], outputs=a_probs)  # policy_model
-            model.compile(optimizer=self.optimizer, loss=custom_loss)
-
-            return model, policy
+            optimizer = keras_get_optimizer(self.nn.optimizer_type, self.nn.ALPHA)
+            self.model.compile(optimizer, loss=custom_loss)
 
         def forward(self, batch_s):
-            a_probs = self.policy.predict(batch_s)
-            return a_probs
+            actor_value = self.policy.predict(batch_s)
+            return actor_value
 
         def learn_batch(self, memory, memory_G):
             memory_s = np.array(memory.memory_s)
 
-            memory_a_indices = np.array(memory.memory_a_indices)
-            memory_size = len(memory_a_indices)
-            memory_a_indices_one_hot = np.zeros((memory_size, self.nn.n_actions), dtype=np.int8)
-            memory_a_indices_one_hot[np.arange(memory_size), memory_a_indices] = 1
+            if self.nn.is_discrete_action_space:
+                memory_a_indices = np.array(memory.memory_a_indices)
+                memory_size = len(memory_a_indices)
+                memory_a_indices_one_hot = np.zeros((memory_size, self.nn.n_actions), dtype=np.int8)
+                memory_a_indices_one_hot[np.arange(memory_size), memory_a_indices] = 1
 
-            # print('Training Started')
-            _ = self.model.fit([memory_s, memory_G], memory_a_indices_one_hot, verbose=0)
-            # print('Training Finished')
+                # print('Training Started')
+                self.model.fit([memory_s, memory_G], memory_a_indices_one_hot, verbose=0)
+                # print('Training Finished')
+            else:
+                memory_a_sampled = np.array(memory.memory_a_sampled)
+                memory_a_sampled = [memory_a_sampled, memory_a_sampled]  # done to match the output's shape
+
+                # print('Training Started')
+                self.model.fit([memory_s, memory_G], memory_a_sampled, verbose=0)
+                # print('Training Finished')
 
         def load_model_file(self):
             print("...Loading Keras h5...")
@@ -277,9 +326,19 @@ class NN(object):
                 torch_init.kaiming_normal_(self.fc1.weight.data)
                 torch_init.zeros_(self.fc1.bias.data)
 
-            self.fc_last = torch.nn.Linear(self.nn.fc_layers_dims[-1], self.nn.n_actions)
-            torch_init.xavier_normal_(self.fc_last.weight.data)
-            torch_init.zeros_(self.fc_last.bias.data)
+            if self.nn.is_discrete_action_space:
+                self.pi_unactivated = torch.nn.Linear(self.nn.fc_layers_dims[-1], self.nn.n_actions)
+                torch_init.xavier_normal_(self.pi_unactivated.weight.data)
+                torch_init.zeros_(self.pi_unactivated.bias.data)
+
+            else:
+                self.mu = torch.nn.Linear(self.nn.fc_layers_dims[-1], self.nn.n_actions)
+                torch_init.xavier_normal_(self.mu.weight.data)
+                torch_init.zeros_(self.mu.bias.data)
+
+                self.sigma_unactivated = torch.nn.Linear(self.nn.fc_layers_dims[-1], self.nn.n_actions)
+                torch_init.xavier_normal_(self.sigma_unactivated.weight.data)
+                torch_init.zeros_(self.sigma_unactivated.bias.data)
 
         def forward(self, batch_s):
             x = torch.tensor(batch_s, dtype=torch.float32).to(self.device)
@@ -296,16 +355,33 @@ class NN(object):
                 x = x.view(-1, self.flat_dims).to(self.device)  # Flatten
                 x = torch_func.relu(self.fc1(x))
 
-            a_probs = torch_func.softmax(self.fc_last(x)).to(self.device)
-            return a_probs
+            if self.nn.is_discrete_action_space:
+                pi = torch_func.softmax(self.pi_unactivated(x))  # a_probs = the stochastic policy (π)
+                categorical_dist = torch_dist.Categorical(pi)  # a_probs_dist
+                a_sampled = categorical_dist.sample()
+                a_log_prob = categorical_dist.log_prob(a_sampled)
+                return a_sampled, a_log_prob
+            else:
+                mu = self.mu(x)  # Mean (μ)
+                # sigma = self.sigma_unactivated(x)  # unactivated STD (σ) - can be a negative number
+                # STD (σ) is strictly real-valued (positive, non-zero - it's not a Dirac delta function):
+                sigma = torch.exp(self.sigma_unactivated(x))  # Element-wise exponential: e^(sigma_unactivated)
+                gaussian_dist = torch_dist.Normal(mu, sigma)
+                a_sampled = gaussian_dist.sample()
+                a_log_prob = gaussian_dist.log_prob(a_sampled)
+
+                a_sampled_act = torch.tanh(a_sampled)
+                action_boundary = torch.tensor(self.nn.action_boundary, dtype=torch.float32).to(self.device)
+                a = torch.mul(a_sampled_act, action_boundary)
+                return a, a_log_prob
 
         def learn_batch(self, memory, memory_G):
             memory_G = torch.tensor(memory_G, dtype=torch.float32).to(self.device)
 
             self.optimizer.zero_grad()
             loss = 0
-            for G, a_log_prob in zip(memory_G, memory.memory_a_log_probs):
-                loss += -a_log_prob * G
+            for G, a_log_prob in zip(memory_G, memory.memory_a_log_prob):
+                loss += -torch.mean(a_log_prob) * G
 
             # print('Training Started')
             loss.backward()
@@ -324,17 +400,21 @@ class NN(object):
 class Memory(object):
 
     def __init__(self, custom_env, lib_type):
+        self.is_discrete_action_space = custom_env.is_discrete_action_space
         self.n_actions = custom_env.n_actions
-        self.action_space = custom_env.action_space
+        self.action_space = custom_env.action_space if self.is_discrete_action_space else None
 
         self.lib_type = lib_type
 
         if self.lib_type == LIBRARY_TORCH:
-            self.memory_a_log_probs = []
+            self.memory_a_log_prob = []
 
         else:  # LIBRARY_TF \ LIBRARY_KERAS
             self.memory_s = []
-            self.memory_a_indices = []
+            if self.is_discrete_action_space:
+                self.memory_a_indices = []
+            else:
+                self.memory_a_sampled = []
 
         self.memory_r = []
         self.memory_terminal = []
@@ -342,22 +422,28 @@ class Memory(object):
     def store_transition(self, s, a, r, is_terminal):
         if self.lib_type != LIBRARY_TORCH:  # LIBRARY_TF \ LIBRARY_KERAS
             self.memory_s.append(s)
-            self.memory_a_indices.append(self.action_space.index(a))
+            if self.is_discrete_action_space:
+                self.memory_a_indices.append(self.action_space.index(a))
 
         self.memory_r.append(r)
         self.memory_terminal.append(int(is_terminal))
 
-    def store_a_log_probs(self, a_log_probs):
-        if self.lib_type == LIBRARY_TORCH:
-            self.memory_a_log_probs.append(a_log_probs)
+    def store_a_sampled(self, a_sampled):
+        self.memory_a_sampled.append(a_sampled)
+
+    def store_a_log_prob(self, a_log_probs):
+        self.memory_a_log_prob.append(a_log_probs)
 
     def reset_memory(self):
         if self.lib_type == LIBRARY_TORCH:
-            self.memory_a_log_probs = []
+            self.memory_a_log_prob = []
 
         else:  # LIBRARY_TF \ LIBRARY_KERAS
             self.memory_s = []
-            self.memory_a_indices = []
+            if self.is_discrete_action_space:
+                self.memory_a_indices = []
+            else:
+                self.memory_a_sampled = []
 
         self.memory_r = []
         self.memory_terminal = []
@@ -378,7 +464,10 @@ class Agent(object):
         self.optimizer_type = optimizer_type
         self.ALPHA = alpha
 
-        self.action_space = custom_env.action_space
+        self.is_discrete_action_space = custom_env.is_discrete_action_space
+        self.n_actions = custom_env.n_actions
+        self.action_space = custom_env.action_space if self.is_discrete_action_space else None
+        self.action_boundary = None if self.is_discrete_action_space else custom_env.action_boundary
 
         self.lib_type = lib_type
 
@@ -407,31 +496,62 @@ class Agent(object):
 
         else:  # self.lib_type == LIBRARY_TORCH
             if custom_env.input_type == INPUT_TYPE_STACKED_FRAMES:
-                relevant_screen_size = custom_env.relevant_screen_size
-                image_channels = custom_env.image_channels
+                nn = nn_base.create_nn_torch(custom_env.relevant_screen_size, custom_env.image_channels)
             else:
-                relevant_screen_size = None
-                image_channels = None
-
-            nn = nn_base.create_nn_torch(relevant_screen_size, image_channels)
+                nn = nn_base.create_nn_torch()
 
         return nn
 
     def choose_action(self, s):
         s = s[np.newaxis, :]
 
+        policy_value = self.policy_nn.forward(s)
+
+        if self.is_discrete_action_space:
+            a = self.choose_action_discrete(policy_value)
+        else:
+            a = self.choose_action_continuous(policy_value)
+
+        return a
+
+    def choose_action_discrete(self, policy_value):
         if self.lib_type == LIBRARY_TORCH:
-            a_probs = self.policy_nn.forward(s)[0]
-            a_probs_dist = torch_dist.Categorical(a_probs)
-            a_tensor = a_probs_dist.sample()
-            a_log_probs = a_probs_dist.log_prob(a_tensor)
-            self.memory.store_a_log_probs(a_log_probs)
-            a_index = a_tensor.item()
+            a_sampled, a_log_prob = policy_value
+            self.memory.store_a_log_prob(a_log_prob)
+            a_index = a_sampled.item()
             a = self.action_space[a_index]
 
         else:  # LIBRARY_TF \ LIBRARY_KERAS
-            a_probs = self.policy_nn.forward(s)[0]
-            a = np.random.choice(self.action_space, p=a_probs)
+            a = np.random.choice(self.action_space, p=policy_value[0])  # pi, a_probs
+
+        return a
+
+    def choose_action_continuous(self, policy_value):
+        if self.lib_type == LIBRARY_TORCH:
+            a, a_log_prob = policy_value[0][0], policy_value[1][0]
+            self.memory.store_a_log_prob(a_log_prob)
+            a = np.array([a_t.item() for a_t in a])
+
+        elif self.lib_type == LIBRARY_TF:
+            mu, sigma = policy_value[0][0], policy_value[1][0]
+            gaussian_dist = tfp.distributions.Normal(loc=mu, scale=sigma)
+            a_sampled = gaussian_dist.sample()
+            a_sampled = a_sampled.eval(session=self.policy_nn.sess)
+            self.memory.store_a_sampled(a_sampled)
+            a_activated = tf.nn.tanh(a_sampled)
+            action_boundary = tf.constant(self.action_boundary, dtype='float32')
+            a_tensor = tf.multiply(a_activated, action_boundary)
+            a = a_tensor.eval(session=self.policy_nn.sess)
+
+        else:  # LIBRARY_KERAS
+            mu, sigma = policy_value[0][0], policy_value[1][0]  # Mean (μ), STD (σ)
+            a_sampled = keras_backend.random_normal((1,), mean=mu, stddev=sigma)
+            a_sampled = keras_backend.get_value(a_sampled)
+            self.memory.store_a_sampled(a_sampled)
+            a_activated = keras_backend.tanh(a_sampled)
+            action_boundary = keras_backend.constant(self.action_boundary, dtype='float32')
+            a_tensor = a_activated * action_boundary
+            a = keras_backend.get_value(a_tensor)
 
         return a
 
@@ -517,7 +637,7 @@ def train_agent(custom_env, agent, n_episodes,
             learn_episode_index = i
             learn_start_time = datetime.datetime.now()
             agent.learn()
-            print('Learn time: %s' % str(datetime.datetime.now() - learn_start_time).split('.')[0])
+            # print('Learn time: %s' % str(datetime.datetime.now() - learn_start_time).split('.')[0])
 
         if visualize and i == n_episodes - 1:
             env.close()

@@ -54,7 +54,7 @@ Note that some some algorithms have restrictions.
 
 Discrete Action Space | Continuous Action Space
 --- | ---
-Deep Q Learning, Policy Gradient | Deep Deterministic Policy Gradient
+Deep Q Learning | Deep Deterministic Policy Gradient
 
 * Some current restrictions are due to the fact that there's more work to be done (code-wise), 
 meaning: writing for **every** -
