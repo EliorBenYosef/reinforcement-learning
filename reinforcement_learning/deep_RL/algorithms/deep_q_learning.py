@@ -47,7 +47,7 @@ class NN(object):
     def create_nn_keras(self):
         return NN.NN_Keras(self)
 
-    def create_nn_torch(self, relevant_screen_size, image_channels):
+    def create_nn_torch(self, relevant_screen_size=None, image_channels=None):
         return NN.NN_Torch(self, relevant_screen_size, image_channels)
 
     class NN_TensorFlow(object):
@@ -113,10 +113,10 @@ class NN(object):
 
         def learn_batch(self, batch_s, batch_a_indices_one_hot, q_target_chosen_a):
             # print('Training Started')
-            _ = self.sess.run(self.optimize,
-                              feed_dict={self.s: batch_s,
-                                         self.a_indices_one_hot: batch_a_indices_one_hot,
-                                         self.q_target_chosen_a: q_target_chosen_a})
+            self.sess.run(self.optimize,
+                          feed_dict={self.s: batch_s,
+                                     self.a_indices_one_hot: batch_a_indices_one_hot,
+                                     self.q_target_chosen_a: q_target_chosen_a})
             # print('Training Finished')
 
         def load_model_file(self):
@@ -189,7 +189,7 @@ class NN(object):
 
         def learn_batch(self, batch_s, batch_a_indices_one_hot, q_target_chosen_a):
             # print('Training Started')
-            _ = self.model.fit([batch_s, batch_a_indices_one_hot], q_target_chosen_a, verbose=0)
+            self.model.fit([batch_s, batch_a_indices_one_hot], q_target_chosen_a, verbose=0)
             # print('Training Finished')
 
         def load_model_file(self):
@@ -400,13 +400,9 @@ class Agent(object):
 
         else:  # self.lib_type == LIBRARY_TORCH:
             if custom_env.input_type == INPUT_TYPE_STACKED_FRAMES:
-                relevant_screen_size = custom_env.relevant_screen_size
-                image_channels = custom_env.image_channels
+                nn = nn_base.create_nn_torch(custom_env.relevant_screen_size, custom_env.image_channels)
             else:
-                relevant_screen_size = None
-                image_channels = None
-
-            nn = nn_base.create_nn_torch(relevant_screen_size, image_channels)
+                nn = nn_base.create_nn_torch()
 
         return nn
 
