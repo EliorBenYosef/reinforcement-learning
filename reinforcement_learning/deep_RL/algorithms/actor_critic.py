@@ -34,7 +34,7 @@ class NN(object):
         self.fc_layers_dims = fc_layers_dims
         self.is_discrete_action_space = custom_env.is_discrete_action_space
         self.n_actions = custom_env.n_actions
-        self.action_space = custom_env.action_space if self.is_discrete_action_space else None
+        # self.action_space = custom_env.action_space if self.is_discrete_action_space else None
         self.action_boundary = None if self.is_discrete_action_space else custom_env.action_boundary
 
         self.optimizers_type_and_lr = optimizers_type_and_lr
@@ -123,7 +123,8 @@ class NN(object):
                         actor_loss = neg_a_log_probs * self.td_error
 
                     else:
-                        self.a_sampled = tf.compat.v1.placeholder(tf.float32, shape=[None], name='a_sampled')
+                        self.a_sampled = tf.compat.v1.placeholder(tf.float32, shape=[None, self.nn.n_actions],
+                                                                  name='a_sampled')
 
                         self.mu = tf.layers.dense(x, units=self.nn.n_actions, name='mu',  # Mean (μ)
                                                   kernel_initializer=tf.initializers.glorot_normal())
@@ -153,12 +154,12 @@ class NN(object):
             v = self.sess.run(self.v, feed_dict={self.s: s})  # Critic value
             return v
 
-        def train(self, s, v_target=None, td_error=None, a_value=None):
+        def train(self, batch_s, v_target=None, td_error=None, a_value=None):
             """
             :param a_value: a_index (Discrete AS), a_sampled (Continuous AS)
             """
             # print('Training Started')
-            feed_dict = {self.s: s}
+            feed_dict = {self.s: batch_s}
 
             if self.nn.network_type == NETWORK_TYPE_SHARED or self.nn.is_actor:
                 feed_dict[self.td_error] = td_error
@@ -367,8 +368,8 @@ class NN(object):
                     torch_init.xavier_normal_(self.sigma_unactivated.weight.data)
                     torch_init.zeros_(self.sigma_unactivated.bias.data)
 
-        def forward(self, batch_s, is_actor):
-            x = torch.tensor(batch_s, dtype=torch.float32).to(self.device)
+        def forward(self, s, is_actor):
+            x = torch.tensor(s, dtype=torch.float32).to(self.device)
 
             if self.nn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
                 x = torch_func.relu(self.fc1(x))
@@ -488,7 +489,8 @@ class AC(object):
         def choose_action_continuous(self, actor_value):
             mu, sigma = actor_value[0][0], actor_value[1][0]
             gaussian_dist = tfp.distributions.Normal(loc=mu, scale=sigma)
-            self.a_sampled = gaussian_dist.sample()
+            a_sampled = gaussian_dist.sample()
+            self.a_sampled = a_sampled.eval(session=self.sess)
             a_activated = tf.nn.tanh(self.a_sampled)
             action_boundary = tf.constant(self.ac.action_boundary, dtype='float32')
             a_tensor = tf.multiply(a_activated, action_boundary)
@@ -514,7 +516,7 @@ class AC(object):
                 a_index = self.ac.action_space.index(a)
                 a_value = np.expand_dims(np.array(a_index), axis=0)
             else:
-                a_value = self.a_sampled.eval(session=self.sess)
+                a_value = self.a_sampled[np.newaxis, :]
 
             if self.ac.network_type == NETWORK_TYPE_SEPARATE:
                 self.critic.train(s, v_target=v_target)
@@ -554,12 +556,12 @@ class AC(object):
             if self.ac.is_discrete_action_space:
                 a = np.random.choice(self.ac.action_space, p=actor_value[0])
             else:
-                a = self.choose_action_continuous(actor_value[0])
+                a = self.choose_action_continuous(actor_value)
 
             return a
 
         def choose_action_continuous(self, actor_value):
-            mu, sigma = actor_value[:self.ac.n_actions], actor_value[self.ac.n_actions:]  # Mean (μ), STD (σ)
+            mu, sigma = actor_value[0, :self.ac.n_actions], actor_value[0, self.ac.n_actions:]  # Mean (μ), STD (σ)
             a_sampled = keras_backend.random_normal((1,), mean=mu, stddev=sigma)
             self.a_sampled = keras_backend.get_value(a_sampled)
             a_activated = keras_backend.tanh(self.a_sampled)
