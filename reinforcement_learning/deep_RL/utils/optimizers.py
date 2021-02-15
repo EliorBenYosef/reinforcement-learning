@@ -6,9 +6,9 @@ from torch.optim import adagrad as torch_opt_adagrad, adadelta as torch_opt_adad
 from reinforcement_learning.deep_RL.const import OPTIMIZER_SGD, OPTIMIZER_Adagrad, OPTIMIZER_Adadelta, OPTIMIZER_RMSprop
 
 
-def tf_get_optimizer(optimizer_type, lr, momentum=None):  # momentum=0.9
+def tf_get_optimizer(optimizer_type, lr, momentum=0.):  # momentum=0.9
     if optimizer_type == OPTIMIZER_SGD:
-        if momentum is None:
+        if momentum == 0:
             return tf.compat.v1.train.GradientDescentOptimizer(lr)
         else:
             return tf.compat.v1.train.MomentumOptimizer(lr, momentum)
@@ -17,10 +17,8 @@ def tf_get_optimizer(optimizer_type, lr, momentum=None):  # momentum=0.9
     elif optimizer_type == OPTIMIZER_Adadelta:
         return tf.compat.v1.train.AdadeltaOptimizer(lr)
     elif optimizer_type == OPTIMIZER_RMSprop:
-        if momentum is None:
-            return tf.compat.v1.train.RMSPropOptimizer(lr)
-        else:
-            return tf.compat.v1.train.RMSPropOptimizer(lr, decay=0.99, momentum=momentum, epsilon=1e-6)
+        return tf.compat.v1.train.RMSPropOptimizer(lr, momentum=momentum)
+        # return tf.compat.v1.train.RMSPropOptimizer(lr, decay=0.99, momentum=momentum, epsilon=1e-6)
     else:  # optimizer_type == OPTIMIZER_Adam
         return tf.compat.v1.train.AdamOptimizer(lr)
 
@@ -40,20 +38,15 @@ def keras_get_optimizer(optimizer_type, lr, momentum=0., rho=None, epsilon=None,
         return keras_opt.Adam(lr, beta_1, beta_2, epsilon, decay)
 
 
-def torch_get_optimizer(optimizer_type, lr, params, momentum=None):  # momentum=0.9
+def torch_get_optimizer(optimizer_type, lr, params, momentum=0., weight_decay=0.):  # momentum=0.9
     if optimizer_type == OPTIMIZER_SGD:
-        if momentum is None:
-            return torch.optim.SGD(params, lr)
-        else:
-            return torch.optim.SGD(params, lr, momentum)
+        return torch.optim.SGD(params, lr, momentum, weight_decay=weight_decay)
     elif optimizer_type == OPTIMIZER_Adagrad:
-        return torch_opt_adagrad.Adagrad(params, lr)
+        return torch_opt_adagrad.Adagrad(params, lr, weight_decay=weight_decay)
     elif optimizer_type == OPTIMIZER_Adadelta:
-        return torch_opt_adadelta.Adadelta(params, lr)
+        return torch_opt_adadelta.Adadelta(params, lr, weight_decay=weight_decay)
     elif optimizer_type == OPTIMIZER_RMSprop:
-        if momentum is None:
-            return torch_opt_rmsprop.RMSprop(params, lr)
-        else:
-            return torch_opt_rmsprop.RMSprop(params, lr, weight_decay=0.99, momentum=momentum, eps=1e-6)
+        return torch_opt_rmsprop.RMSprop(params, lr, weight_decay=weight_decay, momentum=momentum)
+        # return torch_opt_rmsprop.RMSprop(params, lr, eps=1e-6, weight_decay=0.99, momentum=momentum)
     else:  # optimizer_type == OPTIMIZER_Adam
-        return torch.optim.Adam(params, lr)
+        return torch.optim.Adam(params, lr, weight_decay=weight_decay)
