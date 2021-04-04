@@ -11,7 +11,8 @@ import sys
 import argparse
 
 from reinforcement_learning.deep_RL.const import LIBRARY_TF, LIBRARY_KERAS, LIBRARY_TORCH, \
-    OPTIMIZER_Adam, OPTIMIZER_RMSprop, OPTIMIZER_Adadelta, OPTIMIZER_Adagrad, OPTIMIZER_SGD
+    OPTIMIZER_Adam, OPTIMIZER_RMSprop, OPTIMIZER_Adadelta, OPTIMIZER_Adagrad, OPTIMIZER_SGD, \
+    NETWORK_TYPE_SEPARATE, NETWORK_TYPE_SHARED
 from reinforcement_learning.deep_RL.envs import CartPole, Pendulum, MountainCarContinuous, \
     LunarLander, LunarLanderContinuous, BipedalWalker, Breakout, SpaceInvaders
 
@@ -157,7 +158,8 @@ def command_line_play(args=None):
 
     else:  # args.algo == 'AC'
         beta = args.b
-        play_ac(custom_env, n_episodes, fc_layers_dims, optimizer_type, alpha, beta,
+        network_type = NETWORK_TYPE_SHARED
+        play_ac(custom_env, n_episodes, fc_layers_dims, network_type, optimizer_type, alpha, beta,
                 lib_type, enable_models_saving, load_checkpoint)
 
 
