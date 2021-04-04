@@ -1,6 +1,5 @@
 import os
 from IPython.display import clear_output
-import math
 import time
 import datetime
 import numpy as np
