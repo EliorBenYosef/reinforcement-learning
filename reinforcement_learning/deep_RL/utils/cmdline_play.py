@@ -20,9 +20,9 @@ def parse_args(args):
     """
     Parse arguments from command line input.
     argparse is a built-in module for python that allows us to parse command-line options, from cmd text into variables.
-        to run it from cmd type the command:
-            python cmdline_play.py --n 100 ...
-            python3 cmdline_play.py --n 100 ...
+        to run it from cmd, open the terminal or open cmd from the project's root folder, and type the command:
+            python -m reinforcement_learning.deep_RL.utils.cmdline_play --lib torch --algo PG --env cp --n 100
+            python3 -m reinforcement_learning.deep_RL.utils.cmdline_play --lib torch --algo PG --env cp --n 100
         to run multiple times, put && in between the (full) commands (python ...)
 
     parser.add_argument('', type=, default=, help='')
@@ -61,7 +61,7 @@ def parse_args(args):
     parser.add_argument('--fc1', type=int, default=256, help='Dimensions of the first FC layer')
     parser.add_argument('--fc2', type=int, default=256, help='Dimensions of the second FC layer')
 
-    parser.add_argument('--opt', type=int, default='adam', help='Optimizer')
+    parser.add_argument('--opt', type=str, default='adam', help='Optimizer')
     parser.add_argument('--a', type=float, default=0.001, help='Alpha learning rate for Optimizer')  # 0.0005, 0.003 ?
     parser.add_argument('--b', type=float, default=0.0005, help="DDPG/AC - Beta learning rate for Optimizer")
 
