@@ -4,11 +4,13 @@ import numpy as np
 from gym import wrappers
 
 import tensorflow as tf
-import tensorflow_probability as tfp
-import keras.models as keras_models
-import keras.layers as keras_layers
-import keras.initializers as keras_init
-import keras.backend as keras_backend
+from tensorflow.python.framework.ops import reset_default_graph
+from tensorflow.python.ops.variables import trainable_variables
+import tensorflow_probability.python.distributions as tfpd
+import tensorflow.keras.models as keras_models
+import tensorflow.keras.layers as keras_layers
+import tensorflow.keras.initializers as keras_init
+import tensorflow.keras.backend as keras_backend
 import torch
 import torch.nn.functional as torch_func
 import torch.nn.init as torch_init
@@ -68,7 +70,7 @@ class NN(object):
             self.saver = tf.compat.v1.train.Saver()
             self.checkpoint_file = os.path.join(nn.chkpt_dir, 'policy_nn_tf.ckpt')
 
-            self.params = tf.trainable_variables(scope=self.name)
+            self.params = trainable_variables(scope=self.name)
 
         def build_network(self):
             with tf.compat.v1.variable_scope(self.name):
@@ -76,34 +78,34 @@ class NN(object):
                 self.G = tf.compat.v1.placeholder(tf.float32, shape=[None], name='G')
 
                 if self.nn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
-                    x = tf.layers.dense(self.s, units=self.nn.fc_layers_dims[0], activation='relu',
+                    x = tf.compat.v1.layers.dense(self.s, units=self.nn.fc_layers_dims[0], activation='relu',
                                         kernel_initializer=tf.initializers.he_normal())
 
                 else:  # self.input_type == INPUT_TYPE_STACKED_FRAMES
-                    x = tf.layers.conv2d(self.s, filters=32, kernel_size=(8, 8), strides=4, name='conv1',
+                    x = tf.compat.v1.layers.conv2d(self.s, filters=32, kernel_size=(8, 8), strides=4, name='conv1',
                                          kernel_initializer=tf.initializers.he_normal())
-                    x = tf.layers.batch_normalization(x, epsilon=1e-5, name='conv1_bn')
+                    x = tf.compat.v1.layers.batch_normalization(x, epsilon=1e-5, name='conv1_bn')
                     x = tf.nn.relu(x)
 
-                    x = tf.layers.conv2d(x, filters=64, kernel_size=(4, 4), strides=2, name='conv2',
+                    x = tf.compat.v1.layers.conv2d(x, filters=64, kernel_size=(4, 4), strides=2, name='conv2',
                                          kernel_initializer=tf.initializers.he_normal())
-                    x = tf.layers.batch_normalization(x, epsilon=1e-5, name='conv2_bn')
+                    x = tf.compat.v1.layers.batch_normalization(x, epsilon=1e-5, name='conv2_bn')
                     x = tf.nn.relu(x)
 
-                    x = tf.layers.conv2d(x, filters=128, kernel_size=(3, 3), strides=1, name='conv3',
+                    x = tf.compat.v1.layers.conv2d(x, filters=128, kernel_size=(3, 3), strides=1, name='conv3',
                                          kernel_initializer=tf.initializers.he_normal())
-                    x = tf.layers.batch_normalization(x, epsilon=1e-5, name='conv3_bn')
+                    x = tf.compat.v1.layers.batch_normalization(x, epsilon=1e-5, name='conv3_bn')
                     x = tf.nn.relu(x)
 
-                    x = tf.layers.flatten(x)
+                    x = tf.compat.v1.layers.flatten(x)
 
-                x = tf.layers.dense(x, units=self.nn.fc_layers_dims[-1], activation='relu',
+                x = tf.compat.v1.layers.dense(x, units=self.nn.fc_layers_dims[-1], activation='relu',
                                     kernel_initializer=tf.initializers.he_normal())
 
                 if self.nn.is_discrete_action_space:
                     self.a_index = tf.compat.v1.placeholder(tf.int32, shape=[None], name='a_index')
 
-                    a_logits = tf.layers.dense(x, units=self.nn.n_actions,
+                    a_logits = tf.compat.v1.layers.dense(x, units=self.nn.n_actions,
                                                kernel_initializer=tf.initializers.glorot_normal())
                     self.pi = tf.nn.softmax(a_logits, name='pi')  # a_probs
 
@@ -115,15 +117,15 @@ class NN(object):
                     self.a_sampled = tf.compat.v1.placeholder(tf.float32, shape=[None, self.nn.n_actions],
                                                               name='a_sampled')
 
-                    self.mu = tf.layers.dense(x, units=self.nn.n_actions, name='mu',  # Mean (μ)
+                    self.mu = tf.compat.v1.layers.dense(x, units=self.nn.n_actions, name='mu',  # Mean (μ)
                                               kernel_initializer=tf.initializers.glorot_normal())
-                    sigma_unactivated = tf.layers.dense(x, units=self.nn.n_actions, name='sigma_unactivated',  # unactivated STD (σ) - can be a negative number
+                    sigma_unactivated = tf.compat.v1.layers.dense(x, units=self.nn.n_actions, name='sigma_unactivated',  # unactivated STD (σ) - can be a negative number
                                                         kernel_initializer=tf.initializers.glorot_normal())
                     # Element-wise exponential: e^(sigma_unactivated):
                     #   we activate sigma since STD (σ) is strictly real-valued (positive, non-zero - it's not a Dirac delta function).
                     self.sigma = tf.exp(sigma_unactivated, name='sigma')  # STD (σ)
 
-                    gaussian_dist = tfp.distributions.Normal(loc=self.mu, scale=self.sigma)
+                    gaussian_dist = tfpd.Normal(loc=self.mu, scale=self.sigma)
                     a_log_prob = gaussian_dist.log_prob(self.a_sampled)
                     loss = -tf.reduce_mean(a_log_prob) * self.G
 
@@ -223,7 +225,7 @@ class NN(object):
                     loss = -log_prob_chosen_a * G
                 else:
                     mu_pred, sigma_pred = y_pred[0], y_pred[1]  # Mean (μ), STD (σ)
-                    gaussian_dist = tfp.distributions.Normal(loc=mu_pred, scale=sigma_pred)
+                    gaussian_dist = tfpd.Normal(loc=mu_pred, scale=sigma_pred)
                     a_log_prob = gaussian_dist.log_prob(y_true[0])
                     loss = -keras_backend.mean(a_log_prob) * G
 
@@ -479,7 +481,7 @@ class Agent(object):
         make_sure_dir_exists(self.chkpt_dir)
 
         if self.lib_type == LIBRARY_TF:
-            tf.reset_default_graph()
+            reset_default_graph()
         elif self.lib_type == LIBRARY_KERAS:
             keras_backend.clear_session()
 
@@ -534,7 +536,7 @@ class Agent(object):
 
         elif self.lib_type == LIBRARY_TF:
             mu, sigma = policy_value[0][0], policy_value[1][0]
-            gaussian_dist = tfp.distributions.Normal(loc=mu, scale=sigma)
+            gaussian_dist = tfpd.Normal(loc=mu, scale=sigma)
             a_sampled = gaussian_dist.sample()
             a_sampled = a_sampled.eval(session=self.policy_nn.sess)
             self.memory.store_a_sampled(a_sampled)

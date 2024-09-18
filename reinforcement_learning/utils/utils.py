@@ -89,6 +89,9 @@ def decrement_eps(eps_current, eps_min, eps_dec, eps_dec_type, eps_max=None, t=N
 
 
 def calculate_standardized_returns_of_consecutive_episodes(memory_r, memory_terminal, GAMMA):
+    """
+    for the PG algorithm
+    """
     memory_G = np.zeros_like(memory_r, dtype=np.float32)  # np.float64
     G = 0
     for i in reversed(range(len(memory_r))):

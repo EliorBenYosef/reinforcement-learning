@@ -36,6 +36,16 @@ from reinforcement_learning.utils.utils import normalize
 
 
 class BaseEnv:
+    name: str
+    file_name: str
+    env: gym.wrappers.time_limit.TimeLimit
+    input_type: int
+    input_dims: tuple
+    is_discrete_action_space: bool
+    n_actions: int
+    action_space: list
+    GAMMA: float
+    # EPS_MIN: float
 
     @staticmethod
     def get_state(observation, prev_s):
@@ -87,7 +97,7 @@ class CartPole(BaseEnv):
         self.env = gym.make('CartPole-v1')
 
         self.input_type = INPUT_TYPE_OBSERVATION_VECTOR
-        self.input_dims = [4]   # Box(4,)
+        self.input_dims = (4,)   # Box(4,)
 
         self.is_discrete_action_space = True
         self.n_actions = 2      # Discrete(2)
@@ -119,7 +129,7 @@ class Pendulum(BaseEnv):
         self.env = gym.make('Pendulum-v0')
 
         self.input_type = INPUT_TYPE_OBSERVATION_VECTOR
-        self.input_dims = [3]   # Box(3,)
+        self.input_dims = (3,)   # Box(3,)
 
         self.is_discrete_action_space = False
         self.n_actions = 1      # Box(1,)
@@ -149,7 +159,7 @@ class MountainCarContinuous(BaseEnv):
         self.env = gym.make('MountainCarContinuous-v0')
 
         self.input_type = INPUT_TYPE_OBSERVATION_VECTOR
-        self.input_dims = [2]   # Box(2,)
+        self.input_dims = (2,)   # Box(2,)
 
         self.is_discrete_action_space = False
         self.n_actions = 1      # Box(1,)
@@ -182,7 +192,7 @@ class LunarLander(BaseEnv):
         self.env = gym.make('LunarLander-v2')
 
         self.input_type = INPUT_TYPE_OBSERVATION_VECTOR
-        self.input_dims = [8]   # Box(8,)
+        self.input_dims = (8,)   # Box(8,)
 
         self.is_discrete_action_space = True
         self.n_actions = 4      # Discrete(4)
@@ -212,7 +222,7 @@ class LunarLanderContinuous(BaseEnv):
         self.env = gym.make('LunarLanderContinuous-v2')
 
         self.input_type = INPUT_TYPE_OBSERVATION_VECTOR
-        self.input_dims = [8]   # Box(8,)
+        self.input_dims = (8,)   # Box(8,)
 
         self.is_discrete_action_space = False
         self.n_actions = 2      # Box(2,)
@@ -251,11 +261,11 @@ class BipedalWalker(BaseEnv):
 
     def __init__(self):
         self.name = 'Bipedal Walker'
-        self.file_name = 'bipedal-walker-v2'
-        self.env = gym.make('BipedalWalker-v2')
+        self.file_name = 'bipedal-walker-v3'
+        self.env = gym.make('BipedalWalker-v3')
 
         self.input_type = INPUT_TYPE_OBSERVATION_VECTOR
-        self.input_dims = [24]      # Box(24,)
+        self.input_dims = (24,)      # Box(24,)
 
         self.is_discrete_action_space = False
         self.n_actions = 4          # Box(4,)

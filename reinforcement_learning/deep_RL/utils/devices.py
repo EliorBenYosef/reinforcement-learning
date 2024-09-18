@@ -1,7 +1,7 @@
 import os
 import tensorflow as tf
 import torch
-from keras.backend import tensorflow_backend as keras_tf_backend, set_session as keras_set_session
+from tensorflow.python.keras.backend import backend as keras_tf_backend, set_session as keras_set_session
 from tensorflow.python.client import device_lib as tf_device_lib
 
 from reinforcement_learning.deep_RL.const import LIBRARY_TF, LIBRARY_KERAS

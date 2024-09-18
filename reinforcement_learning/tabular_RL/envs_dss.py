@@ -17,6 +17,12 @@ import gym
 
 
 class BaseEnv:
+    name: str
+    file_name: str
+    env: gym.wrappers.time_limit.TimeLimit
+    states: list
+    GAMMA: float
+    EPS_MIN: float
 
     @staticmethod
     def get_evaluation_tuple():
@@ -136,8 +142,8 @@ class Taxi(BaseEnv):
 
     def __init__(self):
         self.name = 'Taxi'
-        self.file_name = 'taxi-v2'
-        self.env = gym.make('Taxi-v2')
+        self.file_name = 'taxi-v3'
+        self.env = gym.make('Taxi-v3')
 
         # State space analysis:
         self.rows = 5

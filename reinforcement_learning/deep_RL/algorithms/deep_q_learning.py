@@ -4,10 +4,12 @@ import numpy as np
 from gym import wrappers
 
 import tensorflow as tf
-import keras.models as keras_models
-import keras.layers as keras_layers
-import keras.initializers as keras_init
-import keras.backend as keras_backend
+from tensorflow.python.framework.ops import reset_default_graph
+from tensorflow.python.ops.variables import trainable_variables
+import tensorflow.keras.models as keras_models
+import tensorflow.keras.layers as keras_layers
+import tensorflow.keras.initializers as keras_init
+import tensorflow.keras.backend as keras_backend
 import torch
 import torch.nn.functional as torch_func
 import torch.nn.init as torch_init
@@ -26,7 +28,7 @@ from reinforcement_learning.deep_RL.utils.replay_buffer import ReplayBuffer
 
 class NN(object):
     """
-    Q NN \ Deep Q-Network (DQN)
+    Q NN / Deep Q-Network (DQN)
     """
 
     def __init__(self, custom_env, fc_layers_dims, optimizer_type, alpha, chkpt_dir):
@@ -64,7 +66,7 @@ class NN(object):
             self.saver = tf.compat.v1.train.Saver()
             self.checkpoint_file = os.path.join(nn.chkpt_dir, 'q_nn_tf.ckpt')
 
-            self.params = tf.trainable_variables(scope=self.name)
+            self.params = trainable_variables(scope=self.name)
 
         def build_network(self):
             with tf.compat.v1.variable_scope(self.name):
@@ -74,31 +76,31 @@ class NN(object):
                 self.q_target_chosen_a = tf.compat.v1.placeholder(tf.float32, shape=[None], name='q_target_chosen_a')
 
                 if self.nn.input_type == INPUT_TYPE_OBSERVATION_VECTOR:
-                    x = tf.layers.dense(self.s, units=self.nn.fc_layers_dims[0], activation='relu',
+                    x = tf.compat.v1.layers.dense(self.s, units=self.nn.fc_layers_dims[0], activation='relu',
                                         kernel_initializer=tf.initializers.he_normal())
 
                 else:  # self.input_type == INPUT_TYPE_STACKED_FRAMES
-                    x = tf.layers.conv2d(self.s, filters=32, kernel_size=(8, 8), strides=4, name='conv1',
+                    x = tf.compat.v1.layers.conv2d(self.s, filters=32, kernel_size=(8, 8), strides=4, name='conv1',
                                          kernel_initializer=tf.initializers.he_normal())
-                    x = tf.layers.batch_normalization(x, epsilon=1e-5, name='conv1_bn')
+                    x = tf.compat.v1.layers.batch_normalization(x, epsilon=1e-5, name='conv1_bn')
                     x = tf.nn.relu(x)
 
-                    x = tf.layers.conv2d(x, filters=64, kernel_size=(4, 4), strides=2, name='conv2',
+                    x = tf.compat.v1.layers.conv2d(x, filters=64, kernel_size=(4, 4), strides=2, name='conv2',
                                          kernel_initializer=tf.initializers.he_normal())
-                    x = tf.layers.batch_normalization(x, epsilon=1e-5, name='conv2_bn')
+                    x = tf.compat.v1.layers.batch_normalization(x, epsilon=1e-5, name='conv2_bn')
                     x = tf.nn.relu(x)
 
-                    x = tf.layers.conv2d(x, filters=128, kernel_size=(3, 3), strides=1, name='conv3',
+                    x = tf.compat.v1.layers.conv2d(x, filters=128, kernel_size=(3, 3), strides=1, name='conv3',
                                          kernel_initializer=tf.initializers.he_normal())
-                    x = tf.layers.batch_normalization(x, epsilon=1e-5, name='conv3_bn')
+                    x = tf.compat.v1.layers.batch_normalization(x, epsilon=1e-5, name='conv3_bn')
                     x = tf.nn.relu(x)
 
-                    x = tf.layers.flatten(x)
+                    x = tf.compat.v1.layers.flatten(x)
 
-                x = tf.layers.dense(x, units=self.nn.fc_layers_dims[-1], activation='relu',
+                x = tf.compat.v1.layers.dense(x, units=self.nn.fc_layers_dims[-1], activation='relu',
                                     kernel_initializer=tf.initializers.he_normal())
 
-                self.q_values = tf.layers.dense(x, units=self.nn.n_actions,
+                self.q_values = tf.compat.v1.layers.dense(x, units=self.nn.n_actions,
                                                 kernel_initializer=tf.initializers.glorot_normal())
 
                 q_chosen_a = tf.reduce_sum(tf.multiply(self.q_values, self.a_indices_one_hot))
@@ -376,7 +378,7 @@ class Agent(object):
         make_sure_dir_exists(self.chkpt_dir)
 
         if self.lib_type == LIBRARY_TF:
-            tf.reset_default_graph()
+            reset_default_graph()
         elif self.lib_type == LIBRARY_KERAS:
             keras_backend.clear_session()
 

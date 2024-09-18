@@ -3,8 +3,8 @@ from tests.test_deep_rl.test_dql import play_dql
 # from tests.test_deep_rl.test_ddpg import play_ddpg
 # from tests.test_deep_rl.test_ac import play_ac
 
-import tensorflow as tf
-import keras.backend as keras_backend
+from tensorflow.python.framework.ops import reset_default_graph
+import tensorflow.keras.backend as keras_backend
 
 from reinforcement_learning.utils.plotter import plot_running_average_comparison
 from reinforcement_learning.deep_RL.const import LIBRARY_TF, LIBRARY_KERAS, LIBRARY_TORCH, \
@@ -98,7 +98,7 @@ def perform_grid_search(lib_type=LIBRARY_TF, enable_models_saving=False, load_ch
                                             scores_histories_test.append(scores_history_test)
 
                                             if lib_type == LIBRARY_TF:
-                                                tf.reset_default_graph()
+                                                reset_default_graph()
                                             elif lib_type == LIBRARY_KERAS:
                                                 keras_backend.clear_session()
 

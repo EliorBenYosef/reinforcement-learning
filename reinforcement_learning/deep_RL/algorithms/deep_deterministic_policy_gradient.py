@@ -8,7 +8,9 @@ import numpy as np
 from gym import wrappers
 
 import tensorflow as tf
-# import keras.backend as keras_backend
+from tensorflow.python.framework.ops import reset_default_graph
+from tensorflow.python.ops.variables import trainable_variables
+# import tensorflow.keras.backend as keras_backend
 import torch
 import torch.nn.functional as torch_func
 import torch.nn.init as torch_init
@@ -58,8 +60,9 @@ class NN:
 
                 self.build_network()
 
-                self.params = tf.trainable_variables(scope=self.nn.name)
+                self.params = trainable_variables(scope=self.nn.name)
 
+                # actor loss: mean(-batch_q_of_a_pred)
                 self.mu_grads = tf.gradients(self.mu, self.params, -self.a_grads)
                 self.normalized_mu_grads = list(map(lambda x: tf.div(x, self.nn.memory_batch_size), self.mu_grads))
 
@@ -72,21 +75,21 @@ class NN:
                     self.a_grads = tf.compat.v1.placeholder(tf.float32, shape=[None, self.nn.n_actions], name='a_grads')
 
                     f1 = 1. / np.sqrt(self.nn.fc_layers_dims[0])
-                    x = tf.layers.dense(self.s, units=self.nn.fc_layers_dims[0],
+                    x = tf.compat.v1.layers.dense(self.s, units=self.nn.fc_layers_dims[0],
                                         kernel_initializer=tf.random_uniform_initializer(-f1, f1),
                                         bias_initializer=tf.random_uniform_initializer(-f1, f1))
-                    x = tf.layers.batch_normalization(x)
+                    x = tf.compat.v1.layers.batch_normalization(x)
                     x = tf.nn.relu(x)
 
                     f2 = 1. / np.sqrt(self.nn.fc_layers_dims[1])
-                    x = tf.layers.dense(x, units=self.nn.fc_layers_dims[1],
+                    x = tf.compat.v1.layers.dense(x, units=self.nn.fc_layers_dims[1],
                                         kernel_initializer=tf.random_uniform_initializer(-f2, f2),
                                         bias_initializer=tf.random_uniform_initializer(-f2, f2))
-                    x = tf.layers.batch_normalization(x)
+                    x = tf.compat.v1.layers.batch_normalization(x)
                     x = tf.nn.relu(x)
 
                     f3 = 0.003
-                    mu = tf.layers.dense(x, units=self.nn.n_actions, activation='tanh',
+                    mu = tf.compat.v1.layers.dense(x, units=self.nn.n_actions, activation='tanh',
                                          kernel_initializer=tf.random_uniform_initializer(-f3, f3),
                                          bias_initializer=tf.random_uniform_initializer(-f3, f3))
                     self.mu = tf.multiply(mu, self.nn.action_boundary)  # an ndarray of ndarrays
@@ -109,7 +112,7 @@ class NN:
 
                 self.build_network()
 
-                self.params = tf.trainable_variables(scope=self.nn.name)
+                self.params = trainable_variables(scope=self.nn.name)
 
                 optimizer = tf_get_optimizer(self.nn.optimizer_type, self.nn.lr)
                 self.optimize = optimizer.minimize(self.loss)  # train_op
@@ -123,25 +126,25 @@ class NN:
                     self.q_target = tf.compat.v1.placeholder(tf.float32, shape=[None, 1], name='q_target')
 
                     f1 = 1. / np.sqrt(self.nn.fc_layers_dims[0])
-                    x = tf.layers.dense(self.s, units=self.nn.fc_layers_dims[0],
+                    x = tf.compat.v1.layers.dense(self.s, units=self.nn.fc_layers_dims[0],
                                         kernel_initializer=tf.random_uniform_initializer(-f1, f1),
                                         bias_initializer=tf.random_uniform_initializer(-f1, f1))
-                    x = tf.layers.batch_normalization(x)
+                    x = tf.compat.v1.layers.batch_normalization(x)
                     x = tf.nn.relu(x)
 
                     f2 = 1. / np.sqrt(self.nn.fc_layers_dims[1])
-                    x = tf.layers.dense(x, units=self.nn.fc_layers_dims[1],
+                    x = tf.compat.v1.layers.dense(x, units=self.nn.fc_layers_dims[1],
                                         kernel_initializer=tf.random_uniform_initializer(-f2, f2),
                                         bias_initializer=tf.random_uniform_initializer(-f2, f2))
-                    x = tf.layers.batch_normalization(x)
+                    x = tf.compat.v1.layers.batch_normalization(x)
 
-                    action_in_ac = tf.layers.dense(self.a, units=self.nn.fc_layers_dims[1], activation='relu')
+                    action_in_ac = tf.compat.v1.layers.dense(self.a, units=self.nn.fc_layers_dims[1], activation='relu')
 
                     state_actions = tf.add(x, action_in_ac)
                     state_actions_ac = tf.nn.relu(state_actions)
 
                     f3 = 0.003
-                    self.q = tf.layers.dense(state_actions_ac, units=1,
+                    self.q = tf.compat.v1.layers.dense(state_actions_ac, units=1,
                                              kernel_initializer=tf.random_uniform_initializer(-f3, f3),
                                              bias_initializer=tf.random_uniform_initializer(-f3, f3),
                                              kernel_regularizer=tf.keras.regularizers.l2(0.01))
@@ -480,6 +483,12 @@ class AC(object):
             self.critic.train()
             self.critic.optimizer.zero_grad()
             critic_loss = torch_func.mse_loss(batch_q_target, batch_q_of_a_true)
+            # l1_crit = torch.nn.Loss(size_average=False)
+            # reg_loss = 0
+            # for param in model.parameters():
+            #     reg_loss += l1_crit(param)
+            # factor = 0.0005
+            # loss += factor * reg_loss
             critic_loss.backward()
             self.critic.optimizer.step()
 
@@ -542,7 +551,7 @@ class Agent(object):
         make_sure_dir_exists(self.chkpt_dir)
 
         if lib_type == LIBRARY_TF:
-            tf.reset_default_graph()
+            reset_default_graph()
             self.ac = AC.AC_TF(custom_env, fc_layers_dims,
                                optimizer_type, lr_actor, lr_critic,
                                tau, self.chkpt_dir, device_type)

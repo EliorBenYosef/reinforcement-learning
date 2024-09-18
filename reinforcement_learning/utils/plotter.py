@@ -1,3 +1,7 @@
+"""
+Plots the performance of single / multiple RL algorithms.
+"""
+
 import numpy as np
 from matplotlib import pyplot as plt
 

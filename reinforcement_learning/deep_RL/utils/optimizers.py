@@ -1,6 +1,6 @@
 import tensorflow as tf
 import torch
-from keras import optimizers as keras_opt
+from tensorflow.keras import optimizers as keras_opt
 from torch.optim import adagrad as torch_opt_adagrad, adadelta as torch_opt_adadelta, rmsprop as torch_opt_rmsprop
 
 from reinforcement_learning.deep_RL.const import OPTIMIZER_SGD, OPTIMIZER_Adagrad, OPTIMIZER_Adadelta, OPTIMIZER_RMSprop
