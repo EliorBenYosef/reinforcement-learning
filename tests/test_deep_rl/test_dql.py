@@ -1,7 +1,7 @@
 from numpy.random import seed
 seed(28)
-from tensorflow.compat.v1 import set_random_seed
-set_random_seed(28)
+from tensorflow import random
+random.set_seed(28)
 
 from reinforcement_learning.utils.plotter import plot_running_average
 from reinforcement_learning.deep_RL.const import LIBRARY_TF, LIBRARY_KERAS, LIBRARY_TORCH, \
