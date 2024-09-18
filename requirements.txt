@@ -1,7 +1,6 @@
-numpy==1.19.1
-matplotlib==3.3.4
-gym==0.12.1
-tensorflow==1.14.0
-tensorflow_probability==0.7.0
-Keras==2.2.4
-torch==1.1.0
+numpy~=1.26.4
+matplotlib~=3.9.2
+gym~=0.26.2
+tensorflow~=2.17.0
+tensorflow_probability~=0.13.0
+torch~=2.4.1
