@@ -1,3 +1,7 @@
 /.idea
 /ignore
 /recordings
+/tmp
+/tests/.pytest_cache
+/tests/test_deep_rl/.pytest_cache
+/tests/test_deep_rl/tmp
